@@ -230,17 +230,28 @@ def p05_login():
         phone = "999662" + suffix
         fields = [x for x in dump() if "EditText" in x.cls]
         log("phone fields:", fields)
-        tap_xy(fields[0].cx, fields[0].cy)
-        clear_field()
-        type_text("999")
+        # Backspace in an empty phone field jumps to the country code and deletes it, so
+        # clear the phone first, then set the code, then type the phone without clearing.
         tap_xy(fields[-1].cx, fields[-1].cy)
         clear_field()
+        tap_xy(fields[0].cx, fields[0].cy)
+        key("KEYCODE_MOVE_END")
+        shell("input keyevent " + " ".join(["KEYCODE_DEL"] * 6))
+        type_text("999")
+        fields = [x for x in dump() if "EditText" in x.cls]
+        tap_xy(fields[-1].cx, fields[-1].cy)
         type_text("662" + suffix)
         shot("login_phone")
         key("KEYCODE_ENTER")
         time.sleep(3)
         if wait(r"^Yes$|^YES$", 8):
             tap(r"^Yes$|^YES$")
+        # "Allow Telegram to read the call log" and the system permission prompt.
+        if wait(r"^Continue$", 5):
+            tap(r"^Continue$")
+            deny = wait(r"Don.t allow|^Deny$", 5)
+            if deny:
+                tap(deny)
         code = wait(r"Enter code|Check your|code", 30)
         shot("login_code")
         if find(r"password", None):
