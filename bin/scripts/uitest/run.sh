@@ -1,6 +1,9 @@
 #!/bin/bash
 # Runs the UI test against the arm64 APK in $1 on the running emulator.
-APK=$(ls "$1"/*arm64-v8a*.apk 2>/dev/null | head -1)
+# The x86_64 build runs natively on the emulator; the arm64 one only through ARM translation,
+# which can't run the Go V2Ray core.
+APK=$(ls "$1"/*x86_64*.apk 2>/dev/null | head -1)
+[ -z "$APK" ] && APK=$(ls "$1"/*arm64-v8a*.apk 2>/dev/null | head -1)
 [ -z "$APK" ] && APK=$(find "$1" -name '*arm64-v8a*.apk' | head -1)
 echo "APK: $APK"
 export UITEST_OUT="${UITEST_OUT:-$PWD/uitest-out}"

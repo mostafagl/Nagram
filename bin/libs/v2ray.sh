@@ -20,7 +20,8 @@ if [ -n "$NATIVE_TARGET" ]; then
     *) echo "Unknown NATIVE_TARGET $NATIVE_TARGET"; exit 1 ;;
   esac
 else
-  TARGETS=android/arm,android/arm64
+  # amd64 is only packaged into the x86_64 build used by the emulator test.
+  TARGETS=android/arm,android/arm64,android/amd64
 fi
 
 export GOTOOLCHAIN=auto

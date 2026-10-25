@@ -170,6 +170,10 @@ android {
                     include nativeTarget
                 } else {
                     include 'armeabi-v7a', 'arm64-v8a'
+                    // CI's emulator test runs an x86_64 build; it isn't published.
+                    if (System.getenv("EXTRA_ABI_X86_64") == "true") {
+                        include 'x86_64'
+                    }
                 }
             }
         }
