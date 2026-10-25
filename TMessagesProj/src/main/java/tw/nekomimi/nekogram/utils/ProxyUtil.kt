@@ -67,45 +67,6 @@ object ProxyUtil {
     }
 
     @JvmStatic
-    fun registerNetworkCallback() {
-        val connectivityManager = ApplicationLoader.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val networkCallback: ConnectivityManager.NetworkCallback =
-            object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) {
-                    val networkCapabilities =
-                        connectivityManager.getNetworkCapabilities(network) ?: return
-                    val vpn = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
-                    if (!vpn) {
-                        if (SharedConfig.currentProxy == null) {
-                            if (!SharedConfig.proxyList.isEmpty()) {
-                                SharedConfig.setCurrentProxy(SharedConfig.proxyList[0])
-                            } else {
-                                return
-                            }
-                        }
-                    }
-                    if ((SharedConfig.isProxyEnabled() && vpn) || (!SharedConfig.isProxyEnabled() && !vpn)) {
-                        SharedConfig.setProxyEnable(!vpn)
-                        UIUtil.runOnUIThread(Runnable {
-                            NotificationCenter.getGlobalInstance()
-                                .postNotificationName(NotificationCenter.proxySettingsChanged)
-                        })
-                    }
-                }
-            }
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                connectivityManager.registerDefaultNetworkCallback(networkCallback)
-            } else {
-                val request: NetworkRequest = NetworkRequest.Builder()
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
-                connectivityManager.registerNetworkCallback(request, networkCallback)
-            }
-        } catch (ignored: Exception) {}
-    }
-
-    @JvmStatic
     fun getOwnerActivity(ctx: Context): Activity {
 
         if (ctx is Activity) return ctx

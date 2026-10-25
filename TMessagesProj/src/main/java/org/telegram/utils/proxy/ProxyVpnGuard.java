@@ -18,6 +18,8 @@ import org.telegram.messenger.SharedConfig;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.ui.Components.Bulletin;
 
+import xyz.nextalone.nagram.NaConfig;
+
 /**
  * Turns the in-app proxy off while a system VPN carries this app's traffic, and back on when
  * the VPN goes away. Only reacts to the VPN coming up or going down (with a short debounce), so
@@ -25,7 +27,6 @@ import org.telegram.ui.Components.Bulletin;
  */
 public final class ProxyVpnGuard {
 
-    public static final String PREF_ENABLED = "parva_proxy_vpn_guard";
     private static final String PREF_SUSPENDED = "parva_proxy_suspended_by_vpn";
     private static final long DEBOUNCE_MS = 2000;
 
@@ -65,16 +66,16 @@ public final class ProxyVpnGuard {
         AndroidUtilities.runOnUIThread(evaluate, DEBOUNCE_MS * 2);
     }
 
+    /** The existing "Disable proxy when VPN enabled" option (proxy screen and general settings). */
     public static boolean isEnabled() {
-        return MessagesController.getGlobalMainSettings().getBoolean(PREF_ENABLED, true);
+        return NaConfig.INSTANCE.getDisableProxyWhenVpnEnabled().Bool();
     }
 
     public static void setEnabled(boolean enabled) {
-        final SharedPreferences.Editor editor = MessagesController.getGlobalMainSettings().edit().putBoolean(PREF_ENABLED, enabled);
+        NaConfig.INSTANCE.getDisableProxyWhenVpnEnabled().setConfigBool(enabled);
         if (!enabled) {
-            editor.remove(PREF_SUSPENDED);
+            MessagesController.getGlobalMainSettings().edit().remove(PREF_SUSPENDED).apply();
         }
-        editor.apply();
         if (enabled) {
             // Apply to a VPN that is already up.
             appliedVpnState = null;

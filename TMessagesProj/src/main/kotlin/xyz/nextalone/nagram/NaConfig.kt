@@ -351,7 +351,7 @@ object NaConfig {
         addConfig(
             "DisableProxyWhenVpnEnabled",
             ConfigItem.configTypeBool,
-            false
+            true
         )
     val fakeHighPerformanceDevice =
         addConfig(

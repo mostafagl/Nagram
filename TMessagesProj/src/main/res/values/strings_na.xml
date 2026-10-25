@@ -486,4 +486,6 @@
     <string name="KeepAliveConnected">Connected</string>
     <string name="KeepAliveConnectedVia">Connected via %1$s</string>
     <string name="KeepAliveViaProxy">proxy</string>
+    <string name="PasscodeClearAll">Clear passcodes</string>
+    <string name="ExternalStickerCacheDirNameShort">Short name</string>
 </resources>
