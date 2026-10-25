@@ -205,6 +205,11 @@ android {
             cmake {
                 version '3.22.1'
                 arguments '-DANDROID_STL=c++_static', '-DANDROID_PLATFORM=android-21' //, '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON'
+                // Certificate the native integrity check expects; unset skips the check.
+                def appSignatureSha1 = properties?.getProperty("APP_SIGNATURE_SHA1") ?: System.getenv("APP_SIGNATURE_SHA1")
+                if (appSignatureSha1 != null && !appSignatureSha1.isBlank()) {
+                    arguments "-DAPP_SIGNATURE_SHA1=${appSignatureSha1.trim().toUpperCase()}"
+                }
                 targets 'tmessages.49'
             }
         }

@@ -3,10 +3,21 @@
 #include "read_cert.h"
 #include "SHA1.h"
 
-static const char *SIGN = "3A0F57FE06485D0B90D0ACD990E3A30328E3988D";
+// SHA-1 (upper-case hex) of the certificate this build must be signed with,
+// set with -DAPP_SIGNATURE_SHA1 at build time. This fork signs with its own
+// key, so the upstream fingerprint can't be hard-coded; when unset the check
+// is skipped.
+#ifdef APP_SIGNATURE_SHA1
+static const char *SIGN = APP_SIGNATURE_SHA1;
+#else
+static const char *SIGN = nullptr;
+#endif
 
 extern "C" {
 int verifySign(JNIEnv *env) {
+    if (SIGN == nullptr || SIGN[0] == '\0') {
+        return JNI_OK;
+    }
     jobject application = getApplication(env);
     if (application == nullptr) {
         return JNI_ERR;
