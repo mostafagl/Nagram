@@ -947,6 +947,13 @@ object NaConfig {
             4,
             false
         )
+    val disableActionBarButtonForwardNoQuote =
+        addConfig(
+            "ActionBarNoQuoteForward",
+            disableActionBarButton,
+            5,
+            false
+        )
     val coloredAdminTitle =
         addConfig(
             "ColoredAdminTitle",

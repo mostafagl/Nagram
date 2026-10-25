@@ -10876,6 +10876,10 @@ public class ChatActivity extends BaseFragment implements
         if (currentEncryptedChat == null && getDialogId() != UserObject.VERIFY && !NaConfig.INSTANCE.getDisableActionBarButtonForward().Bool()) {
             actionModeViews.add(actionMode.addItemWithWidth(forward, R.drawable.msg_forward, dp(48), LocaleController.getString(R.string.Forward)));
         }
+        final boolean noQuoteForwardInActionBar = currentEncryptedChat == null && getDialogId() != UserObject.VERIFY && NaConfig.INSTANCE.getShowNoQuoteForward().Bool() && !NaConfig.INSTANCE.getDisableActionBarButtonForwardNoQuote().Bool();
+        if (noQuoteForwardInActionBar) {
+            actionModeViews.add(actionMode.addItemWithWidth(nkbtn_forward_noquote, R.drawable.msg_forward_noquote, dp(48), LocaleController.getString(R.string.NoQuoteForward)));
+        }
 
         actionModeViews.add(actionMode.addItemWithWidth(delete, R.drawable.msg_delete, dp(48), LocaleController.getString(R.string.Delete)));
         actionModeViews.add(actionModeOtherItem = actionMode.addItemWithWidth(nkactionbarbtn_action_mode_other, R.drawable.ic_ab_other, dp(48), LocaleController.getString(R.string.MessageMenu)));
@@ -10884,7 +10888,7 @@ public class ChatActivity extends BaseFragment implements
 
         if (currentEncryptedChat == null || !noforward) {
             final boolean isSavedMessages = getDialogId() == getUserConfig().getClientUserId() && (chatMode == 0 || chatMode == MODE_SAVED);
-            if (NaConfig.INSTANCE.getShowNoQuoteForward().Bool()) {
+            if (NaConfig.INSTANCE.getShowNoQuoteForward().Bool() && !noQuoteForwardInActionBar) {
                 actionModeOtherItem.addSubItem(nkbtn_forward_noquote, R.drawable.msg_forward_noquote, LocaleController.getString("NoQuoteForward", R.string.NoQuoteForward));
             }
             if (isSavedMessages) {
@@ -20105,6 +20109,10 @@ public class ChatActivity extends BaseFragment implements
 
                 if (forwardNoQuoteItem != null) {
                     forwardNoQuoteItem.setVisibility(canForward && NaConfig.INSTANCE.getShowNoQuoteForward().Bool());
+                }
+                ActionBarMenuItem forwardNoQuoteActionItem = actionBar.createActionMode().getItem(nkbtn_forward_noquote);
+                if (forwardNoQuoteActionItem != null) {
+                    forwardNoQuoteActionItem.setVisibility(canForward ? View.VISIBLE : View.GONE);
                 }
                 if (saveMessageItem != null) {
                     saveMessageItem.setVisibility(canForward);

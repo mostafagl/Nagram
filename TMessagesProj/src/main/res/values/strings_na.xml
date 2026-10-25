@@ -409,4 +409,5 @@
     <string name="AddV2RayConfig">Add V2Ray config</string>
     <string name="EditV2RayConfig">Edit V2Ray config</string>
     <string name="V2RayConfigHint">Paste vless://, vmess://, trojan:// or ss:// links, one per line.</string>
+    <string name="ActionBarNoQuoteForward">Forward without quote</string>
 </resources>
