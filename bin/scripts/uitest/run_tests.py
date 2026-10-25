@@ -87,12 +87,16 @@ def p02_vless_link():
     # Ping test through the real core.
     status = find(r"Check Status")
     if status:
-        tap(status)
+        # The link is the start of the text; the rest of the row isn't clickable.
+        tap_xy(status.l + 110, status.cy)
         if wait(r"^Proceed$", 5):
             tap(r"^Proceed$")
     ping = wait(r"Ping \d+ ms|No response", 60)
     shot("v2ray_ping")
     Check.record("ping test through V2Ray finishes", ping is not None, ping.label if ping else "no result")
+    if not find(r"^Connect$"):
+        open_link(VLESS)
+        wait(r"V2Ray server", 15)
     tap(r"^Connect$")
     result = wait(r"Connected through|Couldn't reach Telegram|could not start|^Connected$", 60)
     shot("v2ray_connect")
@@ -114,11 +118,13 @@ def open_login_menu():
             tap(r"Start Messaging")
             time.sleep(3)
         dismiss_system_dialogs()
-    nodes = dump()
-    # The overflow menu is the top-right icon of the phone screen.
-    w = max(n.r for n in nodes) if nodes else 1080
-    tap_xy(w - 60, 150)
-    time.sleep(1)
+    from ui import screen_size
+    w, h = screen_size()
+    # The overflow menu (three dots) is the top-right icon of the phone screen.
+    tap_xy(w - 84, int(h * 0.088))
+    time.sleep(1.5)
+    if not find(r"^Proxy$|^Language$|Custom Backend"):
+        log("menu not open, screen:", texts()[:20])
 
 
 @phase
