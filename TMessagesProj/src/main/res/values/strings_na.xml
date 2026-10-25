@@ -536,4 +536,5 @@
     <string name="V2RaySubscriptionFailed">Failed: %1$s. Your saved configs were not changed.</string>
     <string name="V2RaySubscriptionLimitReached">The maximum number of configs for this subscription has been reached.</string>
     <string name="V2RaySubscriptionCancelled">Stopped before all links were tested.</string>
+    <string name="V2RayCoreCrashed">The V2Ray core stopped the app while starting, so the proxy was turned off. Try another config.</string>
 </resources>

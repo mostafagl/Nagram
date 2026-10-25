@@ -49,9 +49,13 @@ public final class V2RayTransport {
                 return runningPort;
             }
             stopInternal();
+            if (!CrashGuard.allowStart()) {
+                return 0;
+            }
             try {
                 ensureInitialized();
                 final int port = findFreePort();
+                CrashGuard.starting();
                 controller = Libv2ray.newCoreController(new Callback());
                 controller.startLoop(config.buildConfig(port), 0);
                 runningLink = link;
@@ -145,6 +149,48 @@ public final class V2RayTransport {
         try (ServerSocket socket = new ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))) {
             socket.setReuseAddress(true);
             return socket.getLocalPort();
+        }
+    }
+
+    /**
+     * If the native core takes the process down while starting, the next launch would start it
+     * again (the proxy is still on) and crash again. A marker written before each start and
+     * cleared once the core has run for a while detects that; after two such crashes in a row
+     * the proxy is switched off so the app stays usable.
+     */
+    static final class CrashGuard {
+        private static final String PREF_PENDING = "parva_v2ray_start_pending";
+        private static final String PREF_CRASHES = "parva_v2ray_start_crashes";
+        private static final long SURVIVE_MS = 15_000;
+        private static boolean checked;
+
+        static boolean allowStart() {
+            final android.content.SharedPreferences prefs = org.telegram.messenger.MessagesController.getGlobalMainSettings();
+            if (!checked) {
+                checked = true;
+                if (prefs.getBoolean(PREF_PENDING, false)) {
+                    // The previous process died while (or right after) starting the core.
+                    final int crashes = prefs.getInt(PREF_CRASHES, 0) + 1;
+                    prefs.edit().putBoolean(PREF_PENDING, false).putInt(PREF_CRASHES, crashes).commit();
+                    FileLog.e("v2ray core start did not survive the previous launch (" + crashes + ")");
+                    if (crashes >= 2) {
+                        prefs.edit().putInt(PREF_CRASHES, 0).putBoolean("proxy_enabled", false).commit();
+                        org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+                            org.telegram.messenger.NotificationCenter.getGlobalInstance().postNotificationName(org.telegram.messenger.NotificationCenter.proxySettingsChanged);
+                            org.telegram.messenger.NotificationCenter.getGlobalInstance().postNotificationName(org.telegram.messenger.NotificationCenter.showBulletin,
+                                    org.telegram.ui.Components.Bulletin.TYPE_ERROR, org.telegram.messenger.LocaleController.getString(org.telegram.messenger.R.string.V2RayCoreCrashed));
+                        }, 3000);
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        static void starting() {
+            final android.content.SharedPreferences prefs = org.telegram.messenger.MessagesController.getGlobalMainSettings();
+            prefs.edit().putBoolean(PREF_PENDING, true).commit();
+            org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> prefs.edit().putBoolean(PREF_PENDING, false).putInt(PREF_CRASHES, 0).apply(), SURVIVE_MS);
         }
     }
 
