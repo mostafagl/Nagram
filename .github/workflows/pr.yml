@@ -128,6 +128,13 @@ jobs:
           APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk')
           APK=$(dirname $APK)
           echo "APK=$APK" >> $GITHUB_ENV
+      - name: Verify APK signatures
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          for f in $(find TMessagesProj/build/outputs/apk -name '*.apk'); do
+            echo "== $f"
+            "$BT/apksigner" verify --verbose --print-certs "$f"
+          done
       - uses: actions/upload-artifact@v7
         with:
           name: Debug
