@@ -78,6 +78,27 @@ public final class V2RayTransport {
         }
     }
 
+    /**
+     * Blocking delay test through {@code config}, in ms, or -1 when the server doesn't answer.
+     * Uses a separate core without inbounds, so it can run next to the active connection.
+     */
+    public static long measureDelaySync(V2RayConfig config) {
+        try {
+            ensureInitialized();
+            final long time = Libv2ray.measureOutboundDelay(config.buildConfig(findFreePort()), DELAY_TEST_URL);
+            return time > 0 ? time : -1;
+        } catch (Throwable e) {
+            return -1;
+        }
+    }
+
+    /** Local SOCKS5 port of the running core, or 0. */
+    public static int getRunningPort() {
+        synchronized (lock) {
+            return controller != null && controller.getIsRunning() ? runningPort : 0;
+        }
+    }
+
     /** Measures the round-trip time of an HTTP request made through the server in {@code link}. */
     public static void checkDelay(String link, RequestTimeDelegate delegate) {
         final V2RayConfig config = V2RayConfig.parse(link);

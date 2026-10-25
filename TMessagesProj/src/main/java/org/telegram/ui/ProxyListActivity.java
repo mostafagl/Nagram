@@ -122,6 +122,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
     private int sortRow;
     private int addV2RayRow;
     private int importClipboardRow;
+    private int subscriptionsRow;
     private int testAllRow;
     private int deleteNoPingRow;
     private int sortMode;
@@ -642,6 +643,8 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
                 showV2RayConfigDialog(null);
             } else if (position == importClipboardRow) {
                 importFromClipboard();
+            } else if (position == subscriptionsRow) {
+                presentFragment(new V2RaySubscriptionsActivity());
             } else if (position == testAllRow) {
                 testProxies(new ArrayList<>(proxyList), null);
             } else if (position == deleteNoPingRow) {
@@ -1143,6 +1146,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
         }
         addV2RayRow = rowCount++;
         importClipboardRow = rowCount++;
+        subscriptionsRow = rowCount++;
         proxyAddRow = rowCount++;
         if (!proxyList.isEmpty()) {
             testAllRow = rowCount++;
@@ -1344,6 +1348,9 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
                     } else if (position == importClipboardRow) {
                         textCell.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText4));
                         textCell.setText(getString(R.string.ImportProxyFromClipboard), true);
+                    } else if (position == subscriptionsRow) {
+                        textCell.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText4));
+                        textCell.setText(getString(R.string.V2RaySubscriptions), true);
                     } else if (position == testAllRow) {
                         textCell.setText(getString(R.string.ProxyTestAll), true);
                     } else if (position == deleteNoPingRow) {
@@ -1455,7 +1462,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
         public boolean isEnabled(RecyclerView.ViewHolder holder) {
             int position = holder.getAdapterPosition();
             return position == useProxyRow || position == rotationRow || position == proxyAddRow || position == deleteAllRow || position >= proxyStartRow && position < proxyEndRow
-                    || position == vpnGuardRow || position == keepAliveRow || position == sortRow || position == addV2RayRow || position == importClipboardRow || position == testAllRow || position == deleteNoPingRow;
+                    || position == vpnGuardRow || position == keepAliveRow || position == sortRow || position == addV2RayRow || position == importClipboardRow || position == subscriptionsRow || position == testAllRow || position == deleteNoPingRow;
         }
 
         @Override
@@ -1527,6 +1534,8 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
                 return -16;
             } else if (position == importClipboardRow) {
                 return -17;
+            } else if (position == subscriptionsRow) {
+                return -20;
             } else if (position == testAllRow) {
                 return -18;
             } else if (position == deleteNoPingRow) {
@@ -1542,7 +1551,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
         public int getItemViewType(int position) {
             if (position == useProxyShadowRow || position == proxyShadowRow) {
                 return VIEW_TYPE_SHADOW;
-            } else if (position == proxyAddRow || position == deleteAllRow || position == sortRow || position == addV2RayRow || position == importClipboardRow || position == testAllRow || position == deleteNoPingRow) {
+            } else if (position == proxyAddRow || position == deleteAllRow || position == sortRow || position == addV2RayRow || position == importClipboardRow || position == subscriptionsRow || position == testAllRow || position == deleteNoPingRow) {
                 return VIEW_TYPE_TEXT_SETTING;
             } else if (position == useProxyRow || position == rotationRow || position == vpnGuardRow || position == keepAliveRow) {
                 return VIEW_TYPE_TEXT_CHECK;

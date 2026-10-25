@@ -101,6 +101,15 @@ public final class V2RayConfig {
         return config.toString();
     }
 
+    /**
+     * Identifies the server and credentials regardless of the link's spelling and its remark, so
+     * the same config from two subscriptions (or renamed) is recognised as a duplicate.
+     */
+    @NonNull
+    public String getDedupKey() {
+        return protocol + "|" + outbound.toString();
+    }
+
     @NonNull
     public String getDisplayName() {
         if (!TextUtils.isEmpty(remark)) {

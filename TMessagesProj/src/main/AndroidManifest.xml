@@ -630,6 +630,10 @@
             android:foregroundServiceType="dataSync"
         />
         <service
+            android:name="org.telegram.utils.proxy.V2RaySubscriptionJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service
             android:name=".BringAppForegroundService"
             android:enabled="true"
             android:exported="true"
