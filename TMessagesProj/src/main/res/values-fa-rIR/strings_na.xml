@@ -409,4 +409,18 @@
     <string name="EditV2RayConfig">ویرایش کانفیگ V2Ray</string>
     <string name="V2RayConfigHint">لینک‌های vless://، vmess://، trojan:// یا ss:// را وارد کنید (هر کدام در یک خط).</string>
     <string name="ActionBarNoQuoteForward">هدایت بدون نقل‌قول</string>
+    <string name="MessageHistory">تاریخچه پیام‌ها</string>
+    <string name="MessageHistoryExport">خروجی (JSON)</string>
+    <string name="MessageHistoryClear">پاک کردن تاریخچه</string>
+    <string name="MessageHistoryClearConfirm">همه‌ی پیام‌های ویرایش‌شده و حذف‌شده‌ی ذخیره‌شده حذف شوند؟ این کار برگشت‌پذیر نیست.</string>
+    <string name="MessageHistoryEmpty">هنوز پیام ویرایش‌شده یا حذف‌شده‌ای ثبت نشده است.</string>
+    <string name="MessageHistoryVersion">نسخه %1$d</string>
+    <string name="MessageHistoryEditedBadge">ویرایش‌شده · %1$d</string>
+    <string name="MessageHistoryDeletedBadge">حذف‌شده</string>
+    <string name="MessageHistoryDeletedAt">زمان حذف</string>
+    <string name="MessageHistoryViewEdits">تاریخچه ویرایش</string>
+    <string name="ShowMessageEditHistory">نگهداری تاریخچه ویرایش</string>
+    <string name="ShowMessageEditHistoryNotice">وقتی کسی پیامی را هنگام باز بودن چت ویرایش می‌کند، نسخه‌های قبلی روی همین دستگاه نگه داشته شوند.</string>
+    <string name="ShowDeletedMessages">نگهداری پیام‌های حذف‌شده</string>
+    <string name="ShowDeletedMessagesNotice">وقتی پیامی که قبلاً دریافت کرده‌اید حذف می‌شود، محتوای آن روی همین دستگاه نگه داشته شود.</string>
 </resources>

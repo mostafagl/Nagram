@@ -88,6 +88,12 @@ public class NekoChatSettingsActivity extends BaseNekoXSettingsActivity implemen
     private final AbstractConfigCell showSpoilersDirectlyRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.showSpoilersDirectly));
     private final AbstractConfigCell disableLinkPreviewsRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getGlobalDisableLinkPreviews()));
     private final AbstractConfigCell hideSideShareButtonRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getHideSideShareButton()));
+    private final AbstractConfigCell showMessageEditHistoryRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getShowMessageEditHistory(), LocaleController.getString(R.string.ShowMessageEditHistoryNotice)));
+    private final AbstractConfigCell showDeletedMessagesRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getShowDeletedMessages(), LocaleController.getString(R.string.ShowDeletedMessagesNotice)));
+    private final AbstractConfigCell messageHistoryRow = cellGroup.appendCell(new ConfigCellSelectBox("MessageHistory", null, null, () -> {
+        if (getParentActivity() == null) return;
+        presentFragment(new xyz.nextalone.nagram.history.MessageHistoryActivity());
+    }));
     private final AbstractConfigCell dividerMessages = cellGroup.appendCell(new ConfigCellDivider());
 
     private final AbstractConfigCell headerDoubleTap = cellGroup.appendCell(new ConfigCellHeader(LocaleController.getString(R.string.DoubleTapAction)));

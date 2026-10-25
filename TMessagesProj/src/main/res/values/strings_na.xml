@@ -410,4 +410,18 @@
     <string name="EditV2RayConfig">Edit V2Ray config</string>
     <string name="V2RayConfigHint">Paste vless://, vmess://, trojan:// or ss:// links, one per line.</string>
     <string name="ActionBarNoQuoteForward">Forward without quote</string>
+    <string name="MessageHistory">Message history</string>
+    <string name="MessageHistoryExport">Export (JSON)</string>
+    <string name="MessageHistoryClear">Clear history</string>
+    <string name="MessageHistoryClearConfirm">Delete all captured edited and deleted messages? This cannot be undone.</string>
+    <string name="MessageHistoryEmpty">No edited or deleted messages have been captured yet.</string>
+    <string name="MessageHistoryVersion">Version %1$d</string>
+    <string name="MessageHistoryEditedBadge">edited · %1$d</string>
+    <string name="MessageHistoryDeletedBadge">deleted</string>
+    <string name="MessageHistoryDeletedAt">Deleted at</string>
+    <string name="MessageHistoryViewEdits">Edit history</string>
+    <string name="ShowMessageEditHistory">Keep edit history</string>
+    <string name="ShowMessageEditHistoryNotice">When someone edits a message while the chat is open, keep the previous versions locally on this device.</string>
+    <string name="ShowDeletedMessages">Keep deleted messages</string>
+    <string name="ShowDeletedMessagesNotice">When a message you already received is deleted, keep its content locally on this device.</string>
 </resources>

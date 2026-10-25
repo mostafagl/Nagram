@@ -134,6 +134,18 @@ object NaConfig {
             ConfigItem.configTypeBool,
             true
         )
+    val showMessageEditHistory =
+        addConfig(
+            "ShowMessageEditHistory",
+            ConfigItem.configTypeBool,
+            false
+        )
+    val showDeletedMessages =
+        addConfig(
+            "ShowDeletedMessages",
+            ConfigItem.configTypeBool,
+            false
+        )
     val showRepeatAsCopy =
         addConfig(
             "RepeatAsCopy",

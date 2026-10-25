@@ -475,6 +475,7 @@ public class ChatActivity extends BaseFragment implements
     public final static int nkbtn_setReminder = 2029;
     public final static int nkbtn_sticker_copy = 2031;
     public final static int nkbtn_sticker_copy_png = 2032;
+    public final static int nkbtn_edit_history = 2033;
 
 
     public int shareAlertDebugMode = DEBUG_SHARE_ALERT_MODE_NORMAL;
@@ -23382,6 +23383,9 @@ public class ChatActivity extends BaseFragment implements
                 scheduleNowDialog.dismiss();
                 scheduleNowDialog = null;
             }
+            if (!movedToScheduled && chatMode != MODE_SCHEDULED && !messages.isEmpty()) {
+                xyz.nextalone.nagram.history.MessageHistoryController.onMessagesDeleted(currentAccount, messages);
+            }
             processDeletedMessages(markAsDeletedMessages, channelId, sent, !movedToScheduled);
             if (movedToScheduled && chatMode != ChatActivity.MODE_SCHEDULED) {
                 getMessagesController().forceNoReload(dialog_id, ChatActivity.MODE_SCHEDULED);
@@ -27758,6 +27762,10 @@ public class ChatActivity extends BaseFragment implements
             }
             if (old == null || remove && !ignoreDateCheckBeforeRemove && old.messageOwner.date != messageObject.messageOwner.date || messageObject.scheduled && chatMode != MODE_SCHEDULED) {
                 continue;
+            }
+            if (!remove && !messageObject.scheduled && messageObject.messageOwner != null && old.messageOwner != null
+                    && messageObject.messageOwner.edit_date != 0 && messageObject.messageOwner.edit_date != old.messageOwner.edit_date) {
+                xyz.nextalone.nagram.history.MessageHistoryController.onMessageEdited(currentAccount, old, messageObject);
             }
             if (remove) {
                 messageObjects.remove(a);
@@ -46279,6 +46287,12 @@ public class ChatActivity extends BaseFragment implements
                 builder.show();
                 break;
             }
+            case nkbtn_edit_history: {
+                if (selectedObject != null) {
+                    xyz.nextalone.nagram.history.MessageEditHistoryDialog.show(this, dialog_id, selectedObject.getId(), null);
+                }
+                break;
+            }
             case nkbtn_savemessage: {
                 ArrayList<MessageObject> messages = new ArrayList<>();
                 if (selectedObjectGroup != null) {
@@ -48808,6 +48822,12 @@ public class ChatActivity extends BaseFragment implements
                             options.add(nkbtn_savemessage);
                             icons.add(R.drawable.msg_saved);
                         }
+                    }
+                    if (NaConfig.INSTANCE.getShowMessageEditHistory().Bool() && selectedObjectGroup == null
+                            && xyz.nextalone.nagram.history.MessageHistoryController.hasVersions(dialog_id, selectedObject.getId())) {
+                        items.add(LocaleController.getString(R.string.MessageHistoryViewEdits));
+                        options.add(nkbtn_edit_history);
+                        icons.add(R.drawable.msg_edit);
                     }
                     boolean allowRepeat = currentUser != null
                             || (currentChat != null && ChatObject.canSendMessages(currentChat));
