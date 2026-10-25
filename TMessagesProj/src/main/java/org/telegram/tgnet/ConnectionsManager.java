@@ -49,6 +49,7 @@ import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.StatsController;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
+import org.telegram.utils.proxy.V2RayTransport;
 import org.telegram.utils.proxy.WebProxyConnectionTester;
 import org.telegram.utils.proxy.WebProxyTransport;
 import org.telegram.utils.proxy.ProxySettings;
@@ -766,6 +767,9 @@ public class ConnectionsManager extends BaseController {
                 int localPort = WebProxyTransport.start(proxySettings.getAddress(), proxySettings.getSecret());
                 native_setProxySettings(currentAccount, "127.0.0.1", localPort != 0 ? localPort : 9, "", "",
                         proxySettings.getSecret());
+            } else if (proxySettings.getType() == ProxySettings.Type.V2RAY) {
+                int localPort = V2RayTransport.start(proxySettings.getSecret());
+                native_setProxySettings(currentAccount, "127.0.0.1", localPort != 0 ? localPort : 9, "", "", "");
             } else {
                 native_setProxySettings(currentAccount, proxySettings.getAddress(), proxySettings.getPort(),
                         proxySettings.getUser(), proxySettings.getPassword(), proxySettings.getSecret());
@@ -877,6 +881,10 @@ public class ConnectionsManager extends BaseController {
         }
         if (settings.getType() == ProxySettings.Type.WEB) {
             WebProxyConnectionTester.getInstance().checkProxy(settings, requestTimeDelegate, this::checkWebProxyInternal);
+            return 0;
+        }
+        if (settings.getType() == ProxySettings.Type.V2RAY) {
+            V2RayTransport.checkDelay(settings.getSecret(), requestTimeDelegate);
             return 0;
         }
 
@@ -1119,8 +1127,19 @@ public class ConnectionsManager extends BaseController {
             } else {
                 WebProxyTransport.stop();
             }
+            if (settings.getType() == ProxySettings.Type.V2RAY) {
+                int localPort = V2RayTransport.start(secret);
+                address = "127.0.0.1";
+                port = localPort != 0 ? localPort : 9;
+                username = "";
+                password = "";
+                secret = "";
+            } else {
+                V2RayTransport.stop();
+            }
         } else {
             WebProxyTransport.stop();
+            V2RayTransport.stop();
         }
         _enabled = enabled;
         if (_enabled) {

@@ -108,3 +108,7 @@
 -keep class * implements com.google.gson.TypeAdapterFactory
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
+
+# gomobile bindings (libv2ray) are called from native code
+-keep class go.** { *; }
+-keep class libv2ray.** { *; }

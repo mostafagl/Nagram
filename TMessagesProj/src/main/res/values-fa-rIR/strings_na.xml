@@ -405,4 +405,7 @@
     <string name="AvatarCorners">Avatar corners</string>
     <string name="AllowMediaInChatPreview">رسانه در پیش‌نمایش چت</string>
     <string name="AllowMediaInChatPreviewNotice">دانلود و مشاهده عکس و پخش ویس در پیش‌نمایش چت (نگه‌داشتن روی پروفایل) بدون خوانده شدن پیام‌ها</string>
+    <string name="AddV2RayConfig">افزودن کانفیگ V2Ray</string>
+    <string name="EditV2RayConfig">ویرایش کانفیگ V2Ray</string>
+    <string name="V2RayConfigHint">لینک‌های vless://، vmess://، trojan:// یا ss:// را وارد کنید (هر کدام در یک خط).</string>
 </resources>

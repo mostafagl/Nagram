@@ -31,6 +31,7 @@ import androidx.core.content.pm.ShortcutManagerCompat;
 
 import org.json.JSONObject;
 import org.telegram.utils.proxy.ProxySettings;
+import org.telegram.utils.proxy.V2RayConfig;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.InputSerializedData;
 import org.telegram.tgnet.OutputSerializedData;
@@ -446,6 +447,11 @@ public class SharedConfig {
         }
 
         public static ProxyInfo fromUrl(String url) {
+            if (V2RayConfig.isV2RayLink(url)) {
+                ProxySettings settings = ProxySettings.fromV2RayLink(url);
+                if (settings == null) throw new IllegalArgumentException(url);
+                return new ProxyInfo(settings);
+            }
             Uri lnk = Uri.parse(url);
             if (lnk == null) throw new IllegalArgumentException(url);
             return new ProxyInfo(ProxySettings.fromUri(lnk));

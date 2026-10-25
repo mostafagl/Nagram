@@ -406,4 +406,7 @@
     <string name="UseSystemNotificationColor">Use system notification color</string>
     <string name="AllowMediaInChatPreview">Allow media in chat preview</string>
     <string name="AllowMediaInChatPreviewNotice">Download and view photos and play voice messages in the long-press chat preview without marking the chat as read</string>
+    <string name="AddV2RayConfig">Add V2Ray config</string>
+    <string name="EditV2RayConfig">Edit V2Ray config</string>
+    <string name="V2RayConfigHint">Paste vless://, vmess://, trojan:// or ss:// links, one per line.</string>
 </resources>

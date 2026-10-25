@@ -25,6 +25,7 @@ import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
 import android.text.TextUtils;
+import android.text.InputType;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -50,6 +51,7 @@ import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.SvgHelper;
 import org.telegram.utils.proxy.ProxySettings;
+import org.telegram.utils.proxy.V2RayConfig;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenu;
@@ -66,6 +68,7 @@ import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.CheckBox2;
 import org.telegram.ui.Components.CubicBezierInterpolator;
+import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.NumberTextView;
 import org.telegram.ui.Components.QRCodeBottomSheet;
@@ -186,7 +189,13 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
             checkImageView.setScaleType(ImageView.ScaleType.CENTER);
             checkImageView.setContentDescription(getString(R.string.Edit));
             addView(checkImageView, LayoutHelper.createFrame(48, 48, (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.TOP, 8, 8, 8, 0));
-            checkImageView.setOnClickListener(v -> presentFragment(new ProxySettingsActivity(currentInfo)));
+            checkImageView.setOnClickListener(v -> {
+                if (currentInfo.settings.getType() == ProxySettings.Type.V2RAY) {
+                    showV2RayConfigDialog(currentInfo);
+                } else {
+                    presentFragment(new ProxySettingsActivity(currentInfo));
+                }
+            });
 
             checkBox = new CheckBox2(context, 21);
             checkBox.setColor(Theme.key_checkbox, Theme.key_radioBackground, Theme.key_checkboxCheck);
@@ -203,9 +212,14 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
         }
 
         public void setProxy(SharedConfig.ProxyInfo proxyInfo) {
-            textView.setText(proxyInfo.settings.getType() == ProxySettings.Type.WEB
-                    ? proxyInfo.settings.getAddress() + " (WEB)"
-                    : proxyInfo.settings.getAddress() + ":" + proxyInfo.settings.getPort());
+            if (proxyInfo.settings.getType() == ProxySettings.Type.V2RAY) {
+                final String remark = proxyInfo.settings.getUser();
+                textView.setText((TextUtils.isEmpty(remark) ? proxyInfo.settings.getAddress() + ":" + proxyInfo.settings.getPort() : remark) + " (V2Ray)");
+            } else {
+                textView.setText(proxyInfo.settings.getType() == ProxySettings.Type.WEB
+                        ? proxyInfo.settings.getAddress() + " (WEB)"
+                        : proxyInfo.settings.getAddress() + ":" + proxyInfo.settings.getPort());
+            }
             currentInfo = proxyInfo;
         }
 
@@ -406,6 +420,90 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
     private final static int na_menu_retest_ping = 1004;
     private final static int na_menu_delete_all = 1005;
     private final static int na_menu_delete_unavailable = 1006;
+    private final static int na_menu_add_v2ray = 1007;
+
+    private void showV2RayConfigDialog(SharedConfig.ProxyInfo editingInfo) {
+        final Context context = getParentActivity();
+        if (context == null) {
+            return;
+        }
+        final EditTextBoldCursor editText = new EditTextBoldCursor(context);
+        editText.setBackground(null);
+        editText.setLineColors(Theme.getColor(Theme.key_dialogInputField), Theme.getColor(Theme.key_dialogInputFieldActivated), Theme.getColor(Theme.key_text_RedBold));
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        editText.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+        editText.setHintTextColor(Theme.getColor(Theme.key_dialogTextHint));
+        editText.setCursorColor(Theme.getColor(Theme.key_dialogTextBlack));
+        editText.setHint("vless:// vmess:// trojan:// ss://");
+        editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        editText.setMaxLines(6);
+        editText.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8));
+        if (editingInfo != null) {
+            editText.setText(editingInfo.settings.getSecret());
+        }
+
+        final FrameLayout container = new FrameLayout(context);
+        container.addView(editText, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP, 24, 0, 24, 0));
+
+        final AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle(getString(editingInfo == null ? R.string.AddV2RayConfig : R.string.EditV2RayConfig));
+        builder.setMessage(getString(R.string.V2RayConfigHint));
+        builder.setView(container);
+        builder.setNegativeButton(getString(R.string.Cancel), null);
+        if (editingInfo != null) {
+            builder.setNeutralButton(getString(R.string.Copy), (dialog, which) -> AlertUtil.copyLinkAndAlert(editingInfo.settings.getSecret()));
+        }
+        builder.setPositiveButton(getString(R.string.Save), (dialog, which) -> {
+            final String text = editText.getText() == null ? "" : editText.getText().toString().trim();
+            if (editingInfo != null) {
+                ProxySettings settings = null;
+                String error = null;
+                try {
+                    V2RayConfig.parseOrThrow(text);
+                    settings = ProxySettings.fromV2RayLink(text);
+                } catch (Exception e) {
+                    error = e.getMessage();
+                }
+                if (settings == null) {
+                    AlertUtil.showToast(getString(R.string.BrokenLink) + (error != null ? ": " + error : ""));
+                    return;
+                }
+                editingInfo.settings = settings;
+                SharedConfig.saveProxyList();
+                if (SharedConfig.currentProxy == editingInfo) {
+                    final SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+                    final SharedPreferences.Editor editor = preferences.edit();
+                    settings.toSharedPreferences(editor);
+                    editor.commit();
+                    ConnectionsManager.setProxySettings(preferences.getBoolean("proxy_enabled", false), settings);
+                }
+            } else {
+                int added = 0;
+                String error = null;
+                for (String line : text.split("\\s+")) {
+                    if (TextUtils.isEmpty(line)) {
+                        continue;
+                    }
+                    try {
+                        V2RayConfig.parseOrThrow(line);
+                        final ProxySettings settings = ProxySettings.fromV2RayLink(line);
+                        if (settings != null) {
+                            SharedConfig.addProxy(new SharedConfig.ProxyInfo(settings));
+                            added++;
+                        }
+                    } catch (Exception e) {
+                        error = e.getMessage();
+                    }
+                }
+                if (added == 0) {
+                    AlertUtil.showToast(getString(R.string.BrokenLink) + (error != null ? ": " + error : ""));
+                    return;
+                }
+            }
+            NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxySettingsChanged);
+        });
+        showDialog(builder.create());
+    }
 
     @Override
     public View createView(Context context) {
@@ -430,6 +528,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
         otherItem = menu.addItem(na_menu_other, R.drawable.ic_ab_other);
         otherItem.setContentDescription(LocaleController.getString("AccDescrMoreOptions", R.string.AccDescrMoreOptions));
         otherItem.addSubItem(na_menu_add_input_telegram, LocaleController.getString("AddProxyTelegram", R.string.AddProxyTelegram)).setOnClickListener((v) -> presentFragment(new ProxySettingsActivity()));
+        otherItem.addSubItem(na_menu_add_v2ray, LocaleController.getString(R.string.AddV2RayConfig)).setOnClickListener((v) -> showV2RayConfigDialog(null));
         otherItem.addSubItem(na_menu_add_import_from_clipboard, LocaleController.getString("ImportProxyFromClipboard", R.string.ImportProxyFromClipboard)).setOnClickListener((v) -> ProxyUtil.importFromClipboard(getParentActivity()));
         otherItem.addSubItem(na_menu_retest_ping, LocaleController.getString("RetestPing", R.string.RetestPing)).setOnClickListener((v) -> {
             checkProxyList(true);
