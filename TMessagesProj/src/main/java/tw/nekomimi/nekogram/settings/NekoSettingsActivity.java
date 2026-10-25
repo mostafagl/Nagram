@@ -18,6 +18,7 @@ import com.google.gson.JsonPrimitive;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.telegram.messenger.ApplicationLoader;
+import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SendMessagesHelper;
@@ -112,9 +113,9 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
         } else if (position == channelTipsRow) {
             getMessagesController().openByUserName(channelUsernameTips, this, 1);
         } else if (position == sourceCodeRow) {
-            Browser.openUrl(getParentActivity(), "https://github.com/NextAlone/Nagram");
+            Browser.openUrl(getParentActivity(), BuildVars.GITHUB_REPO_URL);
         } else if (position == translationRow) {
-            Browser.openUrl(getParentActivity(), "https://xtaolabs.crowdin.com/nagram");
+            Browser.openUrl(getParentActivity(), BuildVars.GITHUB_REPO_URL);
         } else if (position == datacenterRow) {
             presentFragment(new DatacenterActivity(0));
         } else if (position == networkLogRow) {
@@ -172,10 +173,11 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
         categories2Row = addRow();
 
         aboutRow = addRow("about");
-        channelRow = addRow("channel");
-        channelTipsRow = addRow("channelTips");
+        // Upstream Nagram's channels and translation site don't belong to this app.
+        channelRow = -1;
+        channelTipsRow = -1;
         sourceCodeRow = addRow("sourceCode");
-        translationRow = addRow("translation");
+        translationRow = -1;
         datacenterRow = addRow("datacenter");
         networkLogRow = addRow("networkLog");
         about2Row = addRow();
@@ -258,7 +260,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
                 return TYPE_HEADER;
             } else if (position > categoriesRow && position < categories2Row) {
                 return TYPE_TEXT;
-            } else if (position >= channelRow && position < about2Row) {
+            } else if (position >= sourceCodeRow && position < about2Row) {
                 return TYPE_SETTINGS;
             } else if (position >= importSettingsRow && position < settings2Row) {
                 return TYPE_SETTINGS;

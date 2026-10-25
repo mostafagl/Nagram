@@ -28,7 +28,7 @@
     <string name="TransparentStatusBar">Transparent status bar</string>
     <string name="EnableResidentNotification">Show a resident notification</string>
     <string name="DisableResidentNotification">Disable resident notification</string>
-    <string name="NekogramRunning">Nekogram is running</string>
+    <string name="NekogramRunning">Parvagram is running</string>
     <string name="EventType">Sidebar icon set</string>
     <string name="ChristmasHat">Show santa hat every day</string>
     <string name="ActionBarDecoration">Title bar decoration</string>
@@ -232,7 +232,7 @@
     <string name="PassQRNewPassword">Protect this QR code with a password</string>
     <string name="ConfirmNewPassword">Confirm Password</string>
     <string name="PassQRAbout">Saves your passkey as an encrypted QR code. You can scan it to log in on another device.</string>
-    <string name="PassQREncryption">Scan with Nagram to log in.</string>
+    <string name="PassQREncryption">Scan with Parvagram to log in.</string>
     <string name="InvalidPassQr">Invalid Passkey QR</string>
     <string name="PassQRPasswordTooShort">Password must be at least 8 characters</string>
     <string name="PassQRPasswordWarning">Security warning: this password is the only thing protecting your key. A weak password can be cracked offline, so mix uppercase, lowercase, numbers and symbols.</string>

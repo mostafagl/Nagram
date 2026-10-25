@@ -6198,7 +6198,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         BaseFragment fragment = getLastFragment();
                         if (fragment != null) {
                             if (error == null) {
-                                BulletinFactory.of(fragment).createSimpleBulletin(R.raw.chats_infotip, LocaleController.getString(R.string.YourVersionIsLatest)).show();
+                                // There is no in-app update channel; new versions are on GitHub.
+                                Browser.openUrl(LaunchActivity.this, BuildVars.GITHUB_RELEASE_URL);
                             } else {
                                 AlertsCreator.createSimpleAlert(this, LocaleController.getString("ErrorOccurred", R.string.ErrorOccurred) + "\n" + error).show();
                             }

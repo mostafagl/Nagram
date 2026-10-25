@@ -232,7 +232,7 @@
     <string name="PassQRNewPassword">محافظت از این کد QR با یک گذرواژه</string>
     <string name="ConfirmNewPassword">تأیید گذرواژه</string>
     <string name="PassQRAbout">کلید عبور شما را به صورت یک کد QR رمزگذاری‌شده ذخیره می‌کند. می‌توانید آن را برای ورود به سیستم در دستگاه دیگری اسکن کنید.</string>
-    <string name="PassQREncryption">برای ورود با Nagram اسکن کنید.</string>
+    <string name="PassQREncryption">برای ورود با پرواگرام اسکن کنید.</string>
     <string name="InvalidPassQr">کد QR کلید عبور نامعتبر است</string>
     <string name="PassQRPasswordTooShort">گذرواژه باید حداقل شامل ۸ نویسه باشد</string>
     <string name="PassQRPasswordWarning">هشدار امنیتی: این گذرواژه تنها چیزی است که از کلید شما محافظت می‌کند. یک گذرواژه ضعیف می‌تواند به صورت آفلاین کرک شود، بنابراین از ترکیب حروف بزرگ، کوچک، اعداد و نمادها استفاده کنید.</string>

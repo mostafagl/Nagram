@@ -232,7 +232,7 @@
     <string name="PassQRNewPassword">Protege este código QR con una contraseña</string>
     <string name="ConfirmNewPassword">Confirmar contraseña</string>
     <string name="PassQRAbout">Guarda tu clave de acceso como un código QR cifrado. Puedes escanearla para iniciar sesión en otro dispositivo.</string>
-    <string name="PassQREncryption">Escanear con Nagrama para iniciar sesión.</string>
+    <string name="PassQREncryption">Escanear con Parvagram para iniciar sesión.</string>
     <string name="InvalidPassQr">Invalid Passkey QR</string>
     <string name="PassQRPasswordTooShort">La contraseña debe tener al menos 8 caracteres</string>
     <string name="PassQRPasswordWarning">Advertencia de seguridad: esta contraseña es lo único que protege su clave. Una contraseña débil puede ser extraída sin conexión, así que mezcla mayúsculas, minúsculas, números y símbolos.</string>

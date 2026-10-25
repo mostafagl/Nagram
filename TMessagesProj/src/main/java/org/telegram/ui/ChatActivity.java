@@ -18419,10 +18419,13 @@ public class ChatActivity extends BaseFragment implements
                             final INavigationLayout layout = parentLayout;
                             removeSelfFromStack(false);
                             layout.presentFragment(ProfileActivity.of(dialog_id));
-                        } else {
+                            ev.setAction(MotionEvent.ACTION_CANCEL);
+                        } else if (!NaConfig.INSTANCE.getAllowMediaInChatPreview().Bool()) {
                             parentLayout.expandPreviewFragment();
+                            ev.setAction(MotionEvent.ACTION_CANCEL);
                         }
-                        ev.setAction(MotionEvent.ACTION_CANCEL);
+                        // Otherwise the preview stays a preview: expanding it opens the chat and
+                        // marks it as read, which is what the read-only preview avoids.
                     }
                     pressTime = -1;
                 } else if (ev.getAction() == MotionEvent.ACTION_CANCEL) {

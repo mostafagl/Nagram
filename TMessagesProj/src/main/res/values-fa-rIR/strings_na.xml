@@ -22,7 +22,7 @@
     <string name="SendReactions">Send Reactions</string>
     <string name="ShowReactions">Show Reactions</string>
     <string name="CustomTitle">Custom Title</string>
-    <string name="CustomTitleHint">Leave blank to use Nagram</string>
+    <string name="CustomTitleHint">برای نمایش «پرواگرام» خالی بگذارید</string>
     <string name="CodeSyntaxHighlight">Code syntax highlight</string>
     <string name="CreateMono">Create Monospace</string>
     <string name="CreateMonoLanguage">Code language</string>
@@ -403,8 +403,8 @@
     <string name="CommunityAvatarTapActionArrow">Open Community Only with the Bottom-Right Arrow</string>
     <string name="UseSystemNotificationColor">Use system notification color</string>
     <string name="AvatarCorners">Avatar corners</string>
-    <string name="AllowMediaInChatPreview">رسانه در پیش‌نمایش چت</string>
-    <string name="AllowMediaInChatPreviewNotice">دانلود و مشاهده عکس و پخش ویس در پیش‌نمایش چت (نگه‌داشتن روی پروفایل) بدون خوانده شدن پیام‌ها</string>
+    <string name="AllowMediaInChatPreview">پیش‌نمایش چت بدون باز شدن آن</string>
+    <string name="AllowMediaInChatPreviewNotice">با نگه‌داشتن انگشت روی عکس پروفایل، عکس‌ها را ببینید و ویس‌ها را گوش کنید بدون اینکه چت باز شود یا پیام‌ها خوانده‌شده علامت بخورند. لمس پیام‌های دیگر هم چت را باز نمی‌کند.</string>
     <string name="AddV2RayConfig">افزودن کانفیگ V2Ray</string>
     <string name="EditV2RayConfig">ویرایش کانفیگ V2Ray</string>
     <string name="V2RayConfigHint">لینک‌های vless://، vmess://، trojan:// یا ss:// را وارد کنید (هر کدام در یک خط).</string>
