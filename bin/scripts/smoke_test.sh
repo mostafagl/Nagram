@@ -5,6 +5,8 @@
 APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk' | head -1)
 PKG=com.mostafagl.parvagram
 echo "APK: $APK"
+echo "===== NATIVE LIBS IN APK ====="
+unzip -l "$APK" | grep "lib/"
 
 adb install -r "$APK" || exit 1
 adb logcat -c
@@ -19,10 +21,14 @@ grep -n -A40 "ANR in" logcat.txt | head -200
 echo "===== NATIVE CRASH ====="
 grep -n -A60 "\*\*\* \*\*\* \*\*\*" logcat.txt | head -300
 echo "===== APP LOG (tail) ====="
-grep -E "tmessages|$PKG|AndroidRuntime|ObjectBox|libv2ray|GoLog" logcat.txt | tail -200
+grep -E "tmessages|$PKG|AndroidRuntime|ObjectBox|libv2ray|GoLog|NativeLoader|linker|dlopen|UnsatisfiedLink" logcat.txt | tail -200
 echo "===== TOP ACTIVITY ====="
 adb shell dumpsys activity activities | grep -E "topResumedActivity|mResumedActivity" | head -5
 
+if grep -q "FATAL EXCEPTION" logcat.txt; then
+  echo "App crashed during startup."
+  exit 1
+fi
 if adb shell pidof "$PKG" >/dev/null; then
   echo "App process is running."
   # Main-thread stack, to tell a hang from a slow start.
