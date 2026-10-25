@@ -85,13 +85,22 @@ def p02_vless_link():
     Check.record("sheet shows the parsed config", all(s in joined for s in ("VLESS", "www.speedtest.net", "2053", "WebSocket", "TLS", "noone.bingnet.online")),
                  joined[:300])
     # Ping test through the real core.
-    status = find(r"Check Status")
-    if status:
-        # The link is the start of the text; the rest of the row isn't clickable.
-        tap_xy(status.l + 110, status.cy)
-        if wait(r"^Proceed$", 5):
-            tap(r"^Proceed$")
-    ping = wait(r"Ping \d+ ms|No response", 60)
+    ping = None
+    for attempt in range(2):
+        time.sleep(2)  # let the sheet finish sliding in, or the tap lands outside it
+        if not find(r"V2Ray server"):
+            open_link(VLESS)
+            wait(r"V2Ray server", 15)
+            time.sleep(2)
+        status = find(r"Check Status")
+        if status:
+            # The link is the start of the text; the rest of the row isn't clickable.
+            tap_xy(status.l + 110, status.cy)
+            if wait(r"^Proceed$", 5):
+                tap(r"^Proceed$")
+        ping = wait(r"Ping \d+ ms|No response", 60)
+        if ping:
+            break
     shot("v2ray_ping")
     Check.record("ping test through V2Ray finishes", ping is not None, ping.label if ping else "no result")
     if not find(r"^Connect$"):
@@ -253,8 +262,12 @@ def p05_login():
             if deny:
                 tap(deny)
         # Only the code screen: "code" alone also matches the phone screen's "country code".
-        code = wait(r"^Enter code$|Check your", 40)
+        code = wait(r"^Enter code$|Check your|Invalid code", 40)
         shot("login_code")
+        if code and re.search(r"Invalid code", code.label):
+            # The code screen sometimes reports an invalid (empty) code as it opens.
+            tap(r"^OK$")
+            code = wait(r"^Enter code$|Check your", 10)
         if find(r"password", None):
             log("account has a password, trying another number")
             continue
