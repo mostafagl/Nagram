@@ -229,6 +229,11 @@ android {
         localeFilters += ["zz"]
     }
 
+    // Release signing credentials are provided via LOCAL_PROPERTIES/env. When they
+    // are absent (e.g. a personal fork build), fall back to the auto-provisioned
+    // debug signing config so the APK is still signed and installable.
+    def hasReleaseSigning = keystorePwd != null && !keystorePwd.isBlank() && project.file("release.keystore").exists()
+
     signingConfigs {
         release {
             storeFile project.file("release.keystore")
@@ -241,13 +246,15 @@ android {
         }
     }
 
+    def effectiveSigningConfig = hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
+
     buildTypes {
         debug {
             isDefault true
             debuggable true
             jniDebuggable true
             multiDexEnabled true
-            signingConfig signingConfigs.release
+            signingConfig effectiveSigningConfig
         }
 
         release {
@@ -258,7 +265,7 @@ android {
             multiDexEnabled true
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             matchingFallbacks = ["release", "debug"]
-            signingConfig signingConfigs.release
+            signingConfig effectiveSigningConfig
         }
     }
 
