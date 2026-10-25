@@ -260,7 +260,8 @@ public class V2RaySubscriptionsActivity extends BaseFragment implements Notifica
                 interval[0] = V2RaySubscriptions.INTERVALS_MINUTES[which];
                 intervalCell.setTextAndValue(getString(R.string.V2RaySubscriptionAutoUpdate), intervalName(interval[0]), false);
             });
-            showDialog(picker.create());
+            // Shown over the editor; showDialog() would close the editor first.
+            picker.show();
         });
         layout.addView(intervalCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, -24, 0, -24, 0));
 
@@ -304,9 +305,29 @@ public class V2RaySubscriptionsActivity extends BaseFragment implements Notifica
             return;
         }
         cancelUpdate = false;
-        final AlertDialog progressDialog = new AlertDialog.Builder(getParentActivity())
+        final Context context = getParentActivity();
+        final LinearLayout progressLayout = new LinearLayout(context);
+        progressLayout.setOrientation(LinearLayout.VERTICAL);
+        progressLayout.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(4), AndroidUtilities.dp(24), AndroidUtilities.dp(8));
+        final TextView nameView = new TextView(context);
+        nameView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        nameView.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+        nameView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        progressLayout.addView(nameView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        final android.widget.ProgressBar bar = new android.widget.ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal);
+        bar.setIndeterminate(true);
+        bar.setProgressTintList(android.content.res.ColorStateList.valueOf(Theme.getColor(Theme.key_dialogLineProgress)));
+        bar.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(Theme.getColor(Theme.key_dialogLineProgress)));
+        progressLayout.addView(bar, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 8));
+        final TextView statusView = new TextView(context);
+        statusView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        statusView.setTextColor(Theme.getColor(Theme.key_dialogTextGray3));
+        statusView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        statusView.setText(getString(R.string.V2RaySubscriptionDownloading));
+        progressLayout.addView(statusView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        final AlertDialog progressDialog = new AlertDialog.Builder(context)
                 .setTitle(getString(R.string.V2RaySubscriptionUpdating))
-                .setMessage(getString(R.string.V2RaySubscriptionDownloading))
+                .setView(progressLayout)
                 .setNegativeButton(getString(R.string.Cancel), (d, w) -> cancelUpdate = true)
                 .create();
         progressDialog.setCanCancel(false);
@@ -318,12 +339,25 @@ public class V2RaySubscriptionsActivity extends BaseFragment implements Notifica
                 if (cancelUpdate) {
                     break;
                 }
-                AndroidUtilities.runOnUIThread(() -> progressDialog.setMessage(s.getDisplayName() + "\n" + getString(R.string.V2RaySubscriptionDownloading)));
+                AndroidUtilities.runOnUIThread(() -> {
+                    nameView.setText(s.getDisplayName());
+                    bar.setIndeterminate(true);
+                    statusView.setText(getString(R.string.V2RaySubscriptionDownloading));
+                });
                 final V2RaySubscriptions.Result result = V2RaySubscriptions.update(s.id, new V2RaySubscriptions.Progress() {
                     @Override
                     public void onProgress(int tested, int total, int working) {
-                        AndroidUtilities.runOnUIThread(() -> progressDialog.setMessage(s.getDisplayName() + "\n"
-                                + LocaleController.formatString(R.string.V2RaySubscriptionTesting, tested, total, working)));
+                        AndroidUtilities.runOnUIThread(() -> {
+                            bar.setIndeterminate(false);
+                            bar.setMax(Math.max(1, total));
+                            bar.setProgress(tested);
+                            statusView.setText(LocaleController.formatString(R.string.V2RaySubscriptionTesting, tested, total, working));
+                        });
+                    }
+
+                    @Override
+                    public void onStatus(String text) {
+                        AndroidUtilities.runOnUIThread(() -> statusView.setText(text));
                     }
 
                     @Override
@@ -358,8 +392,15 @@ public class V2RaySubscriptionsActivity extends BaseFragment implements Notifica
             return LocaleController.formatString(R.string.V2RaySubscriptionFailed, r.error);
         }
         String text = LocaleController.formatString(R.string.V2RaySubscriptionResult, r.links, r.duplicates, r.invalid, r.tested, r.working, r.added);
-        if (r.limitReached) {
+        if (r.limitReached && r.added == 0) {
+            text += "\n" + LocaleController.formatString(R.string.V2RaySubscriptionFull, r.max);
+        } else if (r.limitReached) {
             text += "\n" + getString(R.string.V2RaySubscriptionLimitReached);
+        } else if (r.tested > 0 && r.working == 0) {
+            text += "\n" + getString(R.string.V2RaySubscriptionNoneWorking);
+        }
+        if (r.added > 0) {
+            text += "\n" + getString(R.string.V2RaySubscriptionAddedHint);
         }
         if (r.cancelled) {
             text += "\n" + getString(R.string.V2RaySubscriptionCancelled);

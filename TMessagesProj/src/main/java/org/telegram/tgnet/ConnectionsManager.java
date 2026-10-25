@@ -917,6 +917,12 @@ public class ConnectionsManager extends BaseController {
             if (lastPauseTime == 0) {
                 lastPauseTime = System.currentTimeMillis();
             }
+            // With "stay connected in the background" the connection is not put to sleep, so
+            // the app is still connected (and receives updates right away) when reopened.
+            if (org.telegram.utils.proxy.ConnectionKeepAlive.isEnabled()) {
+                native_resumeNetwork(currentAccount, false);
+                return;
+            }
             native_pauseNetwork(currentAccount);
         } else {
             if (appPaused) {

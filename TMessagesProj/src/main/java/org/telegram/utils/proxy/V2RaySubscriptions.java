@@ -18,8 +18,10 @@ import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
+import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
 
 import java.io.ByteArrayOutputStream;
@@ -32,6 +34,7 @@ import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -63,6 +66,13 @@ public final class V2RaySubscriptions {
     private static final int TCP_TIMEOUT_MS = 3000;
     private static final int TEST_THREADS = 4;
     private static final int TCP_THREADS = 16;
+    /** How many saved configs to try as a temporary route when the subscription host is blocked. */
+    private static final int FALLBACK_ROUTES = 3;
+    /**
+     * Panels pick the response format from the client name: some send JSON configs to new
+     * v2rayNG versions, or refuse unknown clients. These names get plain share links.
+     */
+    private static final String[] USER_AGENTS = {"v2rayNG/1.8.5", "v2rayN/6.23", "v2rayNG/1.9.16"};
     public static final int[] INTERVALS_MINUTES = {0, 15, 30, 60, 180, 360, 720, 1440};
 
     private static final AtomicBoolean running = new AtomicBoolean();
@@ -132,6 +142,7 @@ public final class V2RaySubscriptions {
         public int working;
         public int added;
         public int renamed;
+        public int max;
         public boolean limitReached;
         public boolean cancelled;
         public String error;
@@ -142,6 +153,10 @@ public final class V2RaySubscriptions {
         void onProgress(int tested, int total, int working);
 
         boolean isCancelled();
+
+        /** A line describing the current step, such as which route the download uses. */
+        default void onStatus(String text) {
+        }
     }
 
     // region storage
@@ -327,19 +342,15 @@ public final class V2RaySubscriptions {
             result.error = "not found";
             return;
         }
-        final String body;
+        result.max = subscription.maxConfigs;
+        final List<String> links;
         try {
-            body = download(subscription.url);
+            links = downloadLinks(subscription.url, progress);
         } catch (IOException e) {
             result.error = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
             return;
         }
-        final List<String> links = parseLinks(body);
         result.links = links.size();
-        if (links.isEmpty()) {
-            result.error = "no V2Ray links in the subscription";
-            return;
-        }
 
         // What is saved already, by dedup key.
         final HashMap<String, SharedConfig.ProxyInfo> saved = new HashMap<>();
@@ -509,26 +520,174 @@ public final class V2RaySubscriptions {
 
     // region download and parsing
 
+    private static final class HttpStatusException extends IOException {
+        HttpStatusException(int code) {
+            super("HTTP " + code);
+        }
+    }
+
+    /** What went wrong on the routes tried so far: the content beats a network error. */
+    private static final class Problem {
+        String content;
+        String network;
+
+        String get() {
+            if (content != null) {
+                return content;
+            }
+            return LocaleController.formatString(R.string.V2RaySubscriptionDownloadFailed, network != null ? network : "?");
+        }
+    }
+
     /**
-     * Downloads the subscription directly, and through the running V2Ray core when the direct
-     * request fails (subscription hosts such as GitHub are often blocked without it).
+     * The share links of a subscription. Tries a direct download first (the usual case, and
+     * independent of Telegram's connection), then the running V2Ray core, then a temporary core
+     * for a few saved configs, for hosts that are blocked on this network. A route that answers
+     * with something other than links (a filter page, JSON for newer clients) counts as failed,
+     * so the next route or client name is tried.
      */
-    private static String download(String url) throws IOException {
+    private static List<String> downloadLinks(String url, Progress progress) throws IOException {
         url = toRawUrl(url.trim());
-        IOException directError;
+        final Problem problem = new Problem();
+        status(progress, LocaleController.getString(R.string.V2RaySubscriptionDirect));
+        List<String> links = tryRoute(url, Proxy.NO_PROXY, problem);
+        if (links != null) {
+            return links;
+        }
+
+        final ArrayList<V2RayConfig> fallbacks = new ArrayList<>();
+        final String[] runningName = {null};
         try {
-            return download(url, Proxy.NO_PROXY);
-        } catch (IOException e) {
-            directError = e;
+            runOnUiAndWait(() -> collectFallbacks(fallbacks, runningName));
+        } catch (InterruptedException e) {
+            throw new IOException("interrupted");
         }
         final int port = V2RayTransport.getRunningPort();
-        if (port != 0) {
-            try {
-                return download(url, new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("127.0.0.1", port)));
-            } catch (IOException ignore) {
+        if (port != 0 && !isCancelled(progress)) {
+            status(progress, LocaleController.formatString(R.string.V2RaySubscriptionVia, runningName[0] != null ? runningName[0] : "V2Ray"));
+            links = tryRoute(url, socks(port), problem);
+            if (links != null) {
+                return links;
             }
         }
-        throw directError;
+        for (V2RayConfig config : fallbacks) {
+            if (isCancelled(progress)) {
+                break;
+            }
+            status(progress, LocaleController.formatString(R.string.V2RaySubscriptionVia, displayName(config)));
+            try (V2RayTransport.TemporaryCore core = V2RayTransport.startTemporary(config)) {
+                if (core == null) {
+                    continue;
+                }
+                links = tryRoute(url, socks(core.port), problem);
+                if (links != null) {
+                    return links;
+                }
+            }
+        }
+        throw new IOException(problem.get());
+    }
+
+    /** Saved V2Ray configs to download through, best ping first, without the one in use. */
+    private static void collectFallbacks(List<V2RayConfig> out, String[] runningName) {
+        SharedConfig.loadProxyList();
+        final ArrayList<SharedConfig.ProxyInfo> infos = new ArrayList<>();
+        for (SharedConfig.ProxyInfo info : SharedConfig.proxyList) {
+            if (info.settings.getType() != ProxySettings.Type.V2RAY) {
+                continue;
+            }
+            if (info == SharedConfig.currentProxy && V2RayTransport.isRunning()) {
+                runningName[0] = info.settings.getUser();
+                continue;
+            }
+            infos.add(info);
+        }
+        Collections.sort(infos, (a, b) -> {
+            final long pa = a.available && a.ping > 0 ? a.ping : Long.MAX_VALUE;
+            final long pb = b.available && b.ping > 0 ? b.ping : Long.MAX_VALUE;
+            return Long.compare(pa, pb);
+        });
+        for (SharedConfig.ProxyInfo info : infos) {
+            final V2RayConfig config = V2RayConfig.parse(info.settings.getSecret());
+            if (config != null) {
+                out.add(config);
+                if (out.size() >= FALLBACK_ROUTES) {
+                    break;
+                }
+            }
+        }
+    }
+
+    private static String displayName(V2RayConfig config) {
+        return TextUtils.isEmpty(config.remark) ? config.address : config.remark;
+    }
+
+    private static Proxy socks(int port) {
+        return new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("127.0.0.1", port));
+    }
+
+    private static void status(Progress progress, String text) {
+        if (progress != null) {
+            progress.onStatus(text);
+        }
+    }
+
+    private static boolean isCancelled(Progress progress) {
+        return progress != null && progress.isCancelled();
+    }
+
+    /** Links through one route, trying the client names in turn; null if this route fails. */
+    private static List<String> tryRoute(String url, Proxy proxy, Problem problem) {
+        for (String userAgent : USER_AGENTS) {
+            final String body;
+            try {
+                body = download(url, proxy, userAgent);
+            } catch (HttpStatusException e) {
+                // Some panels refuse unknown clients: another name may be accepted.
+                problem.network = e.getMessage();
+                continue;
+            } catch (IOException e) {
+                // The host can't be reached this way; other names won't help.
+                problem.network = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+                return null;
+            }
+            final List<String> links = parseLinks(body);
+            if (!links.isEmpty()) {
+                return links;
+            }
+            problem.content = describeBody(body);
+            if (isWebPage(body)) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isWebPage(String body) {
+        final String t = body == null ? "" : body.trim().toLowerCase();
+        return t.startsWith("<") || t.contains("<html") || t.contains("<iframe");
+    }
+
+    /** Why a downloaded body has no usable links, for the user. */
+    static String describeBody(String body) {
+        final String t = body == null ? "" : body.trim();
+        if (isWebPage(t)) {
+            return LocaleController.getString(R.string.V2RaySubscriptionGotWebPage);
+        }
+        if (t.startsWith("{") || t.startsWith("[")) {
+            return LocaleController.getString(R.string.V2RaySubscriptionGotJson);
+        }
+        if (t.contains("proxies:")) {
+            return LocaleController.getString(R.string.V2RaySubscriptionGotClash);
+        }
+        final String decoded = decodeBase64(t);
+        final String text = (decoded != null ? decoded : t).toLowerCase();
+        for (String scheme : new String[]{"hysteria2://", "hy2://", "hysteria://", "tuic://", "wireguard://", "wg://", "ssr://", "socks://"}) {
+            if (text.contains(scheme)) {
+                return LocaleController.getString(R.string.V2RaySubscriptionOnlyUnsupported);
+            }
+        }
+        return LocaleController.getString(R.string.V2RaySubscriptionNoLinks);
     }
 
     /** A GitHub "blob" page link serves HTML; the file itself is on raw.githubusercontent.com. */
@@ -540,18 +699,17 @@ public final class V2RaySubscriptions {
         return url;
     }
 
-    private static String download(String url, Proxy proxy) throws IOException {
+    private static String download(String url, Proxy proxy, String userAgent) throws IOException {
         final HttpURLConnection connection = (HttpURLConnection) new URL(url.trim()).openConnection(proxy);
         try {
             connection.setConnectTimeout(15000);
             connection.setReadTimeout(30000);
             connection.setInstanceFollowRedirects(true);
-            // Panels (Marzban, 3x-ui...) pick the response format from the client name.
-            connection.setRequestProperty("User-Agent", "v2rayNG/1.9.16");
+            connection.setRequestProperty("User-Agent", userAgent);
             connection.setRequestProperty("Accept", "*/*");
             final int code = connection.getResponseCode();
             if (code < 200 || code >= 300) {
-                throw new IOException("HTTP " + code);
+                throw new HttpStatusException(code);
             }
             try (InputStream in = connection.getInputStream()) {
                 final ByteArrayOutputStream out = new ByteArrayOutputStream();

@@ -536,5 +536,16 @@
     <string name="V2RaySubscriptionFailed">Failed: %1$s. Your saved configs were not changed.</string>
     <string name="V2RaySubscriptionLimitReached">The maximum number of configs for this subscription has been reached.</string>
     <string name="V2RaySubscriptionCancelled">Stopped before all links were tested.</string>
+    <string name="V2RaySubscriptionNoLinks">no V2Ray links (vless, vmess, trojan, ss) were found in the subscription</string>
+    <string name="V2RaySubscriptionGotWebPage">the link returned a web page instead of a list of configs. It may be filtered on this network, or it isn\'t a subscription link</string>
+    <string name="V2RaySubscriptionGotJson">the subscription sends full JSON configs, which Parvagram can\'t read. Use its link for the v2rayN (share link) format</string>
+    <string name="V2RaySubscriptionGotClash">the subscription sends a Clash config, which Parvagram can\'t read. Use its link for the v2rayN (share link) format</string>
+    <string name="V2RaySubscriptionOnlyUnsupported">the subscription only has config types Parvagram doesn\'t support (such as hysteria2, tuic or wireguard)</string>
+    <string name="V2RaySubscriptionDownloadFailed">couldn\'t download the subscription (%1$s)</string>
+    <string name="V2RaySubscriptionDirect">Downloading directly, without a proxy…</string>
+    <string name="V2RaySubscriptionVia">Downloading through %1$s…</string>
+    <string name="V2RaySubscriptionFull">This subscription already has its maximum of %1$d configs, so nothing new was added. Raise the maximum, or delete configs that don\'t work, and update again.</string>
+    <string name="V2RaySubscriptionNoneWorking">None of the new configs responded, so none were added.</string>
+    <string name="V2RaySubscriptionAddedHint">The new configs are at the top of the proxy list.</string>
     <string name="V2RayCoreCrashed">The V2Ray core stopped the app while starting, so the proxy was turned off. Try another config.</string>
 </resources>

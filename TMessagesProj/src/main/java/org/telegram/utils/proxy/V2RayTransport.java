@@ -96,6 +96,43 @@ public final class V2RayTransport {
         }
     }
 
+    /**
+     * A short-lived extra core with its own SOCKS5 port, for downloads that must not depend on
+     * (or disturb) the connection Telegram is using. Close it when done.
+     */
+    public static final class TemporaryCore implements AutoCloseable {
+        private final CoreController core;
+        public final int port;
+
+        private TemporaryCore(CoreController core, int port) {
+            this.core = core;
+            this.port = port;
+        }
+
+        @Override
+        public void close() {
+            try {
+                core.stopLoop();
+            } catch (Throwable e) {
+                FileLog.e(e);
+            }
+        }
+    }
+
+    /** Starts a {@link TemporaryCore} for {@code config}, or returns null. Blocking. */
+    public static TemporaryCore startTemporary(V2RayConfig config) {
+        try {
+            ensureInitialized();
+            final int port = findFreePort();
+            final CoreController core = Libv2ray.newCoreController(new Callback());
+            core.startLoop(config.buildConfig(port), 0);
+            return core.getIsRunning() ? new TemporaryCore(core, port) : null;
+        } catch (Throwable e) {
+            FileLog.e(e);
+            return null;
+        }
+    }
+
     /** Local SOCKS5 port of the running core, or 0. */
     public static int getRunningPort() {
         synchronized (lock) {

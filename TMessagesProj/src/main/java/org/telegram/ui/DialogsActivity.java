@@ -528,6 +528,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     private ActionBarMenuItem doneItem;
     private ProxyDrawable proxyDrawable;
     private ActionBarMenuSubItem proxyMenuSubItem;
+    private ActionBarMenuItem proxyItem;
+    private ProxyDrawable proxyItemDrawable;
     private HintView2 storyHint;
     private HintView2 storyPremiumHint;
     private boolean canShowStoryHint;
@@ -3318,6 +3320,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
             passcodeItem = menu.addItem(1, R.drawable.outline_header_lock_24);
             passcodeItem.setContentDescription(getString(R.string.AccDescrPasscodeLock));
+
+            // Always-visible proxy button: shows the connection state and opens the proxy list.
+            proxyItemDrawable = new ProxyDrawable(context);
+            proxyItem = menu.addItem(2, proxyItemDrawable);
+            proxyItem.setContentDescription(getString(R.string.ProxySettings));
+            proxyItem.setOnClickListener(v -> presentFragment(new ProxyListActivity()));
 
             downloadsItem = menu.addItem(3, new ColorDrawable(Color.TRANSPARENT));
             downloadsItem.addView(downloadProgressIcon = new DownloadProgressIcon(currentAccount, context));
@@ -10429,6 +10437,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         final boolean connected = currentConnectionState == ConnectionsManager.ConnectionStateConnected || currentConnectionState == ConnectionsManager.ConnectionStateUpdating;
         proxyMenuSubItem.setSubtext(getString(proxyEnabled ? (connected ? R.string.MenuProxyConnected : R.string.MenuProxyConnecting) : R.string.MenuProxyDisabled));
         proxyDrawable.setConnected(proxyEnabled, connected, animated);
+        if (proxyItemDrawable != null) {
+            proxyItemDrawable.setConnected(proxyEnabled, connected, animated);
+        }
     }
 
     private AnimatorSet doneItemAnimator;
@@ -14306,6 +14317,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         checkUi_itemDownloadsVisibility();
         checkUi_itemSpeedVisibility();
         checkUi_itemPasscodeVisibility();
+        checkUi_itemProxyVisibility();
         checkUi_itemSearchVisibility();
         checkUi_itemScanVisibility();
     }
@@ -14337,6 +14349,16 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         final float factor3 = 1f - animatorDoneButtonVisible.getFloatValue();
         final float factor = factor0 * factor1 * factor2 * factor3;
         FragmentFloatingButton.setAnimatedVisibility(passcodeItem, factor);
+    }
+
+    private void checkUi_itemProxyVisibility() {
+        if (proxyItem == null) {
+            return;
+        }
+        final float factor1 = 1f - animatorSearchVisible.getFloatValue();
+        final float factor2 = 1f - getRightSlidingProgress();
+        final float factor3 = 1f - animatorDoneButtonVisible.getFloatValue();
+        FragmentFloatingButton.setAnimatedVisibility(proxyItem, factor1 * factor2 * factor3);
     }
 
     private void checkUi_itemDownloadsVisibility() {

@@ -126,7 +126,33 @@ jobs:
           echo "sdk.dir=${ANDROID_HOME}" >> local.properties
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
+      # Android installs an update only when it is signed with the same key as the installed
+      # app. A fresh runner makes a new debug key every time, so the debug key is kept in the
+      # Actions cache and reused by every build. Set the RELEASE_KEYSTORE (base64 of the
+      # keystore), KEYSTORE_PASS, ALIAS_NAME and ALIAS_PASS secrets to sign with your own key.
+      - name: Signing Key Cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.android/debug.keystore
+          key: parvagram-debug-keystore-v1
+      - name: Signing Key
+        env:
+          RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
+        run: |
+          if [ -n "$RELEASE_KEYSTORE" ]; then
+            echo "$RELEASE_KEYSTORE" | base64 -d > TMessagesProj/release.keystore
+            echo "Signing with the release keystore from secrets"
+          elif [ ! -f ~/.android/debug.keystore ]; then
+            mkdir -p ~/.android
+            keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey \
+              -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Parvagram Debug,O=Parvagram,C=US"
+          fi
+          keytool -list -v -keystore ~/.android/debug.keystore -storepass android 2>/dev/null | grep -E "SHA1|SHA256" || true
       - name: Debug Build
+        env:
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          ALIAS_NAME: ${{ secrets.ALIAS_NAME }}
+          ALIAS_PASS: ${{ secrets.ALIAS_PASS }}
         run: |
           export LOCAL_PROPERTIES="${{ secrets.LOCAL_PROPERTIES }}"
           export DEBUG_BUILD=true

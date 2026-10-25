@@ -1693,6 +1693,12 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     private boolean sideButtonPressed;
     private boolean drawSummarizeButton;
     private boolean summarizeButtonPressed;
+    // Round button beside an edited/deleted message that opens its local history.
+    private boolean drawHistoryButton;
+    private boolean historyButtonPressed;
+    private boolean historyButtonVisible;
+    private float historyButtonX, historyButtonY;
+    private Drawable historyEditedIcon, historyDeletedIcon;
     private int pressedSideButton;
     private boolean inQuickShareMode;
     private Path sideButtonPath1, sideButtonPath2;
@@ -5199,6 +5205,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             otherPressed = false;
             sideButtonPressed = false;
             summarizeButtonPressed = false;
+            historyButtonPressed = false;
             pressedSideButton = 0;
             imagePressed = false;
             timePressed = false;
@@ -5308,6 +5315,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                         y >= summarizeButtonY - dp(4) && y <= summarizeButtonY + dp(40)
                     ) {
                         summarizeButtonPressed = true;
+                        result = true;
+                        invalidate();
+                    } else if (isInsideHistoryButton(x, y)) {
+                        historyButtonPressed = true;
                         result = true;
                         invalidate();
                     }
@@ -5454,6 +5465,17 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
                             pressedSideButton = 0;
                         }
+                    }
+                    invalidate();
+                } else if (historyButtonPressed) {
+                    if (event.getAction() == MotionEvent.ACTION_UP) {
+                        playSoundEffect(SoundEffectConstants.CLICK);
+                        historyButtonPressed = false;
+                        if (delegate != null) {
+                            delegate.didPressTime(this);
+                        }
+                    } else if (event.getAction() == MotionEvent.ACTION_CANCEL || event.getAction() == MotionEvent.ACTION_MOVE && !isInsideHistoryButton(x, y)) {
+                        historyButtonPressed = false;
                     }
                     invalidate();
                 } else if (summarizeButtonPressed) {
@@ -7097,6 +7119,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 }
             }
             drawSummarizeButton = TranslateController.isSummarizable(messageObject);
+            drawHistoryButton = currentMessagesGroup == null && xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, messageObject) != 0;
             hasReplyQuote = false;
             isReplyQuote = false;
             isReplyTaskOrPollOption = false;
@@ -18736,10 +18759,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         int historyIconExtra = 0;
         final int historyFlags = xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, currentMessageObject);
         if (historyFlags != 0 && currentTimeString != null) {
-            // A small clock (edited, earlier versions kept) or bin (deleted by the sender) before
+            // A small pencil (edited, earlier versions kept) or bin (deleted by the sender) before
             // the time; tapping the time opens the message's history.
             final boolean deleted = (historyFlags & xyz.nextalone.nagram.history.MessageHistoryController.FLAG_DELETED) != 0;
-            final ColoredImageSpan span = new ColoredImageSpan(deleted ? R.drawable.msg_delete : R.drawable.msg_recent);
+            final ColoredImageSpan span = new ColoredImageSpan(deleted ? R.drawable.msg_delete : R.drawable.msg_edit);
             final int iconSize = (int) (Theme.chat_timePaint.getTextSize() * 1.1f);
             span.setSize(iconSize);
             span.setTranslateY(dp(1));
@@ -21714,6 +21737,57 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
         drawSideButton(canvas);
         drawSummarizeButton(canvas);
+        drawHistoryButton(canvas);
+    }
+
+    private boolean isInsideHistoryButton(float x, float y) {
+        return historyButtonVisible && drawHistoryButton
+                && x >= historyButtonX - dp(4) && x <= historyButtonX + dp(36)
+                && y >= historyButtonY - dp(4) && y <= historyButtonY + dp(36);
+    }
+
+    private void drawHistoryButton(Canvas canvas) {
+        historyButtonVisible = false;
+        if (!drawHistoryButton || currentMessageObject == null || SizeNotifierFrameLayout.drawingBlur) {
+            return;
+        }
+        if (currentMessageObject.isOutOwner()) {
+            historyButtonX = transitionParams.lastBackgroundLeft - dp(8 + 32);
+        } else {
+            historyButtonX = transitionParams.lastBackgroundRight + dp(8);
+        }
+        // Next to the bottom of the bubble, above the share button when there is one.
+        historyButtonY = layoutHeight + transitionParams.deltaBottom - dp(41);
+        if (drawSideButton != 0 && sideButtonVisible) {
+            historyButtonY = sideStartY - dp(40);
+        }
+        historyButtonY = Math.max(historyButtonY, getPaddingTop() + dp(4));
+        if (historyButtonX < 0 || historyButtonX + dp(32) >= getMeasuredWidth()) {
+            return;
+        }
+        historyButtonVisible = true;
+        rect.set(historyButtonX, historyButtonY, historyButtonX + dp(32), historyButtonY + dp(32));
+        applyServiceShaderMatrix();
+        canvas.drawRoundRect(rect, dp(16), dp(16), getThemedPaint(historyButtonPressed ? Theme.key_paint_chatActionBackgroundSelected : Theme.key_paint_chatActionBackground));
+        if (hasGradientService()) {
+            canvas.drawRoundRect(rect, dp(16), dp(16), Theme.chat_actionBackgroundGradientDarkenPaint);
+        }
+        final boolean deleted = (xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, currentMessageObject)
+                & xyz.nextalone.nagram.history.MessageHistoryController.FLAG_DELETED) != 0;
+        Drawable icon = deleted ? historyDeletedIcon : historyEditedIcon;
+        if (icon == null) {
+            icon = getContext().getResources().getDrawable(deleted ? R.drawable.msg_delete : R.drawable.msg_edit).mutate();
+            if (deleted) {
+                historyDeletedIcon = icon;
+            } else {
+                historyEditedIcon = icon;
+            }
+        }
+        icon.setColorFilter(new android.graphics.PorterDuffColorFilter(getThemedColor(Theme.key_chat_serviceIcon), android.graphics.PorterDuff.Mode.SRC_IN));
+        final int size = dp(20);
+        final int cx = (int) (historyButtonX + dp(16)), cy = (int) (historyButtonY + dp(16));
+        icon.setBounds(cx - size / 2, cy - size / 2, cx + size / 2, cy + size / 2);
+        icon.draw(canvas);
     }
 
     public void drawAnimatedEmojis(Canvas canvas, float alpha) {

@@ -517,7 +517,7 @@
     <string name="V2RaySubscriptionCount">%1$d از %2$d کانفیگ</string>
     <string name="V2RaySubscriptionLastUpdate">به‌روزرسانی: %1$s</string>
     <string name="V2RaySubscriptionLastError">آخرین به‌روزرسانی ناموفق بود: %1$s</string>
-    <string name="V2RaySubscriptionManual">به‌روزرسانی دستی</string>
+    <string name="V2RaySubscriptionManual">خاموش (فقط دستی)</string>
     <string name="V2RaySubscriptionEveryMinutes">هر %1$d دقیقه</string>
     <string name="V2RaySubscriptionEveryHours">هر %1$d ساعت</string>
     <string name="V2RaySubscriptionDelete">حذف اشتراک</string>
@@ -536,5 +536,16 @@
     <string name="V2RaySubscriptionFailed">ناموفق: %1$s. کانفیگ‌های ذخیره‌شدهٔ شما تغییری نکردند.</string>
     <string name="V2RaySubscriptionLimitReached">به سقف تعداد کانفیگ این اشتراک رسیدید.</string>
     <string name="V2RaySubscriptionCancelled">پیش از تست همهٔ لینک‌ها متوقف شد.</string>
+    <string name="V2RaySubscriptionNoLinks">در این اشتراک هیچ لینک V2Ray (vless، vmess، trojan، ss) پیدا نشد</string>
+    <string name="V2RaySubscriptionGotWebPage">به‌جای فهرست کانفیگ‌ها یک صفحهٔ وب دریافت شد. ممکن است این لینک روی این شبکه فیلتر باشد یا لینک اشتراک نباشد</string>
+    <string name="V2RaySubscriptionGotJson">این اشتراک کانفیگ کامل JSON می‌فرستد که پرواگرام نمی‌تواند بخواند. از لینک قالب v2rayN (لینک‌های اشتراک‌گذاری) استفاده کنید</string>
+    <string name="V2RaySubscriptionGotClash">این اشتراک کانفیگ Clash می‌فرستد که پرواگرام نمی‌تواند بخواند. از لینک قالب v2rayN (لینک‌های اشتراک‌گذاری) استفاده کنید</string>
+    <string name="V2RaySubscriptionOnlyUnsupported">این اشتراک فقط کانفیگ‌هایی دارد که پرواگرام پشتیبانی نمی‌کند (مثل hysteria2، tuic یا wireguard)</string>
+    <string name="V2RaySubscriptionDownloadFailed">دریافت اشتراک ممکن نشد (%1$s)</string>
+    <string name="V2RaySubscriptionDirect">در حال دریافت مستقیم، بدون پروکسی…</string>
+    <string name="V2RaySubscriptionVia">در حال دریافت از طریق %1$s…</string>
+    <string name="V2RaySubscriptionFull">این اشتراک به حداکثر %1$d کانفیگ خودش رسیده، برای همین کانفیگ جدیدی اضافه نشد. حداکثر را بیشتر کنید یا کانفیگ‌های بدون پینگ را حذف کنید و دوباره به‌روزرسانی کنید.</string>
+    <string name="V2RaySubscriptionNoneWorking">هیچ‌کدام از کانفیگ‌های جدید پاسخ ندادند، برای همین چیزی اضافه نشد.</string>
+    <string name="V2RaySubscriptionAddedHint">کانفیگ‌های جدید بالای فهرست پروکسی‌ها اضافه شدند.</string>
     <string name="V2RayCoreCrashed">هستهٔ V2Ray هنگام شروع باعث بسته شدن برنامه شد، برای همین پروکسی خاموش شد. کانفیگ دیگری را امتحان کنید.</string>
 </resources>

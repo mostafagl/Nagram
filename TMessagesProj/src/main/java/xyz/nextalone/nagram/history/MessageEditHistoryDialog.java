@@ -7,7 +7,6 @@ import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
-import android.text.style.StrikethroughSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.widget.LinearLayout;
@@ -160,7 +159,11 @@ public final class MessageEditHistoryDialog {
         return sb.toString();
     }
 
-    /** {@code text} with words added since {@code previous} highlighted and removed ones struck out. */
+    /**
+     * {@code text} as it reads, with the words added since {@code previous} highlighted. Removed
+     * words are not mixed in (they are in the previous card), and a text rewritten completely is
+     * shown without highlighting.
+     */
     static CharSequence diff(String previous, String text) {
         final List<String> a = tokenize(previous);
         final List<String> b = tokenize(text);
@@ -170,28 +173,29 @@ public final class MessageEditHistoryDialog {
         final int[][] lcs = new int[a.size() + 1][b.size() + 1];
         for (int i = a.size() - 1; i >= 0; i--) {
             for (int j = b.size() - 1; j >= 0; j--) {
-                lcs[i][j] = a.get(i).equals(b.get(j)) ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+                lcs[i][j] = a.get(i).trim().equals(b.get(j).trim()) ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
             }
         }
+        if (lcs[0][0] == 0) {
+            return text;
+        }
         final int added = Theme.getColor(Theme.key_windowBackgroundWhiteGreenText);
-        final int removed = Theme.getColor(Theme.key_text_RedRegular);
         final SpannableStringBuilder out = new SpannableStringBuilder();
         int i = 0, j = 0;
-        while (i < a.size() || j < b.size()) {
-            if (i < a.size() && j < b.size() && a.get(i).equals(b.get(j))) {
+        while (j < b.size()) {
+            if (i < a.size() && a.get(i).trim().equals(b.get(j).trim())) {
                 out.append(b.get(j));
                 i++;
                 j++;
-            } else if (j < b.size() && (i == a.size() || lcs[i][j + 1] >= lcs[i + 1][j])) {
+            } else if (i == a.size() || lcs[i][j + 1] >= lcs[i + 1][j]) {
+                final String token = b.get(j++);
                 final int start = out.length();
-                out.append(b.get(j++));
-                out.setSpan(new ForegroundColorSpan(added), start, out.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                out.setSpan(new BackgroundColorSpan(Theme.multAlpha(added, .15f)), start, out.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                out.append(token);
+                final int end = start + token.trim().length();
+                out.setSpan(new ForegroundColorSpan(added), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                out.setSpan(new BackgroundColorSpan(Theme.multAlpha(added, .15f)), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             } else {
-                final int start = out.length();
-                out.append(a.get(i++));
-                out.setSpan(new ForegroundColorSpan(removed), start, out.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                out.setSpan(new StrikethroughSpan(), start, out.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                i++;
             }
         }
         return out;
