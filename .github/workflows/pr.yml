@@ -201,3 +201,41 @@ jobs:
         with:
           name: ui-test
           path: uitest-out
+  release:
+    name: Publish latest build to Releases
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: Debug
+          path: apk
+      - name: Replace the parvagram-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -e
+          mkdir out
+          cp apk/*arm64-v8a*.apk out/Parvagram-arm64-v8a.apk
+          cp apk/*armeabi-v7a*.apk out/Parvagram-armeabi-v7a.apk
+          VERSION=$(basename "$(ls apk/*arm64-v8a*.apk | head -1)" | sed -E 's/^Parvagram-(.*)-arm64-v8a\.apk$/\1/')
+          cat > notes.md <<NOTES
+          Latest Parvagram build ($VERSION) from commit ${SHA:0:8}.
+
+          | Download | For |
+          | --- | --- |
+          | [Parvagram-arm64-v8a.apk](https://github.com/$REPO/releases/download/parvagram-latest/Parvagram-arm64-v8a.apk) | Almost all phones from 2017 on (64-bit), e.g. Samsung Galaxy A36 |
+          | [Parvagram-armeabi-v7a.apk](https://github.com/$REPO/releases/download/parvagram-latest/Parvagram-armeabi-v7a.apk) | Older 32-bit phones |
+
+          This build is signed with the debug key until a release key is set up, so it can't be
+          installed over a build signed with a different key: uninstall that one first.
+          NOTES
+          gh release delete parvagram-latest -R "$REPO" --cleanup-tag -y || true
+          gh release create parvagram-latest -R "$REPO" --prerelease --target "$SHA" \
+            --title "Parvagram $VERSION (latest build)" --notes-file notes.md \
+            out/Parvagram-arm64-v8a.apk out/Parvagram-armeabi-v7a.apk
