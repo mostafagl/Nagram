@@ -331,12 +331,16 @@ def fcmVersion = "23.4.1"
 def crashlyticsVersion = "18.6.2"
 
 dependencies {
-    // Xray-core bindings for V2Ray proxies, built by `./run libs v2ray`
+    // Xray-core bindings for V2Ray proxies, built by `./run libs v2ray`.
+    // Only declared when present so native-only builds (which never touch the
+    // release Java classpath) configure without it; the full APK build runs
+    // `./run libs v2ray` first so the aar exists when it compiles.
     def libv2ray = file('libs/libv2ray.aar')
-    if (!libv2ray.exists()) {
+    if (libv2ray.exists()) {
+        implementation files(libv2ray)
+    } else {
         logger.warn("TMessagesProj/libs/libv2ray.aar is missing, run `./run libs v2ray` to build it")
     }
-    implementation files(libv2ray)
     implementation 'androidx.fragment:fragment:1.8.9'
     implementation "androidx.core:core-ktx:1.16.0"
     implementation "androidx.palette:palette-ktx:1.0.0"
