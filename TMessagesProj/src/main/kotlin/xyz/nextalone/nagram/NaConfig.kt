@@ -629,7 +629,8 @@ object NaConfig {
         addConfig(
             "PushServiceType",
             ConfigItem.configTypeInt,
-            1
+            // In-app: the bundled Firebase project has no app registered for this package id.
+            0
         )
     val pushServiceTypeInAppDialog =
         addConfig(

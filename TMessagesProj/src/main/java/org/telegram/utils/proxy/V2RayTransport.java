@@ -2,11 +2,12 @@ package org.telegram.utils.proxy;
 
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
-import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.RequestTimeDelegate;
 
 import java.net.InetAddress;
 import java.net.ServerSocket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import libv2ray.CoreCallbackHandler;
 import libv2ray.CoreController;
@@ -19,6 +20,14 @@ import libv2ray.Libv2ray;
 public final class V2RayTransport {
 
     private static final String DELAY_TEST_URL = "https://www.gstatic.com/generate_204";
+
+    // Delay tests start a separate, inbound-less core each, so they never touch the running
+    // connection. A few run in parallel so that testing a long list doesn't take minutes.
+    private static final ExecutorService testExecutor = Executors.newFixedThreadPool(4, r -> {
+        final Thread thread = new Thread(r, "v2ray-delay-test");
+        thread.setPriority(Thread.MIN_PRIORITY);
+        return thread;
+    });
 
     private static final Object lock = new Object();
     private static boolean initialized;
@@ -56,6 +65,13 @@ public final class V2RayTransport {
         }
     }
 
+    /** Whether a core is currently running for the active V2Ray proxy. */
+    public static boolean isRunning() {
+        synchronized (lock) {
+            return controller != null && controller.getIsRunning();
+        }
+    }
+
     public static void stop() {
         synchronized (lock) {
             stopInternal();
@@ -69,7 +85,7 @@ public final class V2RayTransport {
             delegate.run(-1);
             return;
         }
-        Utilities.globalQueue.postRunnable(() -> {
+        testExecutor.execute(() -> {
             long time;
             try {
                 ensureInitialized();

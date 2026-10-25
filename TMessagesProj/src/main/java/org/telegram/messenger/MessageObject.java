@@ -8025,8 +8025,41 @@ public class MessageObject {
             entities.add(entityItalic);
             return addEntitiesToText(text, entities, isOutOwner(), true, photoViewer, useManualParse);
         } else {
-            return addEntitiesToText(text, getEntities(), isOutOwner(), true, photoViewer, useManualParse);
+            final boolean hasUrls = addEntitiesToText(text, getEntities(), isOutOwner(), true, photoViewer, useManualParse);
+            return addV2RayLinks(text) || hasUrls;
         }
+    }
+
+    /**
+     * Makes whole vless://, vmess://, trojan:// and ss:// links clickable. Neither the server
+     * nor the web link parser knows these schemes, so at best they link the host part
+     * ("www.example.com:443?...") which would open in a browser.
+     */
+    public static boolean addV2RayLinks(CharSequence text) {
+        if (!(text instanceof Spannable) || TextUtils.indexOf(text, "://") < 0) {
+            return false;
+        }
+        final Spannable spannable = (Spannable) text;
+        final java.util.regex.Matcher matcher = org.telegram.utils.proxy.V2RayConfig.LINK_PATTERN.matcher(text);
+        boolean found = false;
+        while (matcher.find()) {
+            final String link = org.telegram.utils.proxy.V2RayConfig.trimLink(matcher.group());
+            final int start = matcher.start();
+            final int end = start + link.length();
+            if (spannable.getSpans(start, end, URLSpanMono.class).length > 0) {
+                // Code: tapping copies it, and the copy handler offers to import the config.
+                continue;
+            }
+            if (org.telegram.utils.proxy.V2RayConfig.parse(link) == null) {
+                continue;
+            }
+            for (URLSpan span : spannable.getSpans(start, end, URLSpan.class)) {
+                spannable.removeSpan(span);
+            }
+            spannable.setSpan(new URLSpanNoUnderline(link), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            found = true;
+        }
+        return found;
     }
 
     public void replaceEmojiToLottieFrame(CharSequence text, int[] emojiOnly) {

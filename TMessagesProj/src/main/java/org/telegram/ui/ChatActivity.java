@@ -37910,9 +37910,16 @@ public class ChatActivity extends BaseFragment implements
         }
         boolean noforwards = isPeerNoForwards() || (messageObject != null && messageObject.messageOwner != null && messageObject.messageOwner.noforwards);
         boolean noforwardsOverride = noforwards && !NekoXConfig.disableFlagSecure && !NaConfig.INSTANCE.getForceCopy().Bool();
+        if (!longPress && url instanceof URLSpan && org.telegram.utils.proxy.V2RayConfig.isV2RayLink(((URLSpan) url).getURL())) {
+            V2RayConfigSheet.show(getParentActivity(), ((URLSpan) url).getURL());
+            return;
+        }
         if (url instanceof URLSpanMono) {
             if (!noforwardsOverride || getDialogId() == UserObject.VERIFY) {
                 ((URLSpanMono) url).copyToClipboard();
+                if (!longPress && V2RayConfigSheet.open(getParentActivity(), ((URLSpanMono) url).getText())) {
+                    return;
+                }
                 UndoView undoView = getUndoView();
                 if (undoView != null) {
                     undoView.showWithAction(0, UndoView.ACTION_TEXT_COPIED, null);

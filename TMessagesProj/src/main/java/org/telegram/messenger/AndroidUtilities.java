@@ -4587,6 +4587,10 @@ public class AndroidUtilities {
                 return false;
             }
             Uri data = intent.getData();
+            if (data != null && org.telegram.utils.proxy.V2RayConfig.isV2RayLink(data.toString())) {
+                if (invoked) org.telegram.ui.V2RayConfigSheet.show(activity, data.toString());
+                return true;
+            }
             if (data != null) {
                 final ProxySettings proxySettings = ProxySettings.fromUri(data);
                 if (proxySettings != null && proxySettings.isValid()) {
@@ -4629,6 +4633,10 @@ public class AndroidUtilities {
 
     public static void showProxyAlert(Activity activity, final ProxySettings settings) {
         if (settings == null || !settings.isValid()) {
+            return;
+        }
+        if (settings.getType() == ProxySettings.Type.V2RAY) {
+            org.telegram.ui.V2RayConfigSheet.show(activity, settings.getSecret());
             return;
         }
 

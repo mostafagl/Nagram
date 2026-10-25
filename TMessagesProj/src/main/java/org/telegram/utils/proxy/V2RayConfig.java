@@ -27,6 +27,13 @@ public final class V2RayConfig {
     public final @NonNull String remark;
     private final @NonNull JSONObject outbound;
 
+    // Display-only details of the link, shown when importing or inspecting a config.
+    public String network = "tcp";
+    public String security = "none";
+    public String sni;
+    public String host;
+    public String path;
+
     private V2RayConfig(@NonNull String link, @NonNull String protocol, @NonNull String address, int port, @Nullable String remark, @NonNull JSONObject outbound) {
         this.link = link;
         this.protocol = protocol;
@@ -102,6 +109,73 @@ public final class V2RayConfig {
         return address + ":" + port;
     }
 
+    private V2RayConfig describe(StreamParams params) {
+        network = params.network.toLowerCase(Locale.US);
+        security = TextUtils.isEmpty(params.security) ? "none" : params.security.toLowerCase(Locale.US);
+        sni = params.sni;
+        host = params.host;
+        path = "grpc".equals(network) ? params.serviceName : params.path;
+        return this;
+    }
+
+    /** Human readable protocol name, e.g. "VLESS". */
+    @NonNull
+    public String getProtocolName() {
+        return "ss".equals(protocol) ? "Shadowsocks" : protocol.toUpperCase(Locale.US);
+    }
+
+    /** Human readable transport name, e.g. "WebSocket". */
+    @NonNull
+    public String getNetworkName() {
+        switch (network) {
+            case "ws":
+            case "websocket":
+                return "WebSocket";
+            case "grpc":
+                return "gRPC";
+            case "httpupgrade":
+                return "HTTPUpgrade";
+            case "xhttp":
+            case "splithttp":
+                return "XHTTP";
+            case "kcp":
+            case "mkcp":
+                return "mKCP";
+            default:
+                return "TCP";
+        }
+    }
+
+    /** Finds V2Ray share links in free text, e.g. a message or the clipboard. */
+    @NonNull
+    public static java.util.List<String> findLinks(@Nullable CharSequence text) {
+        final java.util.ArrayList<String> links = new java.util.ArrayList<>();
+        if (TextUtils.isEmpty(text)) {
+            return links;
+        }
+        final java.util.regex.Matcher matcher = LINK_PATTERN.matcher(text);
+        while (matcher.find()) {
+            final String link = trimLink(matcher.group());
+            if (parse(link) != null && !links.contains(link)) {
+                links.add(link);
+            }
+        }
+        return links;
+    }
+
+    /** Matches vless/vmess/trojan/ss links up to the next whitespace. */
+    public static final java.util.regex.Pattern LINK_PATTERN = java.util.regex.Pattern.compile("(?i)(?<![a-z0-9])(?:vless|vmess|trojan|ss)://[^\\s<>\"'`]+");
+
+    /** Drops punctuation that usually follows a link in a sentence rather than belonging to it. */
+    @NonNull
+    public static String trimLink(@NonNull String link) {
+        int end = link.length();
+        while (end > 0 && ",;)]}".indexOf(link.charAt(end - 1)) >= 0 && link.indexOf('#') < 0) {
+            end--;
+        }
+        return link.substring(0, end);
+    }
+
     private static V2RayConfig parseUriLink(String link, String scheme) throws Exception {
         final Uri uri = Uri.parse(link);
         final String userInfo = uri.getUserInfo();
@@ -159,7 +233,7 @@ public final class V2RayConfig {
         params.verifyPeerCertByName = uri.getQueryParameter("vcn");
         params.echConfigList = uri.getQueryParameter("ech");
         outbound.put("streamSettings", params.build());
-        return new V2RayConfig(link, scheme, host, port, uri.getFragment(), outbound);
+        return new V2RayConfig(link, scheme, host, port, uri.getFragment(), outbound).describe(params);
     }
 
     private static V2RayConfig parseVmess(String link) throws Exception {
@@ -198,7 +272,7 @@ public final class V2RayConfig {
         params.verifyPeerCertByName = json.optString("vcn");
         params.echConfigList = json.optString("ech");
         outbound.put("streamSettings", params.build());
-        return new V2RayConfig(link, "vmess", host, port, json.optString("ps"), outbound);
+        return new V2RayConfig(link, "vmess", host, port, json.optString("ps"), outbound).describe(params);
     }
 
     private static V2RayConfig parseShadowsocks(String link) throws Exception {
