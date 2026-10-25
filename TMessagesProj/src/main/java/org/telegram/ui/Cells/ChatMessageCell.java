@@ -18733,7 +18733,24 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 currentTimeString = TextUtils.concat(formatString(R.string.MessageScheduledRepeatSeconds, period), ", ", currentTimeString);
             }
         }
-        timeTextWidth = timeWidth = (int) Math.ceil(Theme.chat_timePaint.measureText(currentTimeString, 0, currentTimeString == null ? 0 : currentTimeString.length()));
+        int historyIconExtra = 0;
+        final int historyFlags = xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, currentMessageObject);
+        if (historyFlags != 0 && currentTimeString != null) {
+            // A small clock (edited, earlier versions kept) or bin (deleted by the sender) before
+            // the time; tapping the time opens the message's history.
+            final boolean deleted = (historyFlags & xyz.nextalone.nagram.history.MessageHistoryController.FLAG_DELETED) != 0;
+            final ColoredImageSpan span = new ColoredImageSpan(deleted ? R.drawable.msg_delete : R.drawable.msg_recent);
+            final int iconSize = (int) (Theme.chat_timePaint.getTextSize() * 1.1f);
+            span.setSize(iconSize);
+            span.setTranslateY(dp(1));
+            final SpannableStringBuilder withIcon = new SpannableStringBuilder("\u2009 ");
+            withIcon.setSpan(span, 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            withIcon.append(currentTimeString);
+            // Paint.measureText ignores spans: account for the icon being wider than its placeholder.
+            historyIconExtra = Math.max(0, iconSize - (int) Math.ceil(Theme.chat_timePaint.measureText("\u2009")));
+            currentTimeString = withIcon;
+        }
+        timeTextWidth = timeWidth = (int) Math.ceil(Theme.chat_timePaint.measureText(currentTimeString, 0, currentTimeString == null ? 0 : currentTimeString.length())) + historyIconExtra;
         if (currentMessageObject.scheduled && currentMessageObject.messageOwner.date == 0x7FFFFFFE || currentMessageObject.notime) {
             timeWidth -= dp(8);
         }

@@ -20210,6 +20210,8 @@ public class MessagesController extends BaseController implements NotificationCe
 
 
         if (editingMessages != null) {
+            // Before the edits are queued for writing, so the stored copy still has the old text.
+            xyz.nextalone.nagram.history.MessageHistoryController.onEditUpdates(currentAccount, editingMessages);
             for (int b = 0, size = editingMessages.size(); b < size; b++) {
                 TLRPC.TL_messages_messages messagesRes = new TLRPC.TL_messages_messages();
                 ArrayList<MessageObject> messageObjects = editingMessages.valueAt(b);
@@ -21405,6 +21407,13 @@ public class MessagesController extends BaseController implements NotificationCe
         LongSparseIntArray markAsReadMessagesOutboxFinal = markAsReadMessagesOutbox;
         LongSparseArray<ArrayList<Integer>> markContentAsReadMessagesFinal = markContentAsReadMessages;
         SparseIntArray markAsReadEncryptedFinal = markAsReadEncrypted;
+        if (deletedMessages != null && xyz.nextalone.nagram.history.MessageHistoryController.isKeepingDeletedMessages()) {
+            // Keep messages deleted by others: record them and skip both the database delete
+            // and the removal from open chats. Deletions made on this device never come
+            // through here, they are applied locally right away.
+            xyz.nextalone.nagram.history.MessageHistoryController.onRemoteDeletion(currentAccount, deletedMessages);
+            deletedMessages = null;
+        }
         LongSparseArray<ArrayList<Integer>> deletedMessagesFinal = deletedMessages;
         LongSparseArray<ArrayList<Integer>> deletedQuickRepliesMessagesFinal = deletedQuickReplyMessages;
         LongSparseArray<ArrayList<Integer>> scheduledDeletedMessagesFinal = scheduledDeletedMessages;

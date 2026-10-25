@@ -3219,6 +3219,7 @@ public class ChatActivity extends BaseFragment implements
             .add(NotificationCenter.didLoadSendAsPeers)
             .add(NotificationCenter.closeChatActivity)
             .add(NotificationCenter.messagesDeleted)
+            .add(NotificationCenter.messageHistoryChanged)
             .add(NotificationCenter.historyCleared)
             .add(NotificationCenter.messageReceivedByServer)
             .add(NotificationCenter.messageReceivedByAck)
@@ -23351,6 +23352,17 @@ public class ChatActivity extends BaseFragment implements
             if (updated && chatAdapter != null) {
                 chatAdapter.notifyDataSetChanged(false);
             }
+        } else if (id == NotificationCenter.messageHistoryChanged) {
+            // A visible message got an edit/deletion record: rebuild cells so the icon shows.
+            if (chatListView != null) {
+                for (int i = 0, n = chatListView.getChildCount(); i < n; i++) {
+                    View child = chatListView.getChildAt(i);
+                    if (child instanceof ChatMessageCell && ((ChatMessageCell) child).getMessageObject() != null) {
+                        ((ChatMessageCell) child).getMessageObject().forceUpdate = true;
+                    }
+                }
+                updateVisibleRows();
+            }
         } else if (id == NotificationCenter.messagesDeleted) {
             boolean scheduled = (Boolean) args[2];
             if (scheduled != (chatMode == MODE_SCHEDULED)) {
@@ -23385,9 +23397,6 @@ public class ChatActivity extends BaseFragment implements
             if (scheduleNowDialog != null && selectedObject != null && markAsDeletedMessages.contains(selectedObject.getId())) {
                 scheduleNowDialog.dismiss();
                 scheduleNowDialog = null;
-            }
-            if (!movedToScheduled && chatMode != MODE_SCHEDULED && !messages.isEmpty()) {
-                xyz.nextalone.nagram.history.MessageHistoryController.onMessagesDeleted(currentAccount, messages);
             }
             processDeletedMessages(markAsDeletedMessages, channelId, sent, !movedToScheduled);
             if (movedToScheduled && chatMode != ChatActivity.MODE_SCHEDULED) {
@@ -27765,10 +27774,6 @@ public class ChatActivity extends BaseFragment implements
             }
             if (old == null || remove && !ignoreDateCheckBeforeRemove && old.messageOwner.date != messageObject.messageOwner.date || messageObject.scheduled && chatMode != MODE_SCHEDULED) {
                 continue;
-            }
-            if (!remove && !messageObject.scheduled && messageObject.messageOwner != null && old.messageOwner != null
-                    && messageObject.messageOwner.edit_date != 0 && messageObject.messageOwner.edit_date != old.messageOwner.edit_date) {
-                xyz.nextalone.nagram.history.MessageHistoryController.onMessageEdited(currentAccount, old, messageObject);
             }
             if (remove) {
                 messageObjects.remove(a);
@@ -40867,6 +40872,10 @@ public class ChatActivity extends BaseFragment implements
 
         @Override
         public void didPressTime(ChatMessageCell cell) {
+            if (xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, cell.getMessageObject()) != 0) {
+                xyz.nextalone.nagram.history.MessageEditHistoryDialog.show(ChatActivity.this, cell.getMessageObject());
+                return;
+            }
             if (!cell.getMessageObject().isImportedForward()) {
                 if (NaConfig.INSTANCE.getShowTimeHint().Bool()) {
                     showTimeHint(cell);
@@ -46299,7 +46308,7 @@ public class ChatActivity extends BaseFragment implements
             }
             case nkbtn_edit_history: {
                 if (selectedObject != null) {
-                    xyz.nextalone.nagram.history.MessageEditHistoryDialog.show(this, dialog_id, selectedObject.getId(), null);
+                    xyz.nextalone.nagram.history.MessageEditHistoryDialog.show(this, selectedObject);
                 }
                 break;
             }
@@ -48833,8 +48842,8 @@ public class ChatActivity extends BaseFragment implements
                             icons.add(R.drawable.msg_saved);
                         }
                     }
-                    if (NaConfig.INSTANCE.getShowMessageEditHistory().Bool() && selectedObjectGroup == null
-                            && xyz.nextalone.nagram.history.MessageHistoryController.hasVersions(dialog_id, selectedObject.getId())) {
+                    if (selectedObjectGroup == null
+                            && xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, selectedObject) != 0) {
                         items.add(LocaleController.getString(R.string.MessageHistoryViewEdits));
                         options.add(nkbtn_edit_history);
                         icons.add(R.drawable.msg_edit);

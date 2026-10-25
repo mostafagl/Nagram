@@ -419,11 +419,11 @@
     <string name="MessageHistoryEditedBadge">edited · %1$d</string>
     <string name="MessageHistoryDeletedBadge">deleted</string>
     <string name="MessageHistoryDeletedAt">Deleted at</string>
-    <string name="MessageHistoryViewEdits">Edit history</string>
+    <string name="MessageHistoryViewEdits">Message history</string>
     <string name="ShowMessageEditHistory">Keep edit history</string>
-    <string name="ShowMessageEditHistoryNotice">When someone edits a message while the chat is open, keep the previous versions locally on this device.</string>
+    <string name="ShowMessageEditHistoryNotice">Keeps earlier versions of edited messages on this device, in every chat. Messages show a clock icon next to the time; tap the time to see what changed and when. Only edits made after a message reached this device can be shown.</string>
     <string name="ShowDeletedMessages">Keep deleted messages</string>
-    <string name="ShowDeletedMessagesNotice">When a message you already received is deleted, keep its content locally on this device.</string>
+    <string name="ShowDeletedMessagesNotice">Messages that others delete stay in the chat with a bin icon next to the time, and their content is kept on this device. Only messages that reached this device before being deleted can be kept.</string>
     <string name="V2RayInvalidTitle">Invalid V2Ray config</string>
     <string name="V2RayInvalidText">This link can\'t be used.\n\nDetails: %1$s</string>
     <string name="V2RayServerTitle">V2Ray server</string>
@@ -488,4 +488,9 @@
     <string name="KeepAliveViaProxy">proxy</string>
     <string name="PasscodeClearAll">Clear passcodes</string>
     <string name="ExternalStickerCacheDirNameShort">Short name</string>
+    <string name="MessageHistoryDeletedOn">Deleted %1$s</string>
+    <string name="MessageHistoryOriginal">Original</string>
+    <string name="MessageHistoryEditNumber">Edit %1$d</string>
+    <string name="MessageHistoryCurrent">current</string>
+    <string name="MessageHistoryCopyOriginal">Copy original</string>
 </resources>

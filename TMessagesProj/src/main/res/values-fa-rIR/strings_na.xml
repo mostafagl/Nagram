@@ -418,11 +418,11 @@
     <string name="MessageHistoryEditedBadge">ویرایش‌شده · %1$d</string>
     <string name="MessageHistoryDeletedBadge">حذف‌شده</string>
     <string name="MessageHistoryDeletedAt">زمان حذف</string>
-    <string name="MessageHistoryViewEdits">تاریخچه ویرایش</string>
-    <string name="ShowMessageEditHistory">نگهداری تاریخچه ویرایش</string>
-    <string name="ShowMessageEditHistoryNotice">وقتی کسی پیامی را هنگام باز بودن چت ویرایش می‌کند، نسخه‌های قبلی روی همین دستگاه نگه داشته شوند.</string>
-    <string name="ShowDeletedMessages">نگهداری پیام‌های حذف‌شده</string>
-    <string name="ShowDeletedMessagesNotice">وقتی پیامی که قبلاً دریافت کرده‌اید حذف می‌شود، محتوای آن روی همین دستگاه نگه داشته شود.</string>
+    <string name="MessageHistoryViewEdits">تاریخچهٔ پیام</string>
+    <string name="ShowMessageEditHistory">نگه‌داشتن تاریخچهٔ ویرایش</string>
+    <string name="ShowMessageEditHistoryNotice">نسخه‌های قبلی پیام‌های ویرایش‌شده در همهٔ چت‌ها روی همین دستگاه نگه داشته می‌شود. کنار ساعت این پیام‌ها یک نماد ساعت دیده می‌شود؛ با لمس ساعت پیام می‌بینید چه چیزی و کِی تغییر کرده. فقط ویرایش‌هایی که بعد از رسیدن پیام به این دستگاه انجام شده قابل نمایش است.</string>
+    <string name="ShowDeletedMessages">نگه‌داشتن پیام‌های حذف‌شده</string>
+    <string name="ShowDeletedMessagesNotice">پیام‌هایی که دیگران حذف می‌کنند با یک نماد سطل زباله کنار ساعت در چت باقی می‌مانند و محتوایشان روی همین دستگاه حفظ می‌شود. فقط پیام‌هایی که پیش از حذف به این دستگاه رسیده‌اند قابل نگه‌داری‌اند.</string>
     <string name="V2RayInvalidTitle">کانفیگ V2Ray نامعتبر است</string>
     <string name="V2RayInvalidText">از این لینک نمی‌شود استفاده کرد.\n\nجزئیات: %1$s</string>
     <string name="V2RayServerTitle">سرور V2Ray</string>
@@ -488,4 +488,9 @@
     <string name="ShowSquareAvatar">عکس پروفایل مربعی</string>
     <string name="PasscodeClearAll">پاک کردن همهٔ رمزها</string>
     <string name="ExternalStickerCacheDirNameShort">نام کوتاه</string>
+    <string name="MessageHistoryDeletedOn">حذف‌شده در %1$s</string>
+    <string name="MessageHistoryOriginal">نسخهٔ اصلی</string>
+    <string name="MessageHistoryEditNumber">ویرایش %1$d</string>
+    <string name="MessageHistoryCurrent">نسخهٔ فعلی</string>
+    <string name="MessageHistoryCopyOriginal">کپی نسخهٔ اصلی</string>
 </resources>
