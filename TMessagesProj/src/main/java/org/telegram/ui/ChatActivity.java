@@ -1274,6 +1274,7 @@ public class ChatActivity extends BaseFragment implements
     private int scrollCallbackAnimationIndex;
 
     public boolean allowExpandPreviewByClick;
+    private boolean mediaTouchInPreview;
     private boolean showSearchAsIcon;
     private boolean showAudioCallAsIcon;
     public MessageEnterTransitionContainer messageEnterTransitionContainer;
@@ -18360,6 +18361,7 @@ public class ChatActivity extends BaseFragment implements
 
             if (isInPreviewMode() && allowExpandPreviewByClick) {
                 if (ev.getAction() == MotionEvent.ACTION_DOWN) {
+                    mediaTouchInPreview = false;
                     boolean pressedOnPageDownButtons = false, pressedOnAction = false;
                     int[] off = new int[2];
                     getLocationInWindow(off);
@@ -18405,7 +18407,9 @@ public class ChatActivity extends BaseFragment implements
                     if (avatarContainer != null) {
                         avatarContainer.bounce.setPressed(false);
                     }
-                    if (pressActionBar || MathUtils.distance(x, y, ev.getX(), ev.getY()) < AndroidUtilities.dp(6) && SystemClock.elapsedRealtime() - pressTime <= ViewConfiguration.getTapTimeout()) {
+                    if (mediaTouchInPreview) {
+                        mediaTouchInPreview = false;
+                    } else if (pressActionBar || MathUtils.distance(x, y, ev.getX(), ev.getY()) < AndroidUtilities.dp(6) && SystemClock.elapsedRealtime() - pressTime <= ViewConfiguration.getTapTimeout()) {
                         if (pressActionBar) {
                             final INavigationLayout layout = parentLayout;
                             removeSelfFromStack(false);
@@ -30806,6 +30810,9 @@ public class ChatActivity extends BaseFragment implements
     @Override
     public void setInPreviewMode(boolean value) {
         super.setInPreviewMode(value);
+        if (!value) {
+            MediaController.getInstance().setSkipMarkContentAsRead(false);
+        }
         if (currentUser != null && audioCallIconItem != null) {
             TLRPC.UserFull userFull = getMessagesController().getUserFull(currentUser.id);
             if (userFull != null && userFull.phone_calls_available) {
@@ -40817,6 +40824,7 @@ public class ChatActivity extends BaseFragment implements
                 showDialog(secretVoicePlayer);
                 return false;
             } else if (messageObject.isVoice() || messageObject.isRoundVideo()) {
+                MediaController.getInstance().setSkipMarkContentAsRead(isInPreviewMode());
                 boolean result = MediaController.getInstance().playMessage(messageObject, muted);
                 MediaController.getInstance().setVoiceMessagesPlaylist(result ? createVoiceMessagesPlaylist(messageObject, false) : null, false);
                 return result;
@@ -42132,6 +42140,16 @@ public class ChatActivity extends BaseFragment implements
         @Override
         public boolean canPerformReply() {
             return !isReport() && !inPreviewMode;
+        }
+
+        @Override
+        public boolean canPerformMediaActionsInPreview() {
+            return inPreviewMode && allowExpandPreviewByClick && NaConfig.INSTANCE.getAllowMediaInChatPreview().Bool();
+        }
+
+        @Override
+        public void didStartMediaTouchInPreview() {
+            mediaTouchInPreview = true;
         }
 
         @Override

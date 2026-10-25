@@ -1370,6 +1370,7 @@ object NaConfig {
             false
         )
     val inputTextAnimations = addConfig("InputTextAnimations", ConfigItem.configTypeBool, false)
+    val allowMediaInChatPreview = addConfig("AllowMediaInChatPreview", ConfigItem.configTypeBool, true)
     val inputAnimationStrength = addConfig("InputAnimationStrength", ConfigItem.configTypeInt, 2)
     val forceVideoNewRewindMethod =
         addConfig(

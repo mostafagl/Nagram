@@ -403,4 +403,6 @@
     <string name="CommunityAvatarTapActionArrow">Open Community Only with the Bottom-Right Arrow</string>
     <string name="UseSystemNotificationColor">Use system notification color</string>
     <string name="AvatarCorners">Avatar corners</string>
+    <string name="AllowMediaInChatPreview">رسانه در پیش‌نمایش چت</string>
+    <string name="AllowMediaInChatPreviewNotice">دانلود و مشاهده عکس و پخش ویس در پیش‌نمایش چت (نگه‌داشتن روی پروفایل) بدون خوانده شدن پیام‌ها</string>
 </resources>

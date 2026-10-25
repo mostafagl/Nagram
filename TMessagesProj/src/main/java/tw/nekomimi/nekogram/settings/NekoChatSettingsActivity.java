@@ -188,6 +188,7 @@ public class NekoChatSettingsActivity extends BaseNekoXSettingsActivity implemen
     private final AbstractConfigCell hideInstantCameraRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getHideInstantCamera()));
     private final AbstractConfigCell disableVibrationRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.disableVibration));
     private final AbstractConfigCell disableProximityEventsRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.disableProximityEvents));
+    private final AbstractConfigCell allowMediaInChatPreviewRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getAllowMediaInChatPreview(), LocaleController.getString(R.string.AllowMediaInChatPreviewNotice)));
     private final AbstractConfigCell disableTrendingRow = cellGroup.appendCell(new ConfigCellSelectBox("DisableTrending", null, null, () -> {
         if (getParentActivity() == null) return;
         showDialog(showConfigMenuAlert(getParentActivity(), "DisableTrending", new ArrayList<>() {{

@@ -791,6 +791,13 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             return canPerformActions();
         }
 
+        default boolean canPerformMediaActionsInPreview() {
+            return false;
+        }
+
+        default void didStartMediaTouchInPreview() {
+        }
+
         default boolean onAccessibilityAction(int action, Bundle arguments) {
             return false;
         }
@@ -4455,6 +4462,38 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         return result;
     }
 
+    private boolean mediaTouchInPreview;
+
+    private boolean checkMediaMotionEventInPreview(MotionEvent event) {
+        final int action = event.getAction();
+        if (action == MotionEvent.ACTION_DOWN) {
+            mediaTouchInPreview = false;
+            if (currentMessageObject.needDrawBluredPreview() || currentMessageObject.isVoiceOnce() || currentMessageObject.isRoundOnce()) {
+                return false;
+            }
+        } else if (!mediaTouchInPreview) {
+            return false;
+        }
+        boolean result = checkAudioMotionEvent(event);
+        if (!result) {
+            result = checkPhotoImageMotionEvent(event);
+        }
+        if (action == MotionEvent.ACTION_DOWN && result) {
+            mediaTouchInPreview = true;
+            delegate.didStartMediaTouchInPreview();
+        } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            mediaTouchInPreview = false;
+            if (action == MotionEvent.ACTION_CANCEL) {
+                buttonPressed = 0;
+                miniButtonPressed = 0;
+                videoButtonPressed = 0;
+                imagePressed = false;
+            }
+        }
+        updateRadialProgressBackground();
+        return result || action != MotionEvent.ACTION_DOWN;
+    }
+
     private boolean checkAudioMotionEvent(MotionEvent event) {
         if (documentAttachType != DOCUMENT_ATTACH_TYPE_AUDIO && documentAttachType != DOCUMENT_ATTACH_TYPE_MUSIC && (documentAttachType != DOCUMENT_ATTACH_TYPE_ROUND || documentAttachType == DOCUMENT_ATTACH_TYPE_ROUND && currentMessageObject != null && !currentMessageObject.isVoiceTranscriptionOpen())) {
             return false;
@@ -4987,6 +5026,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if (currentMessageObject != null && delegate != null && !animationRunning && !delegate.canPerformActions() && delegate.canPerformMediaActionsInPreview() && !currentMessageObject.preview) {
+            return checkMediaMotionEventInPreview(event);
+        }
         if (currentMessageObject == null || delegate != null && !delegate.canPerformActions() || animationRunning) {
             if (currentMessageObject != null && currentMessageObject.preview) {
                 return checkTextSelection(event);
