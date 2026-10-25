@@ -493,4 +493,18 @@
     <string name="MessageHistoryEditNumber">ویرایش %1$d</string>
     <string name="MessageHistoryCurrent">نسخهٔ فعلی</string>
     <string name="MessageHistoryCopyOriginal">کپی نسخهٔ اصلی</string>
+    <string name="CustomFontTitle">فونت برنامه</string>
+    <string name="CustomFontList">فونت‌ها</string>
+    <string name="CustomFontSystem">فونت سیستم</string>
+    <string name="CustomFontVazirmatn">وزیرمتن (داخلی)</string>
+    <string name="CustomFontImport">افزودن فایل فونت (TTF / OTF)</string>
+    <string name="CustomFontInfo">روی هر فونت بزنید تا پیش‌نمایش آن را بالا ببینید، سپس «اعمال» را بزنید. این فونت برای پیام‌ها، فهرست چت‌ها، نام‌ها، عنوان‌ها، کادر نوشتن پیام و تنظیمات استفاده می‌شود. برای حذف فونت افزوده‌شده، روی آن نگه دارید.</string>
+    <string name="CustomFontApply">اعمال</string>
+    <string name="CustomFontPreviewName">سارا</string>
+    <string name="CustomFontPreviewIncoming">سلام! این فونت چطور به نظر می‌رسد؟ 🙂\nخوانایی متن فارسی و English هر دو مهم است. ۱۲۳۴۵۶۷۸۹۰</string>
+    <string name="CustomFontPreviewOutgoing">عالیه، خیلی خواناست!</string>
+    <string name="CustomFontDelete">حذف فونت</string>
+    <string name="CustomFontDeleteText">فونت «%1$s» حذف شود؟</string>
+    <string name="CustomFontInvalid">این فایل قابل استفاده به‌عنوان فونت نیست: %1$s</string>
+    <string name="CustomFontRestart">فونت جدید ذخیره شد. برای اعمال آن در همهٔ بخش‌ها، برنامه را دوباره باز کنید.</string>
 </resources>

@@ -270,7 +270,9 @@ public class AndroidUtilities {
 
     public static Typeface bold() {
         if (mediumTypeface == null) {
-            if (SharedConfig.useSystemBoldFont && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            if (xyz.nextalone.nagram.font.CustomFonts.getMedium() != null) {
+                mediumTypeface = xyz.nextalone.nagram.font.CustomFonts.getMedium();
+            } else if (SharedConfig.useSystemBoldFont && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 mediumTypeface = Typeface.create(null, 500, false);
             } else {
                 mediumTypeface = getTypeface(TYPEFACE_ROBOTO_MEDIUM);
@@ -2383,6 +2385,13 @@ public class AndroidUtilities {
 
     public static Typeface getTypeface(String assetPath) {
         synchronized (typefaceCache) {
+            final Typeface customMedium = xyz.nextalone.nagram.font.CustomFonts.getMedium();
+            if (customMedium != null && !assetPath.contains("mono") && !assetPath.contains("mw_bold") && !assetPath.contains("num") && !assetPath.contains("gram")) {
+                final boolean italic = assetPath.contains("italic");
+                final boolean heavy = assetPath.contains("medium") || assetPath.contains("bold");
+                final Typeface base = heavy ? customMedium : xyz.nextalone.nagram.font.CustomFonts.getRegular();
+                return italic ? Typeface.create(base, Typeface.ITALIC) : base;
+            }
             if (NekoConfig.typeface.Bool() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 if (assetPath.contains("medium") && assetPath.contains("italic")) {
                     return Typeface.create("sans-serif-medium", Typeface.ITALIC);

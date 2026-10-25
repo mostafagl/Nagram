@@ -493,4 +493,18 @@
     <string name="MessageHistoryEditNumber">Edit %1$d</string>
     <string name="MessageHistoryCurrent">current</string>
     <string name="MessageHistoryCopyOriginal">Copy original</string>
+    <string name="CustomFontTitle">App font</string>
+    <string name="CustomFontList">Fonts</string>
+    <string name="CustomFontSystem">System font</string>
+    <string name="CustomFontVazirmatn">Vazirmatn (built in)</string>
+    <string name="CustomFontImport">Import font file (TTF / OTF)</string>
+    <string name="CustomFontInfo">Tap a font to preview it above, then tap Apply. The font is used for messages, the chat list, names, titles, the message box and settings. Long-press an imported font to delete it.</string>
+    <string name="CustomFontApply">Apply</string>
+    <string name="CustomFontPreviewName">Sara</string>
+    <string name="CustomFontPreviewIncoming">Hi! How does this font look? 🙂\nThe quick brown fox jumps over the lazy dog. 1234567890</string>
+    <string name="CustomFontPreviewOutgoing">Looks great, easy to read!</string>
+    <string name="CustomFontDelete">Delete font</string>
+    <string name="CustomFontDeleteText">Delete the font \"%1$s\"?</string>
+    <string name="CustomFontInvalid">This file can\'t be used as a font: %1$s</string>
+    <string name="CustomFontRestart">The new font is saved. Restart the app to apply it everywhere.</string>
 </resources>
