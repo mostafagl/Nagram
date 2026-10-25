@@ -112,7 +112,22 @@ def p02_vless_link():
         back()
 
 
+def to_phone_screen():
+    for _ in range(6):
+        if find(r"Your phone number|Phone number"):
+            return True
+        if find(r"Start Messaging"):
+            tap(r"Start Messaging")
+            time.sleep(3)
+            dismiss_system_dialogs()
+            continue
+        back()
+        time.sleep(1)
+    return find(r"Your phone number|Phone number") is not None
+
+
 def open_login_menu():
+    to_phone_screen()
     if not find(r"Your phone|Phone number|Your Phone"):
         if find(r"Start Messaging"):
             tap(r"Start Messaging")
@@ -160,14 +175,22 @@ def p04_subscription():
         swipe_up()
     tap(r"V2Ray subscriptions")
     tap(r"Add subscription")
-    fields = [x for x in dump() if "EditText" in x.cls]
-    tap_xy(fields[0].cx, fields[0].cy)
+    wait(r"Subscription link", 8)
+
+    def field(i):
+        # Re-read the positions: the dialog moves up once the keyboard opens.
+        f = [x for x in dump() if "EditText" in x.cls]
+        tap_xy(f[i].cx, f[i].cy)
+
+    field(0)
     type_text(SUBSCRIPTION)
-    tap_xy(fields[1].cx, fields[1].cy)
+    field(1)
     type_text("Barry public list")
-    tap_xy(fields[2].cx, fields[2].cy)
+    field(2)
     clear_field()
     type_text("5")
+    if not find(r"Add and update"):
+        key("KEYCODE_BACK")  # the keyboard covers the buttons
     shot("subscription_add")
     tap(r"Add and update")
     done = wait(r"Update finished", 900, interval=10)
@@ -197,9 +220,6 @@ def p04_subscription():
 @phase
 def p05_login():
     for attempt in range(3):
-        if not find(r"Your phone|Phone number|Your Phone"):
-            open_login_menu()
-            back()
         open_login_menu()
         tap(r"Custom Backend")
         tb = wait(r"Test Backend", 5)
