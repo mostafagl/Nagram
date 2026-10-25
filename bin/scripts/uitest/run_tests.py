@@ -252,12 +252,22 @@ def p05_login():
             deny = wait(r"Don.t allow|^Deny$", 5)
             if deny:
                 tap(deny)
-        code = wait(r"Enter code|Check your|code", 30)
+        # Only the code screen: "code" alone also matches the phone screen's "country code".
+        code = wait(r"^Enter code$|Check your", 40)
         shot("login_code")
         if find(r"password", None):
             log("account has a password, trying another number")
             continue
-        type_text("22222")
+        if not code:
+            log("code screen did not open")
+            continue
+        time.sleep(2)
+        boxes = [x for x in dump() if "EditText" in x.cls]
+        if boxes:
+            tap_xy(boxes[0].cx, boxes[0].cy)
+        for digit in phone[5] * 5:  # test DC codes: the DC digit five times
+            shell("input text " + digit)
+            time.sleep(0.4)
         time.sleep(6)
         if find(r"Your name|First name|Your Name"):
             fields = [x for x in dump() if "EditText" in x.cls]
@@ -320,6 +330,7 @@ def p07_chat_history():
         Check.record("chat history", False, "no peer")
         return
     shot("dialogs_with_peer")
+    Check.record("chat list has the proxy button in the top bar", find(r"^Proxy Settings$") is not None)
     open_peer_chat()
     labels = shot("chat_with_peer")
     joined = " ".join(labels)
@@ -335,6 +346,15 @@ def p07_chat_history():
         Check.record("tapping the time opens the edit history", h is not None and "Original text before edit" in joined, joined[:300])
         if h:
             tap(r"^Close$")
+        # The round history button beside the (incoming) bubble.
+        edited = find(r"Edited text after the change")
+        if edited:
+            tap_xy(edited.r + 80, edited.b - 30)
+            h = wait(r"Message history", 6)
+            shot("history_button")
+            Check.record("history button beside the bubble opens the history", h is not None)
+            if h:
+                tap(r"^Close$")
     deleted = find(r"This message will be deleted")
     if deleted:
         tap_xy(deleted.r - 70, deleted.b - 25)
