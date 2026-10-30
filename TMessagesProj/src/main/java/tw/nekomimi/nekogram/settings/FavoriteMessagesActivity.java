@@ -38,12 +38,27 @@ public class FavoriteMessagesActivity extends BaseFragment {
     private ArrayList<FavoriteMessages.Entry> entries = new ArrayList<>();
     private RecyclerListView listView;
     private TextView emptyView;
+    /** Only this chat's favorites, opened from that chat's menu (0 = all chats). */
+    private final long onlyDialogId;
+    private final ChatActivity fromChat;
+
+    public FavoriteMessagesActivity() {
+        this(0, null);
+    }
+
+    public FavoriteMessagesActivity(long onlyDialogId, ChatActivity fromChat) {
+        this.onlyDialogId = onlyDialogId;
+        this.fromChat = fromChat;
+    }
 
     @Override
     public View createView(Context context) {
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(true);
         actionBar.setTitle(LocaleController.getString(R.string.FavoriteMessagesTitle));
+        if (onlyDialogId != 0) {
+            actionBar.setSubtitle(dialogName(onlyDialogId));
+        }
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
@@ -65,6 +80,12 @@ public class FavoriteMessagesActivity extends BaseFragment {
                 return;
             }
             final FavoriteMessages.Entry e = entries.get(position);
+            if (fromChat != null && e.dialogId == onlyDialogId) {
+                // Back to the chat this list was opened from, at the message.
+                finishFragment();
+                fromChat.scrollToMessageId(e.messageId, 0, true, 0, true, 0);
+                return;
+            }
             final Bundle args = new Bundle();
             if (DialogObject.isUserDialog(e.dialogId)) {
                 args.putLong("user_id", e.dialogId);
@@ -112,6 +133,15 @@ public class FavoriteMessagesActivity extends BaseFragment {
 
     private void reload() {
         entries = FavoriteMessages.get(currentAccount);
+        if (onlyDialogId != 0) {
+            final ArrayList<FavoriteMessages.Entry> here = new ArrayList<>();
+            for (FavoriteMessages.Entry e : entries) {
+                if (e.dialogId == onlyDialogId) {
+                    here.add(e);
+                }
+            }
+            entries = here;
+        }
         if (listView != null && listView.getAdapter() != null) {
             listView.getAdapter().notifyDataSetChanged();
         }
@@ -159,9 +189,9 @@ public class FavoriteMessagesActivity extends BaseFragment {
         @Override
         public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
             final FavoriteMessages.Entry e = entries.get(position);
-            String title = dialogName(e.dialogId);
+            String title = onlyDialogId != 0 ? "" : dialogName(e.dialogId);
             if (e.date != 0) {
-                title += " · " + LocaleController.formatDateAudio(e.date, false);
+                title += (title.isEmpty() ? "" : " · ") + LocaleController.formatDateAudio(e.date, false);
             }
             ((TextDetailSettingsCell) holder.itemView).setTextAndValue(title, FavoriteMessages.preview(e), position < entries.size() - 1);
         }

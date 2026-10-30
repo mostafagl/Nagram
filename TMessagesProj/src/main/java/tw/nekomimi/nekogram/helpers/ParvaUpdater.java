@@ -163,8 +163,8 @@ public final class ParvaUpdater {
                 if (found != null && found.build > BuildConfig.BUILD_TIMESTAMP) {
                     NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.parvaUpdateAvailable);
                     new AlertDialog.Builder(activity)
-                            .setTitle(LocaleController.formatString(R.string.ParvaUpdateHintTitle, found.name))
-                            .setMessage(TextUtils.isEmpty(found.notes) ? LocaleController.getString(R.string.ParvaUpdateHintText) : found.notes)
+                            .setTitle(LocaleController.getString(R.string.ParvaUpdateNewTitle))
+                            .setMessage(TextUtils.isEmpty(found.notes) ? LocaleController.getString(R.string.ParvaUpdateNoNotes) : found.notes)
                             .setPositiveButton(LocaleController.getString(R.string.ParvaUpdateInstall), (d, w) -> startUpdate(activity, found))
                             .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                             .show();
@@ -177,6 +177,38 @@ public final class ParvaUpdater {
                 }
             });
         }, "parva-update-check-now").start();
+    }
+
+    /**
+     * The "what's new" part of a release's notes: the text between {@code <!-- changes -->} and
+     * {@code <!-- /changes -->}, without Markdown marks. The rest of the notes is for the developer
+     * (download table, how to publish), so a release without that part shows no notes.
+     */
+    static String userNotes(String body) {
+        if (body == null) {
+            return "";
+        }
+        final int start = body.indexOf("<!-- changes -->");
+        final int end = body.indexOf("<!-- /changes -->");
+        if (start < 0 || end <= start) {
+            return "";
+        }
+        final StringBuilder out = new StringBuilder();
+        for (String line : body.substring(start + "<!-- changes -->".length(), end).split("\n")) {
+            String l = line.trim();
+            if (l.isEmpty()) {
+                if (out.length() > 0 && out.charAt(out.length() - 1) != '\n') {
+                    out.append('\n');
+                }
+                continue;
+            }
+            if (l.startsWith("- ") || l.startsWith("* ")) {
+                l = "• " + l.substring(2);
+            }
+            l = l.replaceAll("^#+\\s*", "").replace("**", "").replace("`", "");
+            out.append(l).append('\n');
+        }
+        return out.toString().trim();
     }
 
     private static String repoPath() {
@@ -201,7 +233,7 @@ public final class ParvaUpdater {
         final Release release = new Release();
         release.tag = json.optString("tag_name");
         release.name = json.optString("name", release.tag);
-        release.notes = json.optString("body");
+        release.notes = userNotes(json.optString("body"));
         final Matcher m = BUILD_TAG.matcher(release.tag);
         if (!m.find()) {
             return null; // not a build published by CI: its version can't be compared

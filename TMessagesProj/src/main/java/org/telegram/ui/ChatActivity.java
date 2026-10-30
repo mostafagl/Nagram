@@ -447,6 +447,7 @@ public class ChatActivity extends BaseFragment implements
     private final static int nkheaderbtn_hide_title = 2029;
     private final static int nkheaderbtn_reload_messages = 2035;
     private final static int nkheaderbtn_parva_lock = 2090;
+    private final static int nkheaderbtn_parva_favorites = 2091;
 
     // shared with actionbar
     public final static int nkbtn_translate = 2008;
@@ -4884,6 +4885,7 @@ public class ChatActivity extends BaseFragment implements
                 toTheMessage = headerItem.lazilyAddSubItem(nkheaderbtn_to_the_message, R.drawable.msg_go_up, LocaleController.getString(R.string.ToTheMessage));
                 hideTitleItem = headerItem.lazilyAddSubItem(nkheaderbtn_hide_title, R.drawable.hide_title, LocaleController.getString(R.string.HideTitle));
                 reloadMessagesItem = headerItem.lazilyAddSubItem(nkheaderbtn_reload_messages, com.google.android.gms.cast.framework.R.drawable.quantum_ic_refresh_white_24, LocaleController.getString(R.string.ClearCache));
+                headerItem.lazilyAddSubItem(nkheaderbtn_parva_favorites, R.drawable.parva_star_outline, LocaleController.getString(R.string.FavoriteMessagesInChat));
                 if (dialog_id != getUserConfig().getClientUserId() && chatMode == 0) {
                     headerItem.lazilyAddSubItem(nkheaderbtn_parva_lock, R.drawable.msg_secret, LocaleController.getString(R.string.ChatLockMenu));
                 }
@@ -40983,17 +40985,15 @@ public class ChatActivity extends BaseFragment implements
             } else if (type == ChatMessageCell.QUICK_FORWARD_NOQUOTE) {
                 selectedObject = message;
                 selectedObjectGroup = null;
-                processSelectedOption(OPTION_FORWARD);
-                noForwardQuote = true; // OPTION_FORWARD resets it; the chat picker is already open
-                if (messagePreviewParams != null) {
-                    messagePreviewParams.setHideForwardSendersName(true);
-                }
+                nkbtn_onclick(nkbtn_forward_noquote);
             } else if (type == ChatMessageCell.QUICK_SAVE) {
                 // Forward to Saved Messages (the cloud), keeping the original sender.
                 final ArrayList<MessageObject> list = new ArrayList<>();
                 list.add(message);
                 final long selfId = getUserConfig().getClientUserId();
-                final int result = getSendMessagesHelper().sendMessage(list, selfId, false, false, true, 0, 0);
+                // From a chat that restricts forwarding (allowed by "force copy"), send a copy instead.
+                final boolean copy = getMessagesController().isPeerNoForwards(message.getDialogId());
+                final int result = getSendMessagesHelper().sendMessage(list, selfId, copy, false, true, 0, 0);
                 AlertsCreator.showSendMediaAlert(result, ChatActivity.this, null);
                 if (result == 0) {
                     BulletinFactory.createForwardedBulletin(getContext(), ChatActivity.this, null, 1, selfId, 1,
@@ -46193,6 +46193,8 @@ public class ChatActivity extends BaseFragment implements
             }
             updateActionModeTitle();
             updateVisibleRows();
+        } else if (id == nkheaderbtn_parva_favorites) {
+            presentFragment(new tw.nekomimi.nekogram.settings.FavoriteMessagesActivity(dialog_id, this));
         } else if (id == nkheaderbtn_parva_lock) {
             final boolean wasLocked = tw.nekomimi.nekogram.helpers.ChatLock.isLocked(currentAccount, dialog_id);
             tw.nekomimi.nekogram.helpers.ChatLock.toggleFromChat(this, currentAccount, dialog_id, () -> {

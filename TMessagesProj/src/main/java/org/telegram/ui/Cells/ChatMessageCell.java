@@ -1706,6 +1706,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     public static final int QUICK_FAVORITE = 6;
     private final int[] quickButtons = new int[6];
     private final float[] quickButtonY = new float[6];
+    private final float[] quickButtonXs = new float[6];
     private int quickButtonCount;
     private int quickButtonsShown;
     private float quickButtonX;
@@ -21780,7 +21781,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 && messageObject.isTimedMedia() && messageObject.messageOwner.destroyTime == 0 && messageObject.isContentUnread()) {
             quickButtons[quickButtonCount++] = QUICK_TIMED_VIEW;
         }
-        if (messageObject.getId() > 0 && !messageObject.scheduled) {
+        // A message kept after it was deleted exists only on this device: it can't be edited or forwarded.
+        final boolean deletedCopy = (xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, messageObject)
+                & xyz.nextalone.nagram.history.MessageHistoryController.FLAG_DELETED) != 0;
+        if (messageObject.getId() > 0 && !messageObject.scheduled && !deletedCopy) {
             final TLRPC.Chat chat = messageObject.getDialogId() < 0 ? MessagesController.getInstance(currentAccount).getChat(-messageObject.getDialogId()) : null;
             if (tw.nekomimi.nekogram.NekoConfig.showEditButton && messageObject.canEditMessage(chat)) {
                 quickButtons[quickButtonCount++] = QUICK_EDIT;
@@ -21802,11 +21806,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
     /** The quick button at (x, y), as its index, or -1. */
     private int findQuickButton(float x, float y) {
-        if (quickButtonsShown == 0 || x < quickButtonX - dp(4) || x > quickButtonX + dp(36)) {
-            return -1;
-        }
         for (int i = 0; i < quickButtonsShown; i++) {
-            if (y >= quickButtonY[i] - dp(4) && y <= quickButtonY[i] + dp(36)) {
+            if (x >= quickButtonXs[i] - dp(4) && x <= quickButtonXs[i] + dp(36) && y >= quickButtonY[i] - dp(4) && y <= quickButtonY[i] + dp(36)) {
                 return i;
             }
         }
@@ -21836,27 +21837,42 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         if (quickButtonCount == 0 || currentMessageObject == null || SizeNotifierFrameLayout.drawingBlur) {
             return;
         }
-        if (currentMessageObject.isOutOwner()) {
+        final boolean out = currentMessageObject.isOutOwner();
+        if (out) {
             quickButtonX = transitionParams.lastBackgroundLeft - dp(8 + 32);
         } else {
             quickButtonX = transitionParams.lastBackgroundRight + dp(8);
         }
-        if (quickButtonX < 0 || quickButtonX + dp(32) >= getMeasuredWidth()) {
-            return;
+        // Buttons stack upwards from the bottom of the bubble, above the share button when there is
+        // one; when the bubble is too short for all of them (one-line messages), the rest go in
+        // further columns away from the bubble.
+        float bottom = layoutHeight + transitionParams.deltaBottom - dp(41);
+        if (currentMessageObject.shouldDrawReactions() && !reactionsLayoutInBubble.isSmall && reactionsLayoutInBubble.drawServiceShaderBackground > 0) {
+            bottom -= reactionsLayoutInBubble.getCurrentTotalHeight(transitionParams.animateChangeProgress);
         }
-        // From the bottom of the bubble upwards, above the share button when there is one.
-        float y = layoutHeight + transitionParams.deltaBottom - dp(41);
-        if (drawSideButton != 0 && sideButtonVisible) {
-            y = sideStartY - dp(40);
+        final float center = (layoutHeight + transitionParams.deltaBottom - dp(32)) / 2f;
+        if (bottom < center) {
+            bottom = center;
         }
+        if (bottom < 0) {
+            bottom = 0;
+        }
+        final int rows = 1 + (int) (bottom / dp(40));
+        final boolean shareInFirstSlot = drawSideButton != 0 && sideButtonVisible;
         final int size = dp(20);
-        for (int i = 0; i < quickButtonCount; i++) {
-            if (y < getPaddingTop()) {
-                break; // no room on short messages
+        int slot = shareInFirstSlot ? 1 : 0;
+        for (int i = 0; i < quickButtonCount; i++, slot++) {
+            final int column = slot / rows;
+            final int row = slot % rows;
+            final float x = quickButtonX + (out ? -1 : 1) * column * dp(40);
+            final float y = bottom - row * dp(40);
+            if (x < 0 || x + dp(32) > getMeasuredWidth()) {
+                break; // no more room beside the bubble
             }
+            quickButtonXs[i] = x;
             quickButtonY[i] = y;
             quickButtonsShown++;
-            rect.set(quickButtonX, y, quickButtonX + dp(32), y + dp(32));
+            rect.set(x, y, x + dp(32), y + dp(32));
             applyServiceShaderMatrix();
             canvas.drawRoundRect(rect, dp(16), dp(16), getThemedPaint(pressedQuickButton == i ? Theme.key_paint_chatActionBackgroundSelected : Theme.key_paint_chatActionBackground));
             if (hasGradientService()) {
@@ -21869,10 +21885,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 quickIcons.put(res, icon);
             }
             icon.setColorFilter(new android.graphics.PorterDuffColorFilter(getThemedColor(Theme.key_chat_serviceIcon), android.graphics.PorterDuff.Mode.SRC_IN));
-            final int cx = (int) (quickButtonX + dp(16)), cy = (int) (y + dp(16));
+            final int cx = (int) (x + dp(16)), cy = (int) (y + dp(16));
             icon.setBounds(cx - size / 2, cy - size / 2, cx + size / 2, cy + size / 2);
             icon.draw(canvas);
-            y -= dp(40);
         }
     }
 

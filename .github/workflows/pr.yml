@@ -327,6 +327,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Only for .github/parvagram-changes.md, the "what's new" text the app shows.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          sparse-checkout: .github
+          submodules: false
       - uses: actions/download-artifact@v8
         with:
           name: Debug
@@ -352,7 +358,14 @@ jobs:
           cp apk/*armeabi-v7a*.apk out/Parvagram-armeabi-v7a.apk
           VERSION=$(basename "$(ls apk/*arm64-v8a*.apk | head -1)" | sed -E 's/^Parvagram-(.*)-arm64-v8a\.apk$/\1/')
           DATE=$(date -u -d "@$((TS / 1000))" '+%Y-%m-%d %H:%M UTC')
-          cat > notes.md <<NOTES
+          # The app shows only the part between the "changes" markers in its update dialog.
+          {
+            echo "<!-- changes -->"
+            cat .github/parvagram-changes.md 2>/dev/null || true
+            echo "<!-- /changes -->"
+            echo
+          } > notes.md
+          cat >> notes.md <<NOTES
           Parvagram $VERSION, built $DATE from commit ${SHA:0:8}.
 
           | Download | For |

@@ -716,4 +716,15 @@
     <string name="ParvaProxyListInfo">V2Ray and MTProto configs, ping tests and sorting.</string>
     <string name="ParvaSubscriptionsInfo">Links that add V2Ray configs and keep them updated.</string>
     <string name="ParvaSecurityTitle">Privacy &amp; security</string>
+    <string name="FavoriteMessagesInChat">Favorite messages in this chat</string>
+    <string name="ContactChangesWho">Watch</string>
+    <string name="ContactChangesWhoAll">All contacts</string>
+    <string name="ContactChangesWhoSelected">Selected contacts only</string>
+    <string name="ContactChangesAdd">Add contact to watch</string>
+    <string name="ContactChangesRemoveAsk">Stop watching this contact?</string>
+    <string name="ParvaUpdateNewTitle">A new version of Parvagram is available</string>
+    <string name="ParvaUpdateNoNotes">Tap Update to download and install it inside the app.</string>
+    <string name="LocalLastSeen">Approximate last seen</string>
+    <string name="LocalLastSeenInfo">For people who hide their last seen, shows when this device last saw them active (a message, typing, or reading your message).</string>
+    <string name="LocalLastSeenFormat">≈ %1$s</string>
 </resources>

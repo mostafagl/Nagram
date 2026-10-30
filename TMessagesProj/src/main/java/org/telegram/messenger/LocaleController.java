@@ -3049,14 +3049,15 @@ public class LocaleController {
                 }
                 return getString("Online", R.string.Online);
             } else {
+                // Parvagram: hidden last seen gets the approximate time this device last saw them active.
                 if (user.status.expires == -1) {
-                    return getString("Invisible", R.string.Invisible);
+                    return tw.nekomimi.nekogram.helpers.LocalLastSeen.decorate(currentAccount, user.id, getString("Invisible", R.string.Invisible));
                 } else if (user.status.expires == -100 || user.status.expires == -1000) {
-                    return getString("Lately", R.string.Lately);
+                    return tw.nekomimi.nekogram.helpers.LocalLastSeen.decorate(currentAccount, user.id, getString("Lately", R.string.Lately));
                 } else if (user.status.expires == -101 || user.status.expires == -1001) {
-                    return getString("WithinAWeek", R.string.WithinAWeek);
+                    return tw.nekomimi.nekogram.helpers.LocalLastSeen.decorate(currentAccount, user.id, getString("WithinAWeek", R.string.WithinAWeek));
                 } else if (user.status.expires == -102 || user.status.expires == -1002) {
-                    return getString("WithinAMonth", R.string.WithinAMonth);
+                    return tw.nekomimi.nekogram.helpers.LocalLastSeen.decorate(currentAccount, user.id, getString("WithinAMonth", R.string.WithinAMonth));
                 } else {
                     return formatDateOnline(user.status.expires, madeShorter);
                 }

@@ -157,6 +157,21 @@ public final class CustomFonts {
         }
     }
 
+    /** Applies the regular face to a SimpleTextView (status lines such as "last seen recently"). */
+    public static void apply(org.telegram.ui.ActionBar.SimpleTextView view) {
+        final Typeface typeface = getRegular();
+        if (typeface != null && view != null) {
+            view.setTypeface(typeface);
+        }
+    }
+
+    public static void apply(org.telegram.ui.Components.AnimatedTextView view) {
+        final Typeface typeface = getRegular();
+        if (typeface != null && view != null) {
+            view.setTypeface(typeface);
+        }
+    }
+
     private static File fontsDir() {
         final File dir = new File(ApplicationLoader.applicationContext.getFilesDir(), "custom_fonts");
         if (!dir.exists()) {

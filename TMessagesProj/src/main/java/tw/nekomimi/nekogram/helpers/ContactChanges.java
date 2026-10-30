@@ -120,11 +120,56 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
     }
 
     public static boolean isEnabled() {
-        return settings().getBoolean("enabled", true);
+        return settings().getBoolean("enabled", false);
     }
 
     public static void setEnabled(boolean enabled) {
         settings().edit().putBoolean("enabled", enabled).apply();
+        // Start from a fresh copy each time, so nothing that changed while it was off is reported.
+        for (int a = 0; a < instances.length; a++) {
+            final ContactChanges c = instances[a];
+            if (c != null && c.snapshots != null) {
+                c.snapshots.clear();
+                c.save();
+                if (enabled) {
+                    c.queueScan();
+                }
+            }
+        }
+    }
+
+    /** Whether only the contacts picked in settings are watched (otherwise all contacts). */
+    public static boolean onlySelected() {
+        return settings().getBoolean("onlySelected", false);
+    }
+
+    public static void setOnlySelected(boolean value) {
+        settings().edit().putBoolean("onlySelected", value).apply();
+    }
+
+    public static java.util.Set<String> selectedRaw(int account) {
+        return new java.util.HashSet<>(settings().getStringSet("selected_" + account, new java.util.HashSet<>()));
+    }
+
+    public static ArrayList<Long> getSelected(int account) {
+        final ArrayList<Long> list = new ArrayList<>();
+        for (String s : selectedRaw(account)) {
+            try {
+                list.add(Long.parseLong(s));
+            } catch (NumberFormatException ignore) {
+            }
+        }
+        return list;
+    }
+
+    public static void setSelected(int account, long userId, boolean selected) {
+        final java.util.Set<String> set = selectedRaw(account);
+        if (selected) {
+            set.add(String.valueOf(userId));
+        } else {
+            set.remove(String.valueOf(userId));
+        }
+        settings().edit().putStringSet("selected_" + account, set).apply();
     }
 
     public static int getTypes() {
@@ -236,11 +281,16 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
             return;
         }
         final int types = getTypes();
+        final java.util.Set<String> only = onlySelected() ? selectedRaw(account) : null;
         boolean changed = false;
         final long now = System.currentTimeMillis();
         for (TLRPC.TL_contact contact : contacts) {
             final TLRPC.User user = mc.getUser(contact.user_id);
             if (user == null || user.min || UserObject.isDeleted(user) || user.self) {
+                continue;
+            }
+            if (only != null && !only.contains(String.valueOf(user.id))) {
+                snapshots.remove(user.id);
                 continue;
             }
             final Snapshot old = snapshots.get(user.id);

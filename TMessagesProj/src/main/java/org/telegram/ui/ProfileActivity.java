@@ -5945,6 +5945,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             onlineTextView[a].setEllipsizeByGradient(true);
             onlineTextView[a].setTextColor(applyPeerColor(getThemedColor(Theme.key_actionBarDefaultSubtitle), true, null));
             onlineTextView[a].setTextSizePx(dp(13.5f));
+            xyz.nextalone.nagram.font.CustomFonts.apply(onlineTextView[a]);
             onlineTextView[a].setGravity(Gravity.LEFT);
             onlineTextView[a].setAlpha(a == 0 ? 0.0f : 1.0f);
             onlineTextView[a].setPivotX(dp(8));

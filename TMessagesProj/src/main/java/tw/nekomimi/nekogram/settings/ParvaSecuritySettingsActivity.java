@@ -50,7 +50,37 @@ public class ParvaSecuritySettingsActivity extends ParvaPageActivity {
         link("contactChanges", R.string.ContactChangesOpen, 0, () -> presentFragment(new ContactChangesActivity()))
                 .titleText = unseenTitle();
         check("contactChangesEnabled", R.string.ContactChangesEnabled, R.string.ContactChangesEnabledInfo,
-                ContactChanges::isEnabled, ContactChanges::setEnabled);
+                ContactChanges::isEnabled, v -> {
+                    ContactChanges.setEnabled(v);
+                    if (v) {
+                        ContactChanges.start(currentAccount);
+                    }
+                });
+        choice("contactChangesWho", R.string.ContactChangesWho,
+                () -> LocaleController.getString(ContactChanges.onlySelected() ? R.string.ContactChangesWhoSelected : R.string.ContactChangesWhoAll),
+                () -> {
+                    if (getParentActivity() == null) {
+                        return;
+                    }
+                    final boolean only = ContactChanges.onlySelected();
+                    showDialog(new AlertDialog.Builder(getParentActivity())
+                            .setTitle(LocaleController.getString(R.string.ContactChangesWho))
+                            .setItems(new CharSequence[]{
+                                    (only ? "" : "✓ ") + LocaleController.getString(R.string.ContactChangesWhoAll),
+                                    (only ? "✓ " : "") + LocaleController.getString(R.string.ContactChangesWhoSelected)
+                            }, (d, which) -> {
+                                ContactChanges.setOnlySelected(which == 1);
+                                refresh();
+                            })
+                            .create());
+                });
+        if (ContactChanges.onlySelected()) {
+            for (long userId : ContactChanges.getSelected(currentAccount)) {
+                final Row r = link(null, 0, 0, () -> askRemoveWatched(userId));
+                r.titleText = "👁 " + dialogName(userId);
+            }
+            link("contactChangesAdd", R.string.ContactChangesAdd, 0, this::pickContact);
+        }
         check("contactChangesUnseenFirst", R.string.ContactChangesUnseenFirst, R.string.ContactChangesUnseenFirstInfo,
                 ContactChanges::unseenFirst, ContactChanges::setUnseenFirst);
         for (int type : ContactChanges.TYPES) {
@@ -92,6 +122,39 @@ public class ParvaSecuritySettingsActivity extends ParvaPageActivity {
             }
         }
         return String.valueOf(dialogId);
+    }
+
+    private void pickContact() {
+        final android.os.Bundle args = new android.os.Bundle();
+        args.putBoolean("onlyUsers", true);
+        args.putBoolean("destroyAfterSelect", true);
+        args.putBoolean("returnAsResult", true);
+        args.putBoolean("needForwardCount", false);
+        args.putBoolean("allowSelf", false);
+        args.putBoolean("disableSections", true);
+        final org.telegram.ui.ContactsActivity contacts = new org.telegram.ui.ContactsActivity(args);
+        contacts.setDelegate((user, param, activity) -> {
+            if (user != null) {
+                ContactChanges.setSelected(currentAccount, user.id, true);
+                refresh();
+            }
+        });
+        presentFragment(contacts);
+    }
+
+    private void askRemoveWatched(long userId) {
+        if (getParentActivity() == null) {
+            return;
+        }
+        showDialog(new AlertDialog.Builder(getParentActivity())
+                .setTitle(dialogName(userId))
+                .setMessage(LocaleController.getString(R.string.ContactChangesRemoveAsk))
+                .setPositiveButton(LocaleController.getString(R.string.Delete), (d, w) -> {
+                    ContactChanges.setSelected(currentAccount, userId, false);
+                    refresh();
+                })
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .create());
     }
 
     private void askUnlockChat(long dialogId) {

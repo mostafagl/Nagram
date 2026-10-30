@@ -716,4 +716,15 @@
     <string name="ParvaProxyListInfo">کانفیگ‌های V2Ray و MTProto، تست پینگ و مرتب‌سازی.</string>
     <string name="ParvaSubscriptionsInfo">لینک‌هایی که کانفیگ V2Ray اضافه و به‌روز می‌کنند.</string>
     <string name="ParvaSecurityTitle">حریم خصوصی و امنیت</string>
+    <string name="FavoriteMessagesInChat">پیام‌های مورد علاقه در این گفتگو</string>
+    <string name="ContactChangesWho">زیر نظر گرفتن</string>
+    <string name="ContactChangesWhoAll">همهٔ مخاطبین</string>
+    <string name="ContactChangesWhoSelected">فقط مخاطبین انتخاب‌شده</string>
+    <string name="ContactChangesAdd">افزودن مخاطب برای زیر نظر گرفتن</string>
+    <string name="ContactChangesRemoveAsk">دیگر این مخاطب زیر نظر گرفته نشود؟</string>
+    <string name="ParvaUpdateNewTitle">نسخهٔ جدید پرواگرام آماده است</string>
+    <string name="ParvaUpdateNoNotes">برای دریافت و نصب در خود برنامه، «به‌روزرسانی» را بزنید.</string>
+    <string name="LocalLastSeen">آخرین بازدید تقریبی</string>
+    <string name="LocalLastSeenInfo">برای کسانی که آخرین بازدیدشان را بسته‌اند، آخرین زمانی که این دستگاه آن‌ها را فعال دیده (پیام، در حال نوشتن یا خواندن پیام شما) نمایش داده می‌شود.</string>
+    <string name="LocalLastSeenFormat">≈ %1$s</string>
 </resources>

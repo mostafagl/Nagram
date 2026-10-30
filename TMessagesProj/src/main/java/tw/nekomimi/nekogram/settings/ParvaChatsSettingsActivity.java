@@ -82,6 +82,8 @@ public class ParvaChatsSettingsActivity extends ParvaPageActivity {
         header(R.string.ParvaProfilesHeader);
         check("ShowIdAndDc", R.string.ShowIdAndDc, R.string.ShowIdAndDcInfo,
                 () -> NekoConfig.showIdAndDc.Bool(), v -> NekoConfig.showIdAndDc.setConfigBool(v));
+        check("localLastSeen", R.string.LocalLastSeen, R.string.LocalLastSeenInfo,
+                tw.nekomimi.nekogram.helpers.LocalLastSeen::isEnabled, tw.nekomimi.nekogram.helpers.LocalLastSeen::setEnabled);
         shadow();
     }
 

@@ -6177,7 +6177,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             final boolean downloading = tw.nekomimi.nekogram.helpers.ParvaUpdater.isDownloading();
             dialogsHintCell.setOnClickListener(v -> tw.nekomimi.nekogram.helpers.ParvaUpdater.startUpdate(getParentActivity(), release));
             dialogsHintCell.setText(
-                    LocaleController.formatString(R.string.ParvaUpdateHintTitle, release.name),
+                    LocaleController.getString(R.string.ParvaUpdateNewTitle),
                     downloading ? LocaleController.formatString(R.string.ParvaUpdateDownloadingProgress, tw.nekomimi.nekogram.helpers.ParvaUpdater.getProgressText())
                             : tw.nekomimi.nekogram.helpers.ParvaUpdater.isDownloaded(release) ? getString(R.string.ParvaUpdateTapToInstall)
                             : getString(R.string.ParvaUpdateHintText)
