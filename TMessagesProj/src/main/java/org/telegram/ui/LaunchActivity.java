@@ -7159,6 +7159,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     protected void onResume() {
         super.onResume();
         isResumed = true;
+        tw.nekomimi.nekogram.helpers.ParvaUpdater.checkIfNeeded();
         pipActivityHandler.onResume();
         if (onResumeStaticCallback != null) {
             onResumeStaticCallback.run();

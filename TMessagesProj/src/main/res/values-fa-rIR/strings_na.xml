@@ -593,4 +593,11 @@
     <string name="SettingsSearchTitle">جستجو در تنظیمات</string>
     <string name="SettingsSearchHint">جستجو در تنظیمات…</string>
     <string name="SettingsSearchEmpty">نام یا کار تنظیم را بنویسید.</string>
+    <string name="ParvaUpdateTitle">به‌روزرسانی پرواگرام</string>
+    <string name="ParvaUpdateAllowInstall">برای نصب به‌روزرسانی، اجازهٔ نصب برنامه را به پرواگرام بدهید و دوباره روی به‌روزرسانی بزنید.</string>
+    <string name="ParvaUpdateOpenSettings">باز کردن تنظیمات</string>
+    <string name="ParvaUpdateDownloading">در حال دریافت به‌روزرسانی…</string>
+    <string name="ParvaUpdateFailed">دریافت ناموفق بود (%1$s). اتصال را بررسی کنید یا پروکسی را روشن کنید و دوباره امتحان کنید.</string>
+    <string name="ParvaUpdateHintTitle">نسخهٔ جدید: %1$s</string>
+    <string name="ParvaUpdateHintText">برای دریافت و نصب به‌روزرسانی بزنید</string>
 </resources>

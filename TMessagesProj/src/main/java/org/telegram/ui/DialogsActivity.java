@@ -2946,6 +2946,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             if (!onlySelect) {
                 observersGroup.addGlobal(NotificationCenter.closeSearchByActiveAction);
                 observersGroup.addGlobal(NotificationCenter.proxySettingsChanged);
+                observersGroup.addGlobal(NotificationCenter.parvaUpdateAvailable);
                 observersGroup.add(NotificationCenter.filterSettingsUpdated);
                 observersGroup.add(NotificationCenter.dialogsUnreadCounterChanged);
             }
@@ -6149,6 +6150,19 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
         if (isInPreviewMode()) {
             dialogsHintCellVisible = false;
+        } else if (folderId == 0 && communityId == 0 && tw.nekomimi.nekogram.helpers.ParvaUpdater.getAvailable() != null) {
+            // A new Parvagram release on GitHub: tap to download and install it in the app.
+            final tw.nekomimi.nekogram.helpers.ParvaUpdater.Release release = tw.nekomimi.nekogram.helpers.ParvaUpdater.getAvailable();
+            dialogsHintCellVisible = true;
+            dialogsHintCell.setOnClickListener(v -> tw.nekomimi.nekogram.helpers.ParvaUpdater.startUpdate(getParentActivity(), release));
+            dialogsHintCell.setText(
+                    LocaleController.formatString(R.string.ParvaUpdateHintTitle, release.name),
+                    getString(R.string.ParvaUpdateHintText)
+            );
+            dialogsHintCell.setOnCloseListener(v -> {
+                tw.nekomimi.nekogram.helpers.ParvaUpdater.dismiss(release);
+                updateDialogsHint();
+            });
         } else if (getMessagesController().isFrozen()) {
             dialogsHintCellVisible = true;
             dialogsHintCell.setOnClickListener(v -> {
@@ -10728,6 +10742,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @SuppressWarnings("unchecked")
     @Override
     public void didReceivedNotification(int id, int account, Object... args) {
+        if (id == NotificationCenter.parvaUpdateAvailable) {
+            updateDialogsHint();
+            return;
+        }
         if (id == NotificationCenter.dialogsNeedReload) {
             if (viewPages == null || dialogsListFrozen) {
                 return;

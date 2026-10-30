@@ -122,7 +122,9 @@ jobs:
           ./run libs v2ray
       - name: Configure Gradle
         run: |
-          sed -i "s/2000000000000/$(date +%s%N | cut -c1-13)/g" gradle.properties
+          TS=$(date +%s%N | cut -c1-13)
+          sed -i "s/2000000000000/$TS/g" gradle.properties
+          echo "BUILD_TS=$TS" >> $GITHUB_ENV
           echo "sdk.dir=${ANDROID_HOME}" >> local.properties
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -163,6 +165,8 @@ jobs:
           APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk')
           APK=$(dirname $APK)
           echo "APK=$APK" >> $GITHUB_ENV
+          # The in-app updater compares this with the installed build (BuildConfig.BUILD_TIMESTAMP).
+          echo "$BUILD_TS" > "$APK/build_timestamp.txt"
       - name: Verify APK signatures
         run: |
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
@@ -248,29 +252,45 @@ jobs:
         with:
           name: Debug
           path: apk
-      - name: Replace the parvagram-latest release
+      - name: Publish the build as a pre-release
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -e
+          TS=$(cat apk/build_timestamp.txt)
+          TAG="build-$TS"
           mkdir out
           cp apk/*arm64-v8a*.apk out/Parvagram-arm64-v8a.apk
           cp apk/*armeabi-v7a*.apk out/Parvagram-armeabi-v7a.apk
           VERSION=$(basename "$(ls apk/*arm64-v8a*.apk | head -1)" | sed -E 's/^Parvagram-(.*)-arm64-v8a\.apk$/\1/')
+          DATE=$(date -u -d "@$((TS / 1000))" '+%Y-%m-%d %H:%M UTC')
           cat > notes.md <<NOTES
-          Latest Parvagram build ($VERSION) from commit ${SHA:0:8}.
+          Parvagram $VERSION, built $DATE from commit ${SHA:0:8}.
 
           | Download | For |
           | --- | --- |
-          | [Parvagram-arm64-v8a.apk](https://github.com/$REPO/releases/download/parvagram-latest/Parvagram-arm64-v8a.apk) | Almost all phones from 2017 on (64-bit), e.g. Samsung Galaxy A36 |
-          | [Parvagram-armeabi-v7a.apk](https://github.com/$REPO/releases/download/parvagram-latest/Parvagram-armeabi-v7a.apk) | Older 32-bit phones |
+          | [Parvagram-arm64-v8a.apk](https://github.com/$REPO/releases/download/$TAG/Parvagram-arm64-v8a.apk) | Almost all phones from 2017 on (64-bit) |
+          | [Parvagram-armeabi-v7a.apk](https://github.com/$REPO/releases/download/$TAG/Parvagram-armeabi-v7a.apk) | Older 32-bit phones |
 
-          This build is signed with the debug key until a release key is set up, so it can't be
-          installed over a build signed with a different key: uninstall that one first.
+          **To send this build to users as an update:** edit this release, untick *Set as a pre-release*
+          (and tick *Set as the latest release*), and save. Parvagram checks GitHub every few hours and
+          shows "New version" at the top of the chat list; tapping it downloads and installs the update
+          in the app. Pre-releases are never offered as updates.
+
+          برای فرستادن این نسخه به‌عنوان به‌روزرسانی: این ریلیز را ویرایش کنید، تیک «Set as a pre-release»
+          را بردارید و ذخیره کنید. پرواگرام هر چند ساعت گیت‌هاب را بررسی می‌کند و بالای فهرست چت‌ها
+          «نسخهٔ جدید» را نشان می‌دهد؛ با زدن آن به‌روزرسانی داخل خود برنامه دریافت و نصب می‌شود.
           NOTES
-          gh release delete parvagram-latest -R "$REPO" --cleanup-tag -y || true
-          gh release create parvagram-latest -R "$REPO" --prerelease --target "$SHA" \
-            --title "Parvagram $VERSION (latest build)" --notes-file notes.md \
+          gh release create "$TAG" -R "$REPO" --prerelease --target "$SHA" \
+            --title "Parvagram $VERSION · $DATE" --notes-file notes.md \
             out/Parvagram-arm64-v8a.apk out/Parvagram-armeabi-v7a.apk
+          # The old fixed "parvagram-latest" pre-release is replaced by per-build releases.
+          gh release delete parvagram-latest -R "$REPO" --cleanup-tag -y || true
+          # Keep the 5 newest build pre-releases; published releases are never touched.
+          gh release list -R "$REPO" --limit 100 --json tagName,isPrerelease,createdAt \
+            --jq '[.[] | select(.isPrerelease and (.tagName | startswith("build-")))] | sort_by(.createdAt) | reverse | .[5:] | .[].tagName' |
+          while read -r old; do
+            gh release delete "$old" -R "$REPO" --cleanup-tag -y || true
+          done

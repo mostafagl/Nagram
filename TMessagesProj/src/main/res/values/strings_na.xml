@@ -593,4 +593,11 @@
     <string name="SettingsSearchTitle">Search settings</string>
     <string name="SettingsSearchHint">Search settings…</string>
     <string name="SettingsSearchEmpty">Type a setting\'s name or what it does.</string>
+    <string name="ParvaUpdateTitle">Parvagram update</string>
+    <string name="ParvaUpdateAllowInstall">To install the update, allow Parvagram to install apps, then tap the update again.</string>
+    <string name="ParvaUpdateOpenSettings">Open settings</string>
+    <string name="ParvaUpdateDownloading">Downloading the update…</string>
+    <string name="ParvaUpdateFailed">The download failed (%1$s). Check your connection or turn on a proxy and try again.</string>
+    <string name="ParvaUpdateHintTitle">New version: %1$s</string>
+    <string name="ParvaUpdateHintText">Tap to download and install the update</string>
 </resources>
