@@ -6,6 +6,8 @@ on:
     paths-ignore:
       - '**.md'
       - '**.xml'
+  # Manual start (Actions tab, or the API) when GitHub doesn't trigger the PR event.
+  workflow_dispatch:
 
 jobs:
   native:
@@ -256,7 +258,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          SHA: ${{ github.event.pull_request.head.sha }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -e
           TS=$(cat apk/build_timestamp.txt)
