@@ -174,6 +174,7 @@ jobs:
         env:
           RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
           SIGNING_PASSPHRASE: ${{ secrets.SIGNING_PASSPHRASE }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
           EVENT: ${{ github.event_name }}
           REF_NAME: ${{ github.ref_name }}
         run: |
@@ -205,13 +206,18 @@ jobs:
           if [ "$STABLE" != true ]; then
             echo "::warning::Not signed with the app's key: this build is not published"
           fi
+          if [ -z "$RELEASE_KEYSTORE" ]; then
+            # Sign explicitly with this key: Gradle's default debug signing made a new key for
+            # every build, so no build could update another.
+            cp ~/.android/debug.keystore TMessagesProj/release.keystore
+          fi
           echo "stable=$STABLE" >> "$GITHUB_OUTPUT"
-          keytool -list -v -keystore ~/.android/debug.keystore -storepass android 2>/dev/null | grep -E "SHA256" || true
+          keytool -list -v -keystore TMessagesProj/release.keystore -storepass "${KEYSTORE_PASS:-android}" 2>/dev/null | grep -E "SHA256" || true
       - name: Debug Build
         env:
-          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
-          ALIAS_NAME: ${{ secrets.ALIAS_NAME }}
-          ALIAS_PASS: ${{ secrets.ALIAS_PASS }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS || 'android' }}
+          ALIAS_NAME: ${{ secrets.ALIAS_NAME || 'androiddebugkey' }}
+          ALIAS_PASS: ${{ secrets.ALIAS_PASS || 'android' }}
         run: |
           export LOCAL_PROPERTIES="${{ secrets.LOCAL_PROPERTIES }}"
           export DEBUG_BUILD=true
@@ -224,12 +230,24 @@ jobs:
           echo "APK=$APK" >> $GITHUB_ENV
           # The in-app updater compares this with the installed build (BuildConfig.BUILD_TIMESTAMP).
           echo "$BUILD_TS" > "$APK/build_timestamp.txt"
+      # Fails the build unless every APK is signed with the app's key, so a build that couldn't
+      # update the installed app is never published.
       - name: Verify APK signatures
+        env:
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS || 'android' }}
+          ALIAS_NAME: ${{ secrets.ALIAS_NAME || 'androiddebugkey' }}
         run: |
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          EXPECTED=$(keytool -exportcert -keystore TMessagesProj/release.keystore -storepass "$KEYSTORE_PASS" -alias "$ALIAS_NAME" | sha256sum | cut -d' ' -f1)
+          echo "App key certificate SHA-256: $EXPECTED"
           for f in $(find TMessagesProj/build/outputs/apk -name '*.apk'); do
             echo "== $f"
             "$BT/apksigner" verify --verbose --print-certs "$f"
+            ACTUAL=$("$BT/apksigner" verify --print-certs "$f" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            if [ "$ACTUAL" != "$EXPECTED" ]; then
+              echo "::error::$f is signed with $ACTUAL, not the app's key $EXPECTED"
+              exit 1
+            fi
           done
       - uses: actions/upload-artifact@v7
         with:
