@@ -23,6 +23,8 @@ public class MessageButtonsActivity extends BaseNekoSettingsActivity {
     private int timedViewRow;
     private int editRow;
     private int forwardRow;
+    private int saveRow;
+    private int favoriteRow;
     private int infoRow;
 
     /** {title, description} and row keys, for settings search. */
@@ -31,8 +33,10 @@ public class MessageButtonsActivity extends BaseNekoSettingsActivity {
             {R.string.MessageButtonTimedView, R.string.MessageButtonTimedViewInfo},
             {R.string.MessageButtonEdit, R.string.MessageButtonEditInfo},
             {R.string.MessageButtonForward, R.string.MessageButtonForwardInfo},
+            {R.string.MessageButtonSave, R.string.MessageButtonSaveInfo},
+            {R.string.MessageButtonFavorite, R.string.MessageButtonFavoriteInfo},
     };
-    public static final String[] SEARCH_KEYS = {"history", "timedView", "edit", "forwardNoQuote"};
+    public static final String[] SEARCH_KEYS = {"history", "timedView", "edit", "forwardNoQuote", "save", "favorite"};
 
     @Override
     protected void updateRows() {
@@ -42,6 +46,8 @@ public class MessageButtonsActivity extends BaseNekoSettingsActivity {
         timedViewRow = addRow("timedView");
         editRow = addRow("edit");
         forwardRow = addRow("forwardNoQuote");
+        saveRow = addRow("save");
+        favoriteRow = addRow("favorite");
         infoRow = addRow();
     }
 
@@ -56,6 +62,10 @@ public class MessageButtonsActivity extends BaseNekoSettingsActivity {
             NekoConfig.putBoolean("showEditButton", value = NekoConfig.showEditButton ^= true);
         } else if (position == forwardRow) {
             NekoConfig.putBoolean("showNoQuoteForwardButton", value = NekoConfig.showNoQuoteForwardButton ^= true);
+        } else if (position == saveRow) {
+            NekoConfig.putBoolean("showSaveButton", value = NekoConfig.showSaveButton ^= true);
+        } else if (position == favoriteRow) {
+            NekoConfig.putBoolean("showFavoriteButton", value = NekoConfig.showFavoriteButton ^= true);
         } else {
             return;
         }
@@ -104,6 +114,10 @@ public class MessageButtonsActivity extends BaseNekoSettingsActivity {
                         check(cell, R.string.MessageButtonEdit, R.string.MessageButtonEditInfo, NekoConfig.showEditButton, divider);
                     } else if (position == forwardRow) {
                         check(cell, R.string.MessageButtonForward, R.string.MessageButtonForwardInfo, NekoConfig.showNoQuoteForwardButton, divider);
+                    } else if (position == saveRow) {
+                        check(cell, R.string.MessageButtonSave, R.string.MessageButtonSaveInfo, NekoConfig.showSaveButton, divider);
+                    } else if (position == favoriteRow) {
+                        check(cell, R.string.MessageButtonFavorite, R.string.MessageButtonFavoriteInfo, NekoConfig.showFavoriteButton, divider);
                     }
                     break;
                 }

@@ -182,7 +182,36 @@ public class SettingsHelper {
             result.description = LocaleController.getString(texts[1]);
             items.add(result);
         }
-        // Parvagram's own pages.
+        // Parvagram's own pages: every row with a key, under its page's name.
+        final tw.nekomimi.nekogram.settings.ParvaPageActivity[] pages = {
+                new tw.nekomimi.nekogram.settings.ParvaChatsSettingsActivity(),
+                new tw.nekomimi.nekogram.settings.ParvaConnectionSettingsActivity(),
+                new tw.nekomimi.nekogram.settings.ParvaSecuritySettingsActivity(),
+        };
+        final int[] pageIcons = {R.drawable.msg_discussion, R.drawable.proxy_check, R.drawable.msg_secret};
+        final int[] pageTitles = {R.string.ParvaChatsTitle, R.string.ParvaConnectionTitle, R.string.ParvaSecurityTitle};
+        int guid = 31000;
+        for (int p = 0; p < pages.length; p++) {
+            final Class<? extends tw.nekomimi.nekogram.settings.ParvaPageActivity> pageClass = pages[p].getClass();
+            final String pageTitle = LocaleController.getString(pageTitles[p]);
+            for (tw.nekomimi.nekogram.settings.ParvaPageActivity.Row row : pages[p].getRowsForSearch()) {
+                if (row.key == null || row.kind == tw.nekomimi.nekogram.settings.ParvaPageActivity.Row.HEADER) {
+                    continue;
+                }
+                final String key = row.key;
+                final SettingsSearchResult result = new SettingsSearchResult(guid++, row.title().toString(), n_title, pageTitle, pageIcons[p], () -> {
+                    try {
+                        final tw.nekomimi.nekogram.settings.ParvaPageActivity f = pageClass.getDeclaredConstructor().newInstance();
+                        callback.presentFragment(f);
+                        AndroidUtilities.runOnUIThread(() -> f.scrollToRow(key, null), 300);
+                    } catch (Exception ignored) {
+                    }
+                });
+                final CharSequence description = row.description();
+                result.description = description != null ? description.toString() : null;
+                items.add(result);
+            }
+        }
         items.add(new SettingsSearchResult(30100, LocaleController.getString(R.string.ProxySettings), n_title, null, R.drawable.proxy_check,
                 () -> callback.presentFragment(new org.telegram.ui.ProxyListActivity())));
         items.add(new SettingsSearchResult(30101, LocaleController.getString(R.string.V2RaySubscriptions), n_title, LocaleController.getString(R.string.ProxySettings), R.drawable.proxy_check,

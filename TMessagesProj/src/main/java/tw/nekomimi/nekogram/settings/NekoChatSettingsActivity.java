@@ -69,13 +69,6 @@ public class NekoChatSettingsActivity extends BaseNekoXSettingsActivity implemen
     private final CellGroup a = cellGroup = new CellGroup(this);
 
     // Sticker Size
-    private final AbstractConfigCell headerFont = cellGroup.appendCell(new ConfigCellHeader(LocaleController.getString(R.string.CustomFontTitle)));
-    private final AbstractConfigCell customFontRow = cellGroup.appendCell(new ConfigCellSelectBox("CustomFontTitle", null, null, () -> {
-        if (getParentActivity() == null) return;
-        presentFragment(new xyz.nextalone.nagram.font.FontSettingsActivity());
-    }));
-    private final AbstractConfigCell dividerFont = cellGroup.appendCell(new ConfigCellDivider());
-
     private final AbstractConfigCell header0 = cellGroup.appendCell(new ConfigCellHeader(LocaleController.getString("StickerSize")));
     private final AbstractConfigCell stickerSizeRow = cellGroup.appendCell(new ConfigCellCustom("StickerSize", ConfigCellCustom.CUSTOM_ITEM_StickerSize, true));
     private final AbstractConfigCell hideTimeForStickerRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.hideTimeForSticker));
@@ -95,12 +88,6 @@ public class NekoChatSettingsActivity extends BaseNekoXSettingsActivity implemen
     private final AbstractConfigCell showSpoilersDirectlyRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.showSpoilersDirectly));
     private final AbstractConfigCell disableLinkPreviewsRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getGlobalDisableLinkPreviews()));
     private final AbstractConfigCell hideSideShareButtonRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getHideSideShareButton()));
-    private final AbstractConfigCell showMessageEditHistoryRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getShowMessageEditHistory(), LocaleController.getString(R.string.ShowMessageEditHistoryNotice)));
-    private final AbstractConfigCell showDeletedMessagesRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getShowDeletedMessages(), LocaleController.getString(R.string.ShowDeletedMessagesNotice)));
-    private final AbstractConfigCell messageHistoryRow = cellGroup.appendCell(new ConfigCellSelectBox("MessageHistory", null, null, () -> {
-        if (getParentActivity() == null) return;
-        presentFragment(new xyz.nextalone.nagram.history.MessageHistoryActivity());
-    }));
     private final AbstractConfigCell dividerMessages = cellGroup.appendCell(new ConfigCellDivider());
 
     private final AbstractConfigCell headerDoubleTap = cellGroup.appendCell(new ConfigCellHeader(LocaleController.getString(R.string.DoubleTapAction)));
@@ -202,7 +189,6 @@ public class NekoChatSettingsActivity extends BaseNekoXSettingsActivity implemen
     private final AbstractConfigCell hideInstantCameraRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getHideInstantCamera()));
     private final AbstractConfigCell disableVibrationRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.disableVibration));
     private final AbstractConfigCell disableProximityEventsRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.disableProximityEvents));
-    private final AbstractConfigCell allowMediaInChatPreviewRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getAllowMediaInChatPreview(), LocaleController.getString(R.string.AllowMediaInChatPreviewNotice)));
     private final AbstractConfigCell disableTrendingRow = cellGroup.appendCell(new ConfigCellSelectBox("DisableTrending", null, null, () -> {
         if (getParentActivity() == null) return;
         showDialog(showConfigMenuAlert(getParentActivity(), "DisableTrending", new ArrayList<>() {{

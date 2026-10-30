@@ -119,13 +119,13 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
         } else if (position == ghostRow || position == parvaGhostRow) {
             presentFragment(new NekoGhostModeActivity());
         } else if (position == parvaButtonsRow) {
-            presentFragment(new MessageButtonsActivity());
+            presentFragment(new ParvaChatsSettingsActivity());
         } else if (position == parvaProxyRow) {
-            presentFragment(new org.telegram.ui.ProxyListActivity());
+            presentFragment(new ParvaConnectionSettingsActivity());
         } else if (position == parvaSubscriptionsRow) {
-            presentFragment(new org.telegram.ui.V2RaySubscriptionsActivity());
+            presentFragment(new ParvaSecuritySettingsActivity());
         } else if (position == parvaFontRow) {
-            presentFragment(new xyz.nextalone.nagram.font.FontSettingsActivity());
+            presentFragment(new FavoriteMessagesActivity());
         } else if (position == parvaUpdateRow) {
             tw.nekomimi.nekogram.helpers.ParvaUpdater.checkNow(getParentActivity());
         } else if (position == passcodeRow) {
@@ -187,10 +187,11 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
 
         parvaHeaderRow = addRow("parvagram");
         parvaGhostRow = addRow("ghost");
-        parvaButtonsRow = addRow("messageButtons");
-        parvaProxyRow = addRow("proxy");
-        parvaSubscriptionsRow = addRow("subscriptions");
-        parvaFontRow = addRow("font");
+        // Parvagram's pages: chats & messages, connection & proxy, privacy & security, favorite messages.
+        parvaButtonsRow = addRow("parvaChats");
+        parvaProxyRow = addRow("parvaConnection");
+        parvaSubscriptionsRow = addRow("parvaSecurity");
+        parvaFontRow = addRow("favorites");
         parvaUpdateRow = addRow("update");
         parva2Row = addRow();
 
@@ -281,13 +282,13 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
                     } else if (position == ghostRow || position == parvaGhostRow) {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.GhostAndSpyTitle), R.drawable.icon_ghost, divider);
                     } else if (position == parvaButtonsRow) {
-                        textCell.setTextAndIcon(LocaleController.getString(R.string.MessageButtonsTitle), R.drawable.msg_forward_noquote, divider);
+                        textCell.setTextAndIcon(LocaleController.getString(R.string.ParvaChatsTitle), R.drawable.msg_discussion, divider);
                     } else if (position == parvaProxyRow) {
-                        textCell.setTextAndIcon(LocaleController.getString(R.string.ParvaProxyAndV2Ray), R.drawable.proxy_check, divider);
+                        textCell.setTextAndIcon(LocaleController.getString(R.string.ParvaConnectionTitle), R.drawable.proxy_check, divider);
                     } else if (position == parvaSubscriptionsRow) {
-                        textCell.setTextAndIcon(LocaleController.getString(R.string.V2RaySubscriptions), R.drawable.msg_link, divider);
+                        textCell.setTextAndIcon(LocaleController.getString(R.string.ParvaSecurityTitle), R.drawable.msg_secret, divider);
                     } else if (position == parvaFontRow) {
-                        textCell.setTextAndIcon(LocaleController.getString(R.string.CustomFontTitle), R.drawable.msg_photo_text_regular, divider);
+                        textCell.setTextAndIcon(LocaleController.getString(R.string.FavoriteMessagesTitle), R.drawable.parva_star_outline, divider);
                     } else if (position == parvaUpdateRow) {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.ParvaCheckUpdates), R.drawable.msg_retry, divider);
                     } else if (position == passcodeRow) {

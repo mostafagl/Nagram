@@ -446,6 +446,7 @@ public class ChatActivity extends BaseFragment implements
     private final static int nkheaderbtn_to_the_message = 2034;
     private final static int nkheaderbtn_hide_title = 2029;
     private final static int nkheaderbtn_reload_messages = 2035;
+    private final static int nkheaderbtn_parva_lock = 2090;
 
     // shared with actionbar
     public final static int nkbtn_translate = 2008;
@@ -4883,6 +4884,9 @@ public class ChatActivity extends BaseFragment implements
                 toTheMessage = headerItem.lazilyAddSubItem(nkheaderbtn_to_the_message, R.drawable.msg_go_up, LocaleController.getString(R.string.ToTheMessage));
                 hideTitleItem = headerItem.lazilyAddSubItem(nkheaderbtn_hide_title, R.drawable.hide_title, LocaleController.getString(R.string.HideTitle));
                 reloadMessagesItem = headerItem.lazilyAddSubItem(nkheaderbtn_reload_messages, com.google.android.gms.cast.framework.R.drawable.quantum_ic_refresh_white_24, LocaleController.getString(R.string.ClearCache));
+                if (dialog_id != getUserConfig().getClientUserId() && chatMode == 0) {
+                    headerItem.lazilyAddSubItem(nkheaderbtn_parva_lock, R.drawable.msg_secret, LocaleController.getString(R.string.ChatLockMenu));
+                }
                 if (ChatObject.isMegagroup(currentChat) || currentChat != null && !ChatObject.isChannel(currentChat)) {
                     headerItem.lazilyAddSubItem(nkheaderbtn_zibi, R.drawable.msg_delete, LocaleController.getString("DeleteAllFromSelf", R.string.DeleteAllFromSelf));
                 }
@@ -9474,8 +9478,75 @@ public class ChatActivity extends BaseFragment implements
         onBottomItemsVisibilityChanged();
         ViewCompat.setOnApplyWindowInsetsListener(fragmentView, this::onApplyWindowInsets);
         Timer.finish(t);
+        parvaCheckLock();
 
         return fragmentView;
+    }
+
+    private FrameLayout parvaLockOverlay;
+
+    /** Covers a locked chat (Parvagram's chat lock) until it is opened with the password or fingerprint. */
+    private void parvaCheckLock() {
+        if (!(fragmentView instanceof ViewGroup) || getContext() == null) {
+            return;
+        }
+        final boolean needs = dialog_id != 0 && tw.nekomimi.nekogram.helpers.ChatLock.needsUnlock(currentAccount, dialog_id);
+        if (!needs) {
+            if (parvaLockOverlay != null) {
+                ((ViewGroup) fragmentView).removeView(parvaLockOverlay);
+                parvaLockOverlay = null;
+            }
+            return;
+        }
+        if (parvaLockOverlay != null) {
+            return;
+        }
+        final Context context = getContext();
+        parvaLockOverlay = new FrameLayout(context);
+        parvaLockOverlay.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        parvaLockOverlay.setClickable(true);
+        final LinearLayout column = new LinearLayout(context);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setGravity(Gravity.CENTER_HORIZONTAL);
+        final ImageView icon = new ImageView(context);
+        icon.setImageResource(R.drawable.msg_secret);
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        icon.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_windowBackgroundWhiteBlueIcon), PorterDuff.Mode.SRC_IN));
+        column.addView(icon, LayoutHelper.createLinear(56, 56, Gravity.CENTER_HORIZONTAL, 0, 0, 0, 16));
+        final TextView title = new TextView(context);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
+        title.setTypeface(AndroidUtilities.bold());
+        title.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+        title.setGravity(Gravity.CENTER);
+        title.setText(LocaleController.getString(R.string.ChatLockLockedTitle));
+        column.addView(title, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 32, 0, 32, 20));
+        final TextView unlock = new TextView(context);
+        unlock.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+        unlock.setTypeface(AndroidUtilities.bold());
+        unlock.setTextColor(getThemedColor(Theme.key_featuredStickers_buttonText));
+        unlock.setGravity(Gravity.CENTER);
+        unlock.setPadding(AndroidUtilities.dp(24), 0, AndroidUtilities.dp(24), 0);
+        unlock.setBackground(Theme.AdaptiveRipple.filledRectByKey(Theme.key_featuredStickers_addButton, 8));
+        unlock.setText(LocaleController.getString(R.string.ChatLockUnlock));
+        final Runnable ask = () -> tw.nekomimi.nekogram.helpers.ChatLock.requestUnlock(this, currentAccount, dialog_id, this::parvaCheckLock);
+        unlock.setOnClickListener(v -> ask.run());
+        column.addView(unlock, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 44, Gravity.CENTER_HORIZONTAL));
+        parvaLockOverlay.addView(column, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
+        final ImageView back = new ImageView(context);
+        back.setImageResource(R.drawable.ic_ab_back);
+        back.setScaleType(ImageView.ScaleType.CENTER);
+        back.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_windowBackgroundWhiteBlackText), PorterDuff.Mode.SRC_IN));
+        back.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), Theme.RIPPLE_MASK_CIRCLE_20DP));
+        back.setOnClickListener(v -> finishFragment());
+        parvaLockOverlay.addView(back, LayoutHelper.createFrame(48, 48, Gravity.TOP | Gravity.LEFT, 4, 4 + AndroidUtilities.statusBarHeight / AndroidUtilities.density, 0, 0));
+        ((ViewGroup) fragmentView).addView(parvaLockOverlay, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        if (!inPreviewMode) {
+            AndroidUtilities.runOnUIThread(() -> {
+                if (parvaLockOverlay != null && !isFinished && !isPaused()) {
+                    ask.run();
+                }
+            }, 350);
+        }
     }
 
     private void createSearchHashtagViewsIfNeeded() {
@@ -30946,6 +31017,7 @@ public class ChatActivity extends BaseFragment implements
     @Override
     public void onResume() {
         super.onResume();
+        parvaCheckLock();
         checkShowBlur(false);
         activityResumeTime = System.currentTimeMillis();
         if (openImport && getSendMessagesHelper().getImportingHistory(dialog_id) != null) {
@@ -40916,6 +40988,23 @@ public class ChatActivity extends BaseFragment implements
                 if (messagePreviewParams != null) {
                     messagePreviewParams.setHideForwardSendersName(true);
                 }
+            } else if (type == ChatMessageCell.QUICK_SAVE) {
+                // Forward to Saved Messages (the cloud), keeping the original sender.
+                final ArrayList<MessageObject> list = new ArrayList<>();
+                list.add(message);
+                final long selfId = getUserConfig().getClientUserId();
+                final int result = getSendMessagesHelper().sendMessage(list, selfId, false, false, true, 0, 0);
+                AlertsCreator.showSendMediaAlert(result, ChatActivity.this, null);
+                if (result == 0) {
+                    BulletinFactory.createForwardedBulletin(getContext(), ChatActivity.this, null, 1, selfId, 1,
+                            getThemedColor(Theme.key_undo_background), getThemedColor(Theme.key_undo_infoColor), Bulletin.DURATION_SHORT).show();
+                }
+            } else if (type == ChatMessageCell.QUICK_FAVORITE) {
+                final boolean starred = tw.nekomimi.nekogram.helpers.FavoriteMessages.toggle(currentAccount, message);
+                cell.invalidate();
+                BulletinFactory.of(ChatActivity.this).createSimpleBulletin(androidx.core.content.ContextCompat.getDrawable(getContext(),
+                        starred ? R.drawable.parva_star_filled : R.drawable.parva_star_outline),
+                        getString(starred ? R.string.FavoriteMessageAdded : R.string.FavoriteMessageRemoved)).show();
             }
         }
 
@@ -46104,6 +46193,12 @@ public class ChatActivity extends BaseFragment implements
             }
             updateActionModeTitle();
             updateVisibleRows();
+        } else if (id == nkheaderbtn_parva_lock) {
+            final boolean wasLocked = tw.nekomimi.nekogram.helpers.ChatLock.isLocked(currentAccount, dialog_id);
+            tw.nekomimi.nekogram.helpers.ChatLock.toggleFromChat(this, currentAccount, dialog_id, () -> {
+                BulletinFactory.of(this).createSimpleBulletin(androidx.core.content.ContextCompat.getDrawable(getContext(), R.drawable.msg_secret),
+                        LocaleController.getString(wasLocked ? R.string.ChatLockRemoved : R.string.ChatLockAdded)).show();
+            });
         } else if (id == nkheaderbtn_zibi) {
             getMessageHelper().createDeleteHistoryAlert(ChatActivity.this, currentChat, forumTopic, mergeDialogId, themeDelegate);
 //            Context context = getParentActivity();

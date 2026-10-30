@@ -6982,6 +6982,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     @Override
     protected void onStop() {
         super.onStop();
+        tw.nekomimi.nekogram.helpers.ChatLock.relockAll(); // locked chats ask again after the app was in the background
         GramWalletStorageAuth.onActivityStopped(this);
         isStarted = false;
         pipActivityHandler.onStop();

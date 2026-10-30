@@ -2880,6 +2880,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @Override
     public boolean onFragmentCreate() {
         super.onFragmentCreate();
+        tw.nekomimi.nekogram.helpers.ContactChanges.start(currentAccount);
 
         getConnectionsManager().updateDcSettings();
         getMessagesController().getBlockedPeers(true);
@@ -3972,6 +3973,24 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                             })
                             .addIf(!defaultTab, R.drawable.msg_delete, LocaleController.getString(R.string.FilterDeleteItem), true, () -> {
                                 showDeleteAlert(dialogFilter);
+                            })
+                            // Hide the "All chats" tab from its own menu; any other tab's menu brings it back.
+                            .addIf(getMessagesController().getDialogFilters().size() > 1, R.drawable.msg_archive_hide,
+                                    LocaleController.getString(NekoConfig.hideAllTab.Bool() ? R.string.ShowAllChatsTab : R.string.HideAllChatsTab), () -> {
+                                final boolean hide = !NekoConfig.hideAllTab.Bool();
+                                if (hide && !defaultTab) {
+                                    return;
+                                }
+                                NekoConfig.hideAllTab.setConfigBool(hide);
+                                if (filterTabsView != null) {
+                                    filterTabsView.toggleAllTabs(!hide);
+                                    if (hide) {
+                                        filterTabsView.selectFirstTab();
+                                    }
+                                }
+                                getNotificationCenter().postNotificationName(NotificationCenter.dialogFiltersUpdated);
+                                BulletinFactory.of(DialogsActivity.this).createSimpleBulletin(R.raw.contact_check,
+                                        LocaleController.getString(hide ? R.string.AllChatsTabHidden : R.string.AllChatsTabShown)).show();
                             })
                             .setDimAlpha(0x60)
                             .setGravity(Gravity.LEFT)
@@ -7079,6 +7098,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     filterTabsView.resetTabId();
                     selectWithStableId = true;
                 }
+                filterTabsView.showAllChatsTab = !NekoConfig.hideAllTab.Bool();
                 filterTabsView.removeTabs();
                 for (Integer tabId : DialogsRecentForwardHelper.buildTabOrder(filters.size(), FORWARD_RECENT_TAB_ID, showForwardRecentTab)) {
                     if (tabId == FORWARD_RECENT_TAB_ID) {

@@ -51,6 +51,15 @@ public class NekoConfig {
     public static boolean showTimedViewButton;
     public static boolean showEditButton;
     public static boolean showNoQuoteForwardButton;
+    public static boolean showSaveButton;
+    /** Tap on an avatar in the chat list: 0 Telegram's default (stories, else the chat), or one of AVATAR_TAP_*. */
+    public static int avatarTapAction;
+    /** Avatar corners in the chat list and chats: 50 = circle (Telegram's), 0 = square. */
+    public static int avatarRoundness;
+    public static final int AVATAR_TAP_CHAT = 1;
+    public static final int AVATAR_TAP_PROFILE = 2;
+    public static final int AVATAR_TAP_PHOTO = 3;
+    public static boolean showFavoriteButton;
     public static final String channelAliasPrefix = "channelAliasPrefix_";
 
     private static boolean configLoaded = false;
@@ -157,7 +166,7 @@ public class NekoConfig {
     public static ConfigItem ccToLang = addConfig("opencc_to_lang", configTypeString, "");
     public static ConfigItem ccInputLang = addConfig("opencc_input_to_lang", configTypeString, "");
 
-    public static ConfigItem tabsTitleType = addConfig("TabTitleType", configTypeInt, NekoXConfig.TITLE_TYPE_TEXT);
+    public static ConfigItem tabsTitleType = addConfig("TabTitleType", configTypeInt, NekoXConfig.TITLE_TYPE_MIX);
     public static ConfigItem confirmAVMessage = addConfig("ConfirmAVMessage", configTypeBool, false);
     public static ConfigItem askBeforeCall = addConfig("AskBeforeCalling", configTypeBool, false);
     public static ConfigItem disableNumberRounding = addConfig("DisableNumberRounding", configTypeBool, false);
@@ -312,6 +321,10 @@ public class NekoConfig {
             showTimedViewButton = preferences.getBoolean("showTimedViewButton", true);
             showEditButton = preferences.getBoolean("showEditButton", false);
             showNoQuoteForwardButton = preferences.getBoolean("showNoQuoteForwardButton", false);
+            showSaveButton = preferences.getBoolean("showSaveButton", false);
+            avatarTapAction = preferences.getInt("avatarTapAction", 0);
+            avatarRoundness = preferences.getInt("avatarRoundness", 50);
+            showFavoriteButton = preferences.getBoolean("showFavoriteButton", false);
 
             NkmrConfig.compact();
             configLoaded = true;
@@ -347,6 +360,10 @@ public class NekoConfig {
 
     public static void putString(String key, String value) {
         preferences.edit().putString(key, value).apply();
+    }
+
+    public static void putInt(String key, int value) {
+        preferences.edit().putInt(key, value).apply();
     }
     public static void toggleGhostMode() {
         setGhostMode(!isGhostModeActive());
@@ -494,7 +511,7 @@ public class NekoConfig {
             ccInputLang.setConfigString(preferences.getString("opencc_input_to_lang", null));
 
         if (preferences.contains("tabsTitleType"))
-            tabsTitleType.setConfigInt(preferences.getInt("tabsTitleType", NekoXConfig.TITLE_TYPE_TEXT));
+            tabsTitleType.setConfigInt(preferences.getInt("tabsTitleType", NekoXConfig.TITLE_TYPE_MIX));
         if (preferences.contains("confirmAVMessage"))
             confirmAVMessage.setConfigBool(preferences.getBoolean("confirmAVMessage", false));
         if (preferences.contains("askBeforeCall"))

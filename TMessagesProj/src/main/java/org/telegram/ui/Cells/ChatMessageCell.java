@@ -1702,8 +1702,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     public static final int QUICK_TIMED_VIEW = 2;
     public static final int QUICK_EDIT = 3;
     public static final int QUICK_FORWARD_NOQUOTE = 4;
-    private final int[] quickButtons = new int[4];
-    private final float[] quickButtonY = new float[4];
+    public static final int QUICK_SAVE = 5;
+    public static final int QUICK_FAVORITE = 6;
+    private final int[] quickButtons = new int[6];
+    private final float[] quickButtonY = new float[6];
     private int quickButtonCount;
     private int quickButtonsShown;
     private float quickButtonX;
@@ -1980,8 +1982,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         backgroundDrawable = new MessageBackgroundDrawable(this);
         avatarImage = new ImageReceiver();
         avatarImage.setAllowLoadingOnAttachedOnly(true);
-        avatarImage.setRoundRadius(dp(21));
+        avatarImage.setRoundRadius(tw.nekomimi.nekogram.helpers.ParvaLook.avatarRadius(dp(21)));
         avatarDrawable = new AvatarDrawable();
+        if (tw.nekomimi.nekogram.helpers.ParvaLook.customAvatarShape()) {
+            avatarDrawable.setRoundRadius(tw.nekomimi.nekogram.helpers.ParvaLook.avatarRadius(dp(21)));
+        }
         replyImageReceiver = new ImageReceiver(this);
         replyImageReceiver.setAllowLoadingOnAttachedOnly(true);
         replyImageReceiver.setRoundRadius(dp(4));
@@ -21369,6 +21374,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             (!transitionParams.transitionBotButtons.isEmpty() && transitionParams.animateBotButtonsChanged) ||
             !botButtons.isEmpty() ||
             drawSideButton != 0 ||
+            quickButtonCount > 0 ||
             drawNameLayout && nameLayout != null && currentNameEmojiStatusDrawable != null && !currentNameEmojiStatusDrawable.isEmpty() ||
             animatedEmojiStack != null && !animatedEmojiStack.holders.isEmpty() ||
             currentNameStatusDrawable != null && !currentNameStatusDrawable.isEmpty() ||
@@ -21783,6 +21789,14 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     && !MessagesController.getInstance(currentAccount).isPeerNoForwardsWithOverride(messageObject.getDialogId())) {
                 quickButtons[quickButtonCount++] = QUICK_FORWARD_NOQUOTE;
             }
+            if (tw.nekomimi.nekogram.NekoConfig.showSaveButton && !messageObject.isTimedMedia() && messageObject.type != MessageObject.TYPE_PHONE_CALL
+                    && messageObject.getDialogId() != UserConfig.getInstance(currentAccount).getClientUserId()
+                    && !MessagesController.getInstance(currentAccount).isPeerNoForwardsWithOverride(messageObject.getDialogId())) {
+                quickButtons[quickButtonCount++] = QUICK_SAVE;
+            }
+            if (tw.nekomimi.nekogram.NekoConfig.showFavoriteButton) {
+                quickButtons[quickButtonCount++] = QUICK_FAVORITE;
+            }
         }
     }
 
@@ -21808,6 +21822,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 return R.drawable.msg_view_file;
             case QUICK_EDIT:
                 return R.drawable.msg_edit;
+            case QUICK_SAVE:
+                return R.drawable.parva_cloud;
+            case QUICK_FAVORITE:
+                return tw.nekomimi.nekogram.helpers.FavoriteMessages.isFavorite(currentAccount, currentMessageObject) ? R.drawable.parva_star_filled : R.drawable.parva_star_outline;
             default:
                 return R.drawable.msg_forward_noquote;
         }
