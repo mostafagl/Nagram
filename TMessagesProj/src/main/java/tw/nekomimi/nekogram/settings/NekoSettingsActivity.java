@@ -89,7 +89,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
         View fragmentView = super.createView(context);
 
         actionBar.createMenu()
-                .addItem(1, R.drawable.ic_ab_search)
+                .addItem(1, R.drawable.outline_header_search)
                 .setOnClickListener(v -> presentFragment(new SettingsSearchActivity()));
         actionBar.createMenu()
                 .addItem(0, R.drawable.cloud_sync)

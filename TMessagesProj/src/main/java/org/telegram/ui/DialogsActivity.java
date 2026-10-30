@@ -13997,13 +13997,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         });
         io.addIf(NekoConfig.showKillButtonInDrawer, R.drawable.msg_cancel, getString(R.string.KillApp), () -> {
             // Closes the app completely, including the background connection.
-            final Activity activity = getParentActivity();
+            final Activity parent = getParentActivity();
             try {
                 ApplicationLoader.applicationContext.stopService(new android.content.Intent(ApplicationLoader.applicationContext, org.telegram.messenger.NotificationsService.class));
             } catch (Exception ignore) {
             }
-            if (activity != null) {
-                activity.finishAffinity();
+            if (parent != null) {
+                parent.finishAffinity();
             }
             AndroidUtilities.runOnUIThread(() -> android.os.Process.killProcess(android.os.Process.myPid()), 300);
         });
