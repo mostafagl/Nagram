@@ -316,8 +316,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           set -e
+          # A newer commit on the branch gets its own build; publishing this one would be a stale duplicate.
+          HEAD_SHA=$(gh api "repos/$REPO/commits/$BRANCH" --jq .sha)
+          if [ "$HEAD_SHA" != "$SHA" ]; then
+            echo "::notice::$BRANCH has moved on to ${HEAD_SHA:0:8}; not publishing ${SHA:0:8}."
+            exit 0
+          fi
           TS=$(cat apk/build_timestamp.txt)
           TAG="build-$TS"
           mkdir out
