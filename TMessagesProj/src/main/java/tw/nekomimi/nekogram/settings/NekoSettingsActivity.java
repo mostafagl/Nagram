@@ -63,6 +63,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
     private int generalRow;
     private int accountRow;
     private int chatRow;
+    private int ghostRow;
     private int passcodeRow;
     private int experimentRow;
     private int debugRow;
@@ -88,6 +89,9 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
         View fragmentView = super.createView(context);
 
         actionBar.createMenu()
+                .addItem(1, R.drawable.ic_ab_search)
+                .setOnClickListener(v -> presentFragment(new SettingsSearchActivity()));
+        actionBar.createMenu()
                 .addItem(0, R.drawable.cloud_sync)
                 .setOnClickListener(v -> CloudSettingsHelper.getInstance().showDialog(NekoSettingsActivity.this));
 
@@ -102,6 +106,8 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
             presentFragment(new NekoAccountSettingsActivity());
         } else if (position == chatRow) {
             presentFragment(new NekoChatSettingsActivity());
+        } else if (position == ghostRow) {
+            presentFragment(new NekoGhostModeActivity());
         } else if (position == passcodeRow) {
             presentFragment(new NekoPasscodeSettingsActivity());
         } else if (position == experimentRow) {
@@ -163,6 +169,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
         generalRow = addRow("general");
         accountRow = addRow("account");
         chatRow = addRow("chat");
+        ghostRow = addRow("ghost");
         if (!PasscodeHelper.isSettingsHidden()) {
             passcodeRow = addRow("passcode");
         } else {
@@ -173,8 +180,8 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
         categories2Row = addRow();
 
         aboutRow = addRow("about");
-        // Upstream Nagram's channels and translation site don't belong to this app.
-        channelRow = -1;
+        // The developer's channel; upstream Nagram's tips channel and translation site don't belong to this app.
+        channelRow = addRow("channel");
         channelTipsRow = -1;
         sourceCodeRow = addRow("sourceCode");
         translationRow = -1;
@@ -240,6 +247,8 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.Account), R.drawable.msg_contacts, divider);
                     } else if (position == chatRow) {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.Chat), R.drawable.msg_discussion, divider);
+                    } else if (position == ghostRow) {
+                        textCell.setTextAndIcon(LocaleController.getString(R.string.GhostAndSpyTitle), R.drawable.icon_ghost, divider);
                     } else if (position == passcodeRow) {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.PasscodeNeko), R.drawable.msg_secret, divider);
                     } else if (position == experimentRow) {

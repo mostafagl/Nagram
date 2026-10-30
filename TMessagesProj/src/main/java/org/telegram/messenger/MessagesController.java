@@ -14665,6 +14665,10 @@ public class MessagesController extends BaseController implements NotificationCe
         if (messageObject.scheduled) {
             return;
         }
+        if (NekoConfig.keepTimedMedia && !messageObject.isOut() && messageObject.isTimedMedia()) {
+            // Reading a timed or view-once message's content starts its timer on the server.
+            return;
+        }
         ArrayList<Integer> arrayList = new ArrayList<>();
         if (messageObject.messageOwner.mentioned) {
             getMessagesStorage().markMentionMessageAsRead(-messageObject.messageOwner.peer_id.channel_id, messageObject.getId(), messageObject.getDialogId());

@@ -157,6 +157,26 @@ public class SettingsHelper {
                 items.add(result);
             }
         }
+        // Ghost mode & spy (AyuGram's options).
+        final String ghostTitle = LocaleController.getString(R.string.GhostAndSpyTitle);
+        for (int i = 0; i < tw.nekomimi.nekogram.settings.NekoGhostModeActivity.SEARCH_KEYS.length; i++) {
+            final String key = tw.nekomimi.nekogram.settings.NekoGhostModeActivity.SEARCH_KEYS[i];
+            final int[] texts = tw.nekomimi.nekogram.settings.NekoGhostModeActivity.SEARCH_ROWS[i];
+            final SettingsSearchResult result = new SettingsSearchResult(30000 + i, LocaleController.getString(texts[0]), n_title, ghostTitle, R.drawable.icon_ghost, () -> {
+                final tw.nekomimi.nekogram.settings.NekoGhostModeActivity f = new tw.nekomimi.nekogram.settings.NekoGhostModeActivity();
+                callback.presentFragment(f);
+                AndroidUtilities.runOnUIThread(() -> f.scrollToRow(key, null), 300);
+            });
+            result.description = texts[1] != 0 ? LocaleController.getString(texts[1]) : null;
+            items.add(result);
+        }
+        // Parvagram's own pages.
+        items.add(new SettingsSearchResult(30100, LocaleController.getString(R.string.ProxySettings), n_title, null, R.drawable.proxy_check,
+                () -> callback.presentFragment(new org.telegram.ui.ProxyListActivity())));
+        items.add(new SettingsSearchResult(30101, LocaleController.getString(R.string.V2RaySubscriptions), n_title, LocaleController.getString(R.string.ProxySettings), R.drawable.proxy_check,
+                () -> callback.presentFragment(new org.telegram.ui.V2RaySubscriptionsActivity())));
+        items.add(new SettingsSearchResult(30102, LocaleController.getString(R.string.CustomFontTitle), n_title, null, R.drawable.msg_photo_text_regular,
+                () -> callback.presentFragment(new xyz.nextalone.nagram.font.FontSettingsActivity())));
         return items;
     }
 }

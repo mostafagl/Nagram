@@ -530,6 +530,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     private ActionBarMenuSubItem proxyMenuSubItem;
     private ActionBarMenuItem proxyItem;
     private ProxyDrawable proxyItemDrawable;
+    private ActionBarMenuItem ghostItem;
     private HintView2 storyHint;
     private HintView2 storyPremiumHint;
     private boolean canShowStoryHint;
@@ -3326,6 +3327,23 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             proxyItem = menu.addItem(2, proxyItemDrawable);
             proxyItem.setContentDescription(getString(R.string.ProxySettings));
             proxyItem.setOnClickListener(v -> presentFragment(new ProxyListActivity()));
+
+            // Ghost mode: tap toggles it, long press opens its settings.
+            ghostItem = menu.addItem(107, R.drawable.icon_ghost);
+            ghostItem.setContentDescription(getString(R.string.GhostMode));
+            ghostItem.setOnClickListener(v -> {
+                NekoConfig.toggleGhostMode();
+                tw.nekomimi.nekogram.utils.AyuGhostUtils.setAllowReadPacket(false, -1);
+                updateGhostItem();
+                getNotificationCenter().postNotificationName(NotificationCenter.mainUserInfoChanged);
+                BulletinFactory.of(this).createSimpleBulletin(R.drawable.icon_ghost,
+                        getString(NekoConfig.isGhostModeActive() ? R.string.GhostModeTurnedOn : R.string.GhostModeTurnedOff)).show();
+            });
+            ghostItem.setOnLongClickListener(v -> {
+                presentFragment(new NekoGhostModeActivity());
+                return true;
+            });
+            updateGhostItem();
 
             downloadsItem = menu.addItem(3, new ColorDrawable(Color.TRANSPARENT));
             downloadsItem.addView(downloadProgressIcon = new DownloadProgressIcon(currentAccount, context));
@@ -13959,6 +13977,18 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         io.addIf(NekoConfig.showGhostToggleInDrawer, R.drawable.icon_ghost, getString(R.string.GhostMode), () -> {
             presentFragment(new NekoGhostModeActivity());
         });
+        io.addIf(NekoConfig.showKillButtonInDrawer, R.drawable.msg_cancel, getString(R.string.KillApp), () -> {
+            // Closes the app completely, including the background connection.
+            final Activity activity = getParentActivity();
+            try {
+                ApplicationLoader.applicationContext.stopService(new android.content.Intent(ApplicationLoader.applicationContext, org.telegram.messenger.NotificationsService.class));
+            } catch (Exception ignore) {
+            }
+            if (activity != null) {
+                activity.finishAffinity();
+            }
+            AndroidUtilities.runOnUIThread(() -> android.os.Process.killProcess(android.os.Process.myPid()), 300);
+        });
         if (ApplicationLoader.applicationLoaderInstance != null) {
             ApplicationLoader.applicationLoaderInstance.addItemOptions(io);
         }
@@ -14318,6 +14348,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         checkUi_itemSpeedVisibility();
         checkUi_itemPasscodeVisibility();
         checkUi_itemProxyVisibility();
+        checkUi_itemGhostVisibility();
         checkUi_itemSearchVisibility();
         checkUi_itemScanVisibility();
     }
@@ -14349,6 +14380,25 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         final float factor3 = 1f - animatorDoneButtonVisible.getFloatValue();
         final float factor = factor0 * factor1 * factor2 * factor3;
         FragmentFloatingButton.setAnimatedVisibility(passcodeItem, factor);
+    }
+
+    private void updateGhostItem() {
+        if (ghostItem == null) {
+            return;
+        }
+        final boolean active = NekoConfig.isGhostModeActive();
+        ghostItem.setIconColor(active ? getThemedColor(Theme.key_featuredStickers_addButton) : getThemedColor(Theme.key_actionBarDefaultIcon));
+    }
+
+    private void checkUi_itemGhostVisibility() {
+        if (ghostItem == null) {
+            return;
+        }
+        final float factor0 = NekoConfig.showGhostToggleInActionBar ? 1 : 0;
+        final float factor1 = 1f - animatorSearchVisible.getFloatValue();
+        final float factor2 = 1f - getRightSlidingProgress();
+        final float factor3 = 1f - animatorDoneButtonVisible.getFloatValue();
+        FragmentFloatingButton.setAnimatedVisibility(ghostItem, factor0 * factor1 * factor2 * factor3);
     }
 
     private void checkUi_itemProxyVisibility() {

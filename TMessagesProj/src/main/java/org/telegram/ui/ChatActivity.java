@@ -476,6 +476,7 @@ public class ChatActivity extends BaseFragment implements
     public final static int nkbtn_sticker_copy = 2031;
     public final static int nkbtn_sticker_copy_png = 2032;
     public final static int nkbtn_edit_history = 2033;
+    public final static int nkbtn_timed_viewed = 2034;
 
 
     public int shareAlertDebugMode = DEBUG_SHARE_ALERT_MODE_NORMAL;
@@ -16427,6 +16428,23 @@ public class ChatActivity extends BaseFragment implements
     }
 
     private Runnable sendSecretMessageRead(MessageObject messageObject, boolean readNow) {
+        return sendSecretMessageRead(messageObject, readNow, false);
+    }
+
+    /** {@code force}: the user chose to let the timer start, even with "keep timed media" on. */
+    private Runnable sendSecretMessageRead(MessageObject messageObject, boolean readNow, boolean force) {
+        if (NekoConfig.keepTimedMedia && !force) {
+            return null; // marking it read would start the self-destruct timer
+        }
+        if (force && messageObject != null && !messageObject.isOut() && messageObject.isTimedMedia() && messageObject.messageOwner.destroyTime == 0) {
+            final int ttl = messageObject.messageOwner.ttl > 0 && messageObject.messageOwner.ttl != 0x7FFFFFFF ? messageObject.messageOwner.ttl : 0;
+            if (currentEncryptedChat != null) {
+                getMessagesController().markMessageAsRead(dialog_id, messageObject.messageOwner.random_id, ttl);
+            } else {
+                getMessagesController().markMessageAsRead2(dialog_id, messageObject.getId(), null, ttl, 0, false);
+            }
+            return null;
+        }
         if (messageObject == null || messageObject.isOut() || !messageObject.isSecretMedia() || messageObject.messageOwner.destroyTime != 0 || messageObject.messageOwner.ttl <= 0) {
             return null;
         }
@@ -16456,6 +16474,9 @@ public class ChatActivity extends BaseFragment implements
     }
 
     private Runnable sendSecretMediaDelete(MessageObject messageObject) {
+        if (NekoConfig.keepTimedMedia) {
+            return null;
+        }
         if (messageObject == null || messageObject.isOut() || !messageObject.isSecretMedia() || messageObject.messageOwner.ttl != 0x7FFFFFFF) {
             return null;
         }
@@ -23062,7 +23083,8 @@ public class ChatActivity extends BaseFragment implements
                 int mode = (Integer) args[3];
                 if (mode != chatMode && chatMode != MODE_SAVED && chatMode != MODE_SUGGESTIONS) {
                     if (chatMode != MODE_SCHEDULED && mode == MODE_SCHEDULED && !isPaused && LaunchActivity.getSafeLastFragment() == this && messagePreviewParams == null) {
-                        if (!arr.isEmpty() && arr.get(0).getId() < 0) {
+                        // Not for messages that ghost mode's "send as scheduled" scheduled on its own.
+                        if (!arr.isEmpty() && arr.get(0).getId() < 0 && !tw.nekomimi.nekogram.utils.AyuGhostUtils.getAutomaticallyScheduled()) {
                             openScheduledMessages(arr.get(0).getId(), arr.get(0).messageOwner != null && arr.get(0).messageOwner.video_processing_pending);
                         }
                     }
@@ -46306,6 +46328,13 @@ public class ChatActivity extends BaseFragment implements
                 builder.show();
                 break;
             }
+            case nkbtn_timed_viewed: {
+                if (selectedObject != null) {
+                    tw.nekomimi.nekogram.utils.AyuGhostUtils.setAllowReadPacket(true, 1);
+                    sendSecretMessageRead(selectedObject, true, true);
+                }
+                break;
+            }
             case nkbtn_edit_history: {
                 if (selectedObject != null) {
                     xyz.nextalone.nagram.history.MessageEditHistoryDialog.show(this, selectedObject);
@@ -48841,6 +48870,13 @@ public class ChatActivity extends BaseFragment implements
                             options.add(nkbtn_savemessage);
                             icons.add(R.drawable.msg_saved);
                         }
+                    }
+                    if (NekoConfig.keepTimedMedia && !selectedObject.isOut() && selectedObject.isTimedMedia()
+                            && selectedObject.messageOwner.destroyTime == 0) {
+                        // Kept timed media: let the sender see it was opened (starts the timer).
+                        items.add(LocaleController.getString(R.string.TimedMediaMarkViewed));
+                        options.add(nkbtn_timed_viewed);
+                        icons.add(R.drawable.msg_autodelete);
                     }
                     if (selectedObjectGroup == null
                             && xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, selectedObject) != 0) {

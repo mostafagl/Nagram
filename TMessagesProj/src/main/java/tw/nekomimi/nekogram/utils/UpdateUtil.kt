@@ -10,7 +10,7 @@ import org.telegram.ui.ActionBar.AlertDialog
 
 object UpdateUtil {
 
-    const val channelUsername = "nagram_channel"
+    const val channelUsername = "gr_connect"
     const val channelUsernameTips = "NagramTips"
     const val wikiUrl = "https://na-wiki.xtaolabs.com"
 

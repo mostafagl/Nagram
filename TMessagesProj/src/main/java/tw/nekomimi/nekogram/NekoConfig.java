@@ -34,6 +34,18 @@ public class NekoConfig {
     public static boolean sendReadStoryPackets;
     public static boolean markReadAfterSend;
     public static boolean showGhostToggleInDrawer;
+    public static boolean showGhostToggleInActionBar;
+    public static boolean useScheduledMessages;
+    /** Timed ("self-destructing") photos, videos and voice: shown normally, kept, timer not started. */
+    public static boolean keepTimedMedia;
+    public static boolean saveDeletedMedia;
+    public static boolean saveMediaPrivate;
+    public static boolean saveMediaGroups;
+    public static boolean saveMediaChannels;
+    public static boolean saveMediaBots;
+    /** Text shown before the time of deleted messages; empty: the bin icon. */
+    public static String deletedMark;
+    public static boolean showKillButtonInDrawer;
     public static final String channelAliasPrefix = "channelAliasPrefix_";
 
     private static boolean configLoaded = false;
@@ -89,7 +101,7 @@ public class NekoConfig {
     public static ConfigItem unlimitedFavedStickers = addConfig("UnlimitedFavoredStickers", configTypeBool, false);
     public static ConfigItem unlimitedPinnedDialogs = addConfig("UnlimitedPinnedDialogs", configTypeBool, false);
     public static ConfigItem disablePhotoSideAction = addConfig("DisablePhotoViewerSideAction", configTypeBool, false);
-    public static ConfigItem openArchiveOnPull = addConfig("OpenArchiveOnPull", configTypeBool, false);
+    public static ConfigItem openArchiveOnPull = addConfig("OpenArchiveOnPull", configTypeBool, true);
     public static ConfigItem disablePullDownSearch = addConfig("DisablePullDownSearch", configTypeBool, false);
     public static ConfigItem hideKeyboardOnChatScroll = addConfig("HideKeyboardOnChatScroll", configTypeBool, false);
     public static ConfigItem avatarBackgroundBlur = addConfig("BlurAvatarBackground", configTypeBool, false);
@@ -123,7 +135,7 @@ public class NekoConfig {
 
     public static ConfigItem ignoreMutedCount = addConfig("IgnoreMutedCount", configTypeBool, true);
 //    public static ConfigItem useDefaultTheme = addConfig("UseDefaultTheme", configTypeBool, false);
-    public static ConfigItem showIdAndDc = addConfig("ShowIdAndDc", configTypeBool, false);
+    public static ConfigItem showIdAndDc = addConfig("ShowIdAndDc", configTypeBool, true);
 
     public static ConfigItem cachePath = addConfig("cache_path", configTypeString, "");
     public static ConfigItem customSavePath = addConfig("customSavePath", configTypeString, "Parvagram");
@@ -177,7 +189,7 @@ public class NekoConfig {
     public static ConfigItem disableChoosingSticker = addConfig("disableChoosingSticker", configTypeBool, false);
     public static ConfigItem hideGroupSticker = addConfig("hideGroupSticker", configTypeBool, false);
     public static ConfigItem disablePremiumStickerAnimation = addConfig("disablePremiumStickerAnimation", configTypeBool, false);
-    public static ConfigItem hideSponsoredMessage = addConfig("hideSponsoredMessage", configTypeBool, false);
+    public static ConfigItem hideSponsoredMessage = addConfig("hideSponsoredMessage", configTypeBool, true);
     public static ConfigItem rememberAllBackMessages = addConfig("rememberAllBackMessages", configTypeBool, false);
     public static ConfigItem hideSendAsChannel = addConfig("hideSendAsChannel", configTypeBool, false);
     public static ConfigItem showSpoilersDirectly = addConfig("showSpoilersDirectly", configTypeBool, false);
@@ -281,6 +293,16 @@ public class NekoConfig {
             markReadAfterSend = preferences.getBoolean("markReadAfterSend", true);
             // ~ Ghost other options
             showGhostToggleInDrawer = preferences.getBoolean("showGhostToggleInDrawer", false);
+            showGhostToggleInActionBar = preferences.getBoolean("showGhostToggleInActionBar", true);
+            useScheduledMessages = preferences.getBoolean("useScheduledMessages", false);
+            keepTimedMedia = preferences.getBoolean("keepTimedMedia", true);
+            saveDeletedMedia = preferences.getBoolean("saveDeletedMedia", true);
+            saveMediaPrivate = preferences.getBoolean("saveMediaPrivate", true);
+            saveMediaGroups = preferences.getBoolean("saveMediaGroups", true);
+            saveMediaChannels = preferences.getBoolean("saveMediaChannels", false);
+            saveMediaBots = preferences.getBoolean("saveMediaBots", false);
+            deletedMark = preferences.getString("deletedMark", "");
+            showKillButtonInDrawer = preferences.getBoolean("showKillButtonInDrawer", false);
 
             NkmrConfig.compact();
             configLoaded = true;
@@ -305,6 +327,10 @@ public class NekoConfig {
 
     public static void putBoolean(String key, boolean value) {
         preferences.edit().putBoolean(key, value).apply();
+    }
+
+    public static void putString(String key, String value) {
+        preferences.edit().putString(key, value).apply();
     }
     public static void toggleGhostMode() {
         setGhostMode(!isGhostModeActive());

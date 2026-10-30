@@ -482,6 +482,12 @@ private final AbstractConfigCell defaultHlsVideoQualityRow = cellGroup.appendCel
                 }
             } else if (key.equals(NaConfig.INSTANCE.getSwitchStyle().getKey())) {
                 Switch.invalidateAll();
+            } else if (key.equals(NekoConfig.openArchiveOnPull.getKey())) {
+                // Pulling opens the archive only while it is hidden above the list.
+                if ((boolean) newValue && !SharedConfig.archiveHidden) {
+                    SharedConfig.toggleArchiveHidden();
+                    getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
+                }
             } else if (key.equals(NekoConfig.inappCamera.getKey())) {
                 SharedConfig.setInappCamera((boolean) newValue);
                 tooltip.showWithAction(0, UndoView.ACTION_NEED_RESATRT, null, null);

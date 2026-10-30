@@ -241,6 +241,7 @@ public final class MessageHistoryController {
                     try {
                         for (Snapshot snap : snaps) {
                             storeDeleted(snap);
+                            keepMediaCopy(snap);
                         }
                         trimDeleted();
                     } catch (Throwable e) {
@@ -250,6 +251,55 @@ public final class MessageHistoryController {
                 notifyChanged(account);
             });
         }
+    }
+
+    /** Folder for copies of deleted messages' media: Download/Parvagram/Saved Attachments. */
+    public static File savedAttachmentsDir() {
+        return new File(new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "Parvagram"), "Saved Attachments");
+    }
+
+    /**
+     * Copies the downloaded media of a deleted message out of the cache, so clearing the cache
+     * doesn't lose it. Only media already on the device can be kept: once a message is deleted,
+     * Telegram no longer serves its file.
+     */
+    private static void keepMediaCopy(Snapshot snap) {
+        if (!tw.nekomimi.nekogram.NekoConfig.saveDeletedMedia || TextUtils.isEmpty(snap.mediaPath) || !isMediaKeptFor(snap.account, snap.dialogId)) {
+            return;
+        }
+        try {
+            final File source = new File(snap.mediaPath);
+            if (!source.isFile() || source.length() == 0) {
+                return;
+            }
+            final File dir = savedAttachmentsDir();
+            if (!dir.isDirectory() && !dir.mkdirs()) {
+                return;
+            }
+            final File target = new File(dir, snap.dialogId + "_" + snap.messageId + "_" + source.getName());
+            if (target.exists()) {
+                return;
+            }
+            AndroidUtilities.copyFile(source, target);
+        } catch (Throwable e) {
+            FileLog.e(e);
+        }
+    }
+
+    private static boolean isMediaKeptFor(int account, long dialogId) {
+        final org.telegram.messenger.MessagesController controller = org.telegram.messenger.MessagesController.getInstance(account);
+        if (dialogId > 0) {
+            final TLRPC.User user = controller.getUser(dialogId);
+            if (user != null && user.bot) {
+                return tw.nekomimi.nekogram.NekoConfig.saveMediaBots;
+            }
+            return tw.nekomimi.nekogram.NekoConfig.saveMediaPrivate;
+        }
+        final TLRPC.Chat chat = controller.getChat(-dialogId);
+        if (org.telegram.messenger.ChatObject.isChannelAndNotMegaGroup(chat)) {
+            return tw.nekomimi.nekogram.NekoConfig.saveMediaChannels;
+        }
+        return tw.nekomimi.nekogram.NekoConfig.saveMediaGroups;
     }
 
     private static long countVersions(Snapshot snap) {

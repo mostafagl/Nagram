@@ -581,17 +581,8 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
             cellGroup.rows.remove(disableSendReadStoriesRow);
             cellGroup.rows.remove(dividerStory);
 
-            NekoConfig.localPremium.setConfigBool(false);
-            NekoConfig.setGhostMode(false);
-            NaConfig.INSTANCE.getForceCopy().setConfigBool(false);
-            NaConfig.INSTANCE.getDisableFlagSecure().setConfigBool(false);
-            NekoXConfig.disableFlagSecure = false;
-            NekoConfig.hideSponsoredMessage.setConfigBool(false);
-            NekoConfig.ignoreBlocked.setConfigBool(false);
-            NaConfig.INSTANCE.getRegexFiltersEnabled().setConfigBool(false);
-            NekoConfig.disableChatAction.setConfigBool(false);
-            NekoConfig.disableChoosingSticker.setConfigBool(false);
-            NaConfig.INSTANCE.getDisableSendReadStories().setConfigBool(false);
+            // Hiding these rows used to switch the features off too, which turned ghost mode and
+            // the other options off whenever this page was opened. They stay as they are now.
         }
 
         addRowsToMap();

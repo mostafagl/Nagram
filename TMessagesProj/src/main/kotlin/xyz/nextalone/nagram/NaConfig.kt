@@ -30,7 +30,7 @@ object NaConfig {
         addConfig(
             "ForceCopy",
             ConfigItem.configTypeBool,
-            false
+            true
         )
     val disableSecondAddress =
         addConfig(
@@ -611,7 +611,7 @@ object NaConfig {
         addConfig(
             "DisableFlagSecure",
             ConfigItem.configTypeBool,
-            false
+            true
         )
     val centerActionBarTitle =
         addConfig(
@@ -726,7 +726,7 @@ object NaConfig {
         addConfig(
             "ShowHiddenFeature",
             ConfigItem.configTypeBool,
-            false
+            true
         )
     val searchHashtagDefaultPageChannel =
         addConfig(

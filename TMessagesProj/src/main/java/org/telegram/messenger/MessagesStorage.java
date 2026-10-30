@@ -5976,6 +5976,9 @@ public class MessagesStorage extends BaseController {
     }
 
     public void createTaskForSecretChat(int chatId, int time, int readTime, int isOut, ArrayList<Long> random_ids) {
+        if (NekoConfig.keepTimedMedia) {
+            return; // keep self-destructing secret chat messages on this device
+        }
         storageQueue.postRunnable(() -> {
             SQLiteCursor cursor = null;
             SQLitePreparedStatement state = null;

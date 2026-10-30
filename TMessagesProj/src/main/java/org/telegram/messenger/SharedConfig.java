@@ -693,6 +693,13 @@ public class SharedConfig {
             directShareHash = preferences.getString("directShareHash2", null);
             useThreeLinesLayout = preferences.getBoolean("useThreeLinesLayout", false);
             archiveHidden = preferences.getBoolean("archiveHidden", false);
+            // "Open archive on pull" only works with the archive hidden above the list (revealed by
+            // pulling down); with it pinned in the list, pulling did nothing. Hide it once; the
+            // user can still pin it back from the archive's menu.
+            if (!archiveHidden && !preferences.getBoolean("parva_archive_pull_init", false) && tw.nekomimi.nekogram.NekoConfig.openArchiveOnPull.Bool()) {
+                archiveHidden = true;
+                preferences.edit().putBoolean("archiveHidden", true).putBoolean("parva_archive_pull_init", true).apply();
+            }
             distanceSystemType = preferences.getInt("distanceSystemType", 0);
             keepMedia = preferences.getInt("keep_media", CacheByChatsController.KEEP_MEDIA_ONE_MONTH);
             debugWebView = preferences.getBoolean("debugWebView", false);

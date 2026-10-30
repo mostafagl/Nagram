@@ -15783,22 +15783,19 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     if (result == null) {
                         continue;
                     }
-                    String title = " " + result.searchTitle.toLowerCase();
                     SpannableStringBuilder stringBuilder = null;
                     for (int i = 0; i < searchArgs.length; i++) {
                         if (searchArgs[i].length() != 0) {
-                            String searchString = searchArgs[i];
-                            int index = title.indexOf(searchString);
-                            if (index < 0 && translitArgs[i] != null) {
-                                searchString = translitArgs[i];
-                                index = title.indexOf(searchString);
+                            // Persian-aware: آ/ا, ی/ي, ک/ك, digits, half-spaces and case don't matter.
+                            int[] range = tw.nekomimi.nekogram.utils.PersianSearch.find(result.searchTitle, searchArgs[i]);
+                            if (range == null && translitArgs[i] != null) {
+                                range = tw.nekomimi.nekogram.utils.PersianSearch.find(result.searchTitle, translitArgs[i]);
                             }
-                            if (index >= 0) {
-                                index -= 1;
+                            if (range != null) {
                                 if (stringBuilder == null) {
                                     stringBuilder = new SpannableStringBuilder(result.searchTitle);
                                 }
-                                stringBuilder.setSpan(new ForegroundColorSpan(fragment.getThemedColor(Theme.key_windowBackgroundWhiteBlueText4)), index, index + searchString.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                                stringBuilder.setSpan(new ForegroundColorSpan(fragment.getThemedColor(Theme.key_windowBackgroundWhiteBlueText4)), range[0], range[1], Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                             } else {
                                 break;
                             }

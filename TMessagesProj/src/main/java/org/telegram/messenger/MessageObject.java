@@ -10143,7 +10143,8 @@ public class MessageObject {
     }
 
     public boolean needDrawBluredPreview() {
-        if (NekoXConfig.disableFlagSecure) {
+        if (NekoXConfig.disableFlagSecure && !hasExtendedMediaPreview()) {
+            // Paid media keeps its preview: its real content isn't available until paid for.
             return false;
         }
         if (isRepostPreview) {
@@ -10151,6 +10152,9 @@ public class MessageObject {
         }
         if (hasExtendedMediaPreview()) {
             return true;
+        } else if (NekoConfig.keepTimedMedia && !isOutOwner()) {
+            // Timed media received: shown and opened like normal media, nothing self-destructs.
+            return false;
         } else if (messageOwner instanceof TLRPC.TL_message_secret) {
             int ttl = Math.max(messageOwner.ttl, getMedia(messageOwner).ttl_seconds);
             return ttl > 0 && ((getMedia(messageOwner) instanceof TLRPC.TL_messageMediaPhoto || isVideo() || isGif()) && ttl <= 60 || isRoundVideo());
@@ -10162,6 +10166,20 @@ public class MessageObject {
 
     public boolean isSecret() {
         return messageOwner instanceof TLRPC.TL_message_secret;
+    }
+
+    /**
+     * Whether this is self-destructing or view-once media, regardless of settings that change how
+     * such media is shown (isSecretMedia() is false when screenshots are allowed).
+     */
+    public boolean isTimedMedia() {
+        final TLRPC.MessageMedia media = getMedia(messageOwner);
+        if (messageOwner instanceof TLRPC.TL_message_secret) {
+            return messageOwner.ttl > 0 && media != null && !(media instanceof TLRPC.TL_messageMediaEmpty) && !(media instanceof TLRPC.TL_messageMediaWebPage);
+        } else if (messageOwner instanceof TLRPC.TL_message) {
+            return media != null && media.ttl_seconds != 0 && (media instanceof TLRPC.TL_messageMediaPhoto || media instanceof TLRPC.TL_messageMediaDocument);
+        }
+        return false;
     }
 
     public boolean isSecretMedia() {

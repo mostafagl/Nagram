@@ -18758,7 +18758,12 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         }
         int historyIconExtra = 0;
         final int historyFlags = xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, currentMessageObject);
-        if (historyFlags != 0 && currentTimeString != null) {
+        final boolean customDeletedMark = (historyFlags & xyz.nextalone.nagram.history.MessageHistoryController.FLAG_DELETED) != 0
+                && !TextUtils.isEmpty(tw.nekomimi.nekogram.NekoConfig.deletedMark);
+        if (customDeletedMark && currentTimeString != null) {
+            // A mark of the user's choosing (e.g. "🧹" or "deleted") instead of the bin icon.
+            currentTimeString = TextUtils.concat(tw.nekomimi.nekogram.NekoConfig.deletedMark, " ", currentTimeString);
+        } else if (historyFlags != 0 && currentTimeString != null) {
             // A small pencil (edited, earlier versions kept) or bin (deleted by the sender) before
             // the time; tapping the time opens the message's history.
             final boolean deleted = (historyFlags & xyz.nextalone.nagram.history.MessageHistoryController.FLAG_DELETED) != 0;
