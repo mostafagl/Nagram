@@ -242,8 +242,10 @@ jobs:
           echo "App key certificate SHA-256: $EXPECTED"
           for f in $(find TMessagesProj/build/outputs/apk -name '*.apk'); do
             echo "== $f"
-            "$BT/apksigner" verify --verbose --print-certs "$f"
-            ACTUAL=$("$BT/apksigner" verify --print-certs "$f" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            OUT=$("$BT/apksigner" verify --verbose --print-certs "$f")
+            echo "$OUT" | grep -v '^WARNING'
+            # e.g. "V3.0 Signer: certificate SHA-256 digest: <hex>"; every signer must be the app's key.
+            ACTUAL=$(echo "$OUT" | sed -n 's/^.*[Ss]igner.* certificate SHA-256 digest: //p' | sort -u | tr '\n' ' ' | sed 's/ $//')
             if [ "$ACTUAL" != "$EXPECTED" ]; then
               echo "::error::$f is signed with $ACTUAL, not the app's key $EXPECTED"
               exit 1
