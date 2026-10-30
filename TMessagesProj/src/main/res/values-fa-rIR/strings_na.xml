@@ -600,6 +600,9 @@
     <string name="ParvaUpdateFailed">دریافت ناموفق بود (%1$s). اتصال را بررسی کنید یا پروکسی را روشن کنید و دوباره امتحان کنید.</string>
     <string name="ParvaUpdateHintTitle">نسخهٔ جدید: %1$s</string>
     <string name="ParvaUpdateHintText">برای دریافت و نصب به‌روزرسانی بزنید</string>
+    <string name="ParvaUpdateDownloadingProgress">در حال دریافت: %1$s · ✕ برای لغو</string>
+    <string name="ParvaUpdateTapToInstall">دریافت شد. برای نصب بزنید</string>
+    <string name="ParvaUpdateInBackground">به‌روزرسانی در پس‌زمینه دریافت می‌شود و می‌توانید به چت ادامه دهید. پیشرفت آن بالای فهرست چت‌ها نمایش داده می‌شود.</string>
     <string name="TimedMediaMarkedViewed">علامت «دیده شد» زده شد: فرستنده می‌بیند باز شده. نسخهٔ شما می‌ماند.</string>
     <string name="MessageButtonsTitle">دکمه‌های کنار پیام</string>
     <string name="MessageButtonsInfo">دکمه‌های گرد کنار حباب پیام برای انجام کار با یک ضربه. فقط روی پیام‌هایی دیده می‌شوند که آن کار برایشان ممکن است.</string>

@@ -3,16 +3,11 @@ package tw.nekomimi.nekogram.helpers;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import android.text.TextUtils;
-import android.util.TypedValue;
-import android.view.Gravity;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.core.content.FileProvider;
 
@@ -28,8 +23,6 @@ import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.AlertDialog;
-import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.utils.proxy.V2RayTransport;
 
 import java.io.ByteArrayOutputStream;
@@ -49,7 +42,7 @@ import java.util.regex.Pattern;
  * Updates from the app's GitHub releases, inside the app. Every CI build is published as a
  * pre-release tagged {@code build-<timestamp>}; publishing one as a full release (unticking
  * "pre-release") makes it GitHub's "latest release", which this checks for. A newer build than
- * the installed one is offered in the chat list, then downloaded and handed to the system
+ * the installed one is offered in the chat list, then downloaded in the background and handed to the system
  * installer, which installs it over this app (same package and signing key).
  */
 public final class ParvaUpdater {
@@ -307,7 +300,47 @@ public final class ParvaUpdater {
         throw new IOException("too many redirects");
     }
 
-    /** Asks, downloads with a progress dialog, then opens the system installer. */
+    private static volatile boolean downloading;
+    private static volatile long downloadDone, downloadTotal;
+    private static volatile long downloadedBuild;
+    private static long lastProgressPost;
+
+    private static File apkFile() {
+        final File dir = new File(ApplicationLoader.applicationContext.getCacheDir(), "media");
+        dir.mkdirs();
+        return new File(dir, "Parvagram-update.apk");
+    }
+
+    public static boolean isDownloading() {
+        return downloading;
+    }
+
+    /** Whether {@code release} is downloaded and only waits for the installer. */
+    public static boolean isDownloaded(Release release) {
+        return release != null && downloadedBuild == release.build && apkFile().exists();
+    }
+
+    /** "12 MB / 64 MB" for the chat list's update card while downloading. */
+    public static String getProgressText() {
+        final long done = downloadDone;
+        final long total = downloadTotal;
+        return total > 0
+                ? AndroidUtilities.formatFileSize(done) + " / " + AndroidUtilities.formatFileSize(total) + " (" + (done * 100 / total) + "%)"
+                : AndroidUtilities.formatFileSize(done);
+    }
+
+    public static void cancelDownload() {
+        cancelDownload = true;
+    }
+
+    private static void postState() {
+        AndroidUtilities.runOnUIThread(() -> NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.parvaUpdateAvailable));
+    }
+
+    /**
+     * Downloads in the background (progress shows in the update card at the top of the chat list,
+     * so chats stay usable), then opens the system installer.
+     */
     public static void startUpdate(Activity activity, Release release) {
         if (activity == null || release == null) {
             return;
@@ -327,82 +360,69 @@ public final class ParvaUpdater {
                     .show();
             return;
         }
-
-        final LinearLayout layout = new LinearLayout(activity);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(4), AndroidUtilities.dp(24), AndroidUtilities.dp(8));
-        final ProgressBar bar = new ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal);
-        bar.setIndeterminate(true);
-        bar.setProgressTintList(ColorStateList.valueOf(Theme.getColor(Theme.key_dialogLineProgress)));
-        bar.setIndeterminateTintList(ColorStateList.valueOf(Theme.getColor(Theme.key_dialogLineProgress)));
-        layout.addView(bar, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 8, 0, 8));
-        final TextView status = new TextView(activity);
-        status.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
-        status.setTextColor(Theme.getColor(Theme.key_dialogTextGray3));
-        status.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
-        status.setText(LocaleController.getString(R.string.ParvaUpdateDownloading));
-        layout.addView(status, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-
+        if (isDownloaded(release)) {
+            install(apkFile());
+            return;
+        }
+        if (downloading) {
+            Toast.makeText(activity, LocaleController.getString(R.string.ParvaUpdateInBackground), Toast.LENGTH_LONG).show();
+            return;
+        }
+        downloading = true;
         cancelDownload = false;
-        final AlertDialog dialog = new AlertDialog.Builder(activity)
-                .setTitle(LocaleController.getString(R.string.ParvaUpdateTitle))
-                .setView(layout)
-                .setNegativeButton(LocaleController.getString(R.string.Cancel), (d, w) -> cancelDownload = true)
-                .create();
-        dialog.setCanCancel(false);
-        dialog.show();
+        downloadDone = 0;
+        downloadTotal = release.apkSize;
+        downloadedBuild = 0;
+        postState();
+        Toast.makeText(activity, LocaleController.getString(R.string.ParvaUpdateInBackground), Toast.LENGTH_LONG).show();
 
         new Thread(() -> {
-            final File dir = new File(ApplicationLoader.applicationContext.getCacheDir(), "media");
-            dir.mkdirs();
-            final File apk = new File(dir, "Parvagram-update.apk");
+            final File apk = apkFile();
             String error = null;
             try (FileOutputStream out = new FileOutputStream(apk)) {
                 download(release.apkUrl, out, 300L * 1024 * 1024, (done, total) -> {
-                    final long size = total > 0 ? total : release.apkSize;
-                    AndroidUtilities.runOnUIThread(() -> {
-                        if (size > 0) {
-                            bar.setIndeterminate(false);
-                            bar.setMax(1000);
-                            bar.setProgress((int) (done * 1000 / size));
-                            status.setText(AndroidUtilities.formatFileSize(done) + " / " + AndroidUtilities.formatFileSize(size));
-                        } else {
-                            status.setText(AndroidUtilities.formatFileSize(done));
-                        }
-                    });
+                    downloadDone = done;
+                    if (total > 0) {
+                        downloadTotal = total;
+                    }
+                    final long now = System.currentTimeMillis();
+                    if (now - lastProgressPost > 500) {
+                        lastProgressPost = now;
+                        postState();
+                    }
                 });
             } catch (Exception e) {
                 FileLog.e(e);
                 error = e.getMessage();
             }
+            final boolean cancelled = cancelDownload;
+            if (error == null && !cancelled) {
+                downloadedBuild = release.build;
+            } else {
+                apk.delete();
+            }
+            downloading = false;
             final String finalError = error;
             AndroidUtilities.runOnUIThread(() -> {
-                try {
-                    dialog.dismiss();
-                } catch (Exception ignore) {
-                }
-                if (cancelDownload) {
+                NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.parvaUpdateAvailable);
+                if (cancelled) {
                     return;
                 }
                 if (finalError != null) {
-                    new AlertDialog.Builder(activity)
-                            .setTitle(LocaleController.getString(R.string.ParvaUpdateTitle))
-                            .setMessage(LocaleController.formatString(R.string.ParvaUpdateFailed, finalError))
-                            .setPositiveButton(LocaleController.getString(R.string.OK), null)
-                            .show();
+                    Toast.makeText(ApplicationLoader.applicationContext, LocaleController.formatString(R.string.ParvaUpdateFailed, finalError), Toast.LENGTH_LONG).show();
                     return;
                 }
-                install(activity, apk);
+                install(apk);
             });
         }, "parva-update-download").start();
     }
 
-    private static void install(Activity activity, File apk) {
+    private static void install(File apk) {
         try {
             final Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(FileProvider.getUriForFile(activity, ApplicationLoader.getApplicationId() + ".provider", apk), "application/vnd.android.package-archive");
+            intent.setDataAndType(FileProvider.getUriForFile(ApplicationLoader.applicationContext, ApplicationLoader.getApplicationId() + ".provider", apk), "application/vnd.android.package-archive");
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-            activity.startActivity(intent);
+            ApplicationLoader.applicationContext.startActivity(intent);
         } catch (Exception e) {
             FileLog.e(e);
         }

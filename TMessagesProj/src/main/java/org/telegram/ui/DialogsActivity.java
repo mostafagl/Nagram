@@ -6155,14 +6155,22 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             // A new Parvagram release on GitHub: tap to download and install it in the app.
             final tw.nekomimi.nekogram.helpers.ParvaUpdater.Release release = tw.nekomimi.nekogram.helpers.ParvaUpdater.getAvailable();
             dialogsHintCellVisible = true;
+            final boolean downloading = tw.nekomimi.nekogram.helpers.ParvaUpdater.isDownloading();
             dialogsHintCell.setOnClickListener(v -> tw.nekomimi.nekogram.helpers.ParvaUpdater.startUpdate(getParentActivity(), release));
             dialogsHintCell.setText(
                     LocaleController.formatString(R.string.ParvaUpdateHintTitle, release.name),
-                    getString(R.string.ParvaUpdateHintText)
+                    downloading ? LocaleController.formatString(R.string.ParvaUpdateDownloadingProgress, tw.nekomimi.nekogram.helpers.ParvaUpdater.getProgressText())
+                            : tw.nekomimi.nekogram.helpers.ParvaUpdater.isDownloaded(release) ? getString(R.string.ParvaUpdateTapToInstall)
+                            : getString(R.string.ParvaUpdateHintText)
             );
+            // While downloading, the close button cancels the download; otherwise it hides this release's card.
             dialogsHintCell.setOnCloseListener(v -> {
-                tw.nekomimi.nekogram.helpers.ParvaUpdater.dismiss(release);
-                updateDialogsHint();
+                if (tw.nekomimi.nekogram.helpers.ParvaUpdater.isDownloading()) {
+                    tw.nekomimi.nekogram.helpers.ParvaUpdater.cancelDownload();
+                } else {
+                    tw.nekomimi.nekogram.helpers.ParvaUpdater.dismiss(release);
+                    updateDialogsHint();
+                }
             });
         } else if (getMessagesController().isFrozen()) {
             dialogsHintCellVisible = true;
