@@ -21337,6 +21337,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     public boolean hasOutboundsContent() {
+        if (currentMessageObject != null && currentMessageObject.getId() != quickButtonsForId) {
+            updateQuickButtons(currentMessageObject); // the sent message got its real id
+        }
         if (effectDrawable != null && effectDrawable.isNotEmpty() > 0) {
             return true;
         }
@@ -21768,8 +21771,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     /** Which of Parvagram's buttons this message gets, per the "message buttons" settings. */
+    private int quickButtonsForId;
+
     private void updateQuickButtons(MessageObject messageObject) {
         quickButtonCount = 0;
+        quickButtonsForId = messageObject != null ? messageObject.getId() : 0;
         if (currentMessagesGroup != null || messageObject == null || messageObject.isSponsored() || messageObject.messageOwner == null
                 || messageObject.type == MessageObject.TYPE_DATE || messageObject.isDateObject || messageObject.getId() == 0) {
             return;
@@ -21834,14 +21840,22 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
     private void drawQuickButtons(Canvas canvas) {
         quickButtonsShown = 0;
+        if (currentMessageObject != null && currentMessageObject.getId() != quickButtonsForId) {
+            // A sent message gets its real id (and with it edit/forward) after the server answers.
+            updateQuickButtons(currentMessageObject);
+        }
         if (quickButtonCount == 0 || currentMessageObject == null || SizeNotifierFrameLayout.drawingBlur) {
             return;
         }
         final boolean out = currentMessageObject.isOutOwner();
+        // Stickers, round videos and emoji-only messages have no bubble: go by the image instead.
+        final boolean noBubble = currentMessageObject.shouldDrawWithoutBackground() && photoImage.getImageWidth() > 0;
+        final float left = noBubble ? photoImage.getImageX() : transitionParams.lastBackgroundLeft;
+        final float right = noBubble ? photoImage.getImageX2() : transitionParams.lastBackgroundRight;
         if (out) {
-            quickButtonX = transitionParams.lastBackgroundLeft - dp(8 + 32);
+            quickButtonX = left - dp(8 + 32);
         } else {
-            quickButtonX = transitionParams.lastBackgroundRight + dp(8);
+            quickButtonX = right + dp(8);
         }
         // Buttons stack upwards from the bottom of the bubble, above the share button when there is
         // one; when the bubble is too short for all of them (one-line messages), the rest go in
