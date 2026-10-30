@@ -448,6 +448,7 @@ public class ChatActivity extends BaseFragment implements
     private final static int nkheaderbtn_reload_messages = 2035;
     private final static int nkheaderbtn_parva_lock = 2090;
     private final static int nkheaderbtn_parva_favorites = 2091;
+    private final static int nkheaderbtn_parva_hide = 2092;
 
     // shared with actionbar
     public final static int nkbtn_translate = 2008;
@@ -4888,6 +4889,8 @@ public class ChatActivity extends BaseFragment implements
                 headerItem.lazilyAddSubItem(nkheaderbtn_parva_favorites, R.drawable.parva_star_outline, LocaleController.getString(R.string.FavoriteMessagesInChat));
                 if (dialog_id != getUserConfig().getClientUserId() && chatMode == 0) {
                     headerItem.lazilyAddSubItem(nkheaderbtn_parva_lock, R.drawable.msg_secret, LocaleController.getString(R.string.ChatLockMenu));
+                    headerItem.lazilyAddSubItem(nkheaderbtn_parva_hide, R.drawable.msg_archive_hide, LocaleController.getString(
+                            tw.nekomimi.nekogram.helpers.HiddenChats.isHidden(currentAccount, dialog_id) ? R.string.HiddenChatsUnhide : R.string.HiddenChatsHide));
                 }
                 if (ChatObject.isMegagroup(currentChat) || currentChat != null && !ChatObject.isChannel(currentChat)) {
                     headerItem.lazilyAddSubItem(nkheaderbtn_zibi, R.drawable.msg_delete, LocaleController.getString("DeleteAllFromSelf", R.string.DeleteAllFromSelf));
@@ -46193,6 +46196,18 @@ public class ChatActivity extends BaseFragment implements
             }
             updateActionModeTitle();
             updateVisibleRows();
+        } else if (id == nkheaderbtn_parva_hide) {
+            if (tw.nekomimi.nekogram.helpers.HiddenChats.isHidden(currentAccount, dialog_id)) {
+                tw.nekomimi.nekogram.helpers.HiddenChats.setHidden(currentAccount, dialog_id, false);
+                BulletinFactory.of(this).createSimpleBulletin(R.raw.contact_check, LocaleController.getString(R.string.HiddenChatsUnhidden)).show();
+            } else {
+                tw.nekomimi.nekogram.helpers.HiddenChats.hideFromChat(this, currentAccount, dialog_id, () -> {
+                    if (getParentActivity() != null) {
+                        android.widget.Toast.makeText(getParentActivity(), LocaleController.getString(R.string.HiddenChatsHidden), android.widget.Toast.LENGTH_LONG).show();
+                    }
+                    finishFragment();
+                });
+            }
         } else if (id == nkheaderbtn_parva_favorites) {
             presentFragment(new tw.nekomimi.nekogram.settings.FavoriteMessagesActivity(dialog_id, this));
         } else if (id == nkheaderbtn_parva_lock) {

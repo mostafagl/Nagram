@@ -1163,7 +1163,8 @@ public class NotificationsController extends BaseController implements Notificat
         // Parvagram: locked chats can keep their notifications out of sight.
         for (int i = messageObjects.size() - 1; i >= 0; i--) {
             final MessageObject m = messageObjects.get(i);
-            if (m != null && tw.nekomimi.nekogram.helpers.ChatLock.hideNotifications(currentAccount, m.getDialogId())) {
+            if (m != null && (tw.nekomimi.nekogram.helpers.ChatLock.hideNotifications(currentAccount, m.getDialogId())
+                    || tw.nekomimi.nekogram.helpers.HiddenChats.hideNotifications(currentAccount, m.getDialogId()))) {
                 messageObjects.remove(i);
             }
         }

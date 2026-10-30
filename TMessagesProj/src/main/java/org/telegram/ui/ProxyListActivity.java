@@ -654,6 +654,8 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
                 TextCheckCell textCheckCell = (TextCheckCell) view;
                 textCheckCell.setChecked(SharedConfig.proxyRotationEnabled);
                 SharedConfig.saveConfig();
+                // Lets the rotation start (or stop) right away instead of at the next connection change.
+                NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxySettingsChanged);
 
                 updateRows(true);
             } else if (position >= proxyStartRow && position < proxyEndRow) {

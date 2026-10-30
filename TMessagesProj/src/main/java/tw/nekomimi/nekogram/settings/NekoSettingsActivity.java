@@ -167,6 +167,16 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
     }
 
     @Override
+    protected boolean onItemLongClick(View view, int position, float x, float y) {
+        // Parvagram: long-pressing "Privacy & security" can open the hidden chats.
+        if (position == parvaSubscriptionsRow && tw.nekomimi.nekogram.helpers.HiddenChats.isEntryEnabled(tw.nekomimi.nekogram.helpers.HiddenChats.ENTRY_SETTINGS_ROW)) {
+            tw.nekomimi.nekogram.helpers.HiddenChats.open(this);
+            return true;
+        }
+        return super.onItemLongClick(view, position, x, y);
+    }
+
+    @Override
     protected BaseListAdapter createAdapter(Context context) {
         return new ListAdapter(context);
     }

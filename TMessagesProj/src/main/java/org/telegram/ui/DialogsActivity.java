@@ -3502,6 +3502,14 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             @Override
             public void onTextChanged(EditText editText) {
                 String text = editText.getText().toString();
+                // Parvagram: the secret code typed in the search opens the hidden chats.
+                if (!onlySelect && tw.nekomimi.nekogram.helpers.HiddenChats.isSearchCode(text)) {
+                    editText.setText("");
+                    AndroidUtilities.hideKeyboard(editText);
+                    actionBar.closeSearchField();
+                    tw.nekomimi.nekogram.helpers.HiddenChats.open(DialogsActivity.this);
+                    return;
+                }
                 if (!text.isEmpty() || (searchViewPager != null && searchViewPager.dialogsSearchAdapter != null && searchViewPager.dialogsSearchAdapter.hasRecentSearch()) || searchFiltersWasShowed || hasStories) {
                     searchWas = true;
                     if (!searchIsShowed) {
@@ -3550,6 +3558,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 showItemOptions();
             });
             optionsItem.setOnLongClickListener(v -> {
+                // Parvagram: long-pressing ⋮ can open the hidden chats.
+                if (folderId == 0 && tw.nekomimi.nekogram.helpers.HiddenChats.isEntryEnabled(tw.nekomimi.nekogram.helpers.HiddenChats.ENTRY_MENU_BUTTON)) {
+                    tw.nekomimi.nekogram.helpers.HiddenChats.open(this);
+                    return true;
+                }
                 getContactsController().loadGlobalPrivacySetting();
                 showItemOptions();
                 return true;
@@ -3658,6 +3671,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     actionBar.setTitle(title, statusDrawable);
                 }
                 actionBar.setOnLongClickListener(v -> {
+                    // Parvagram: long-pressing the title can open the hidden chats.
+                    if (folderId == 0 && communityId == 0 && tw.nekomimi.nekogram.helpers.HiddenChats.isEntryEnabled(tw.nekomimi.nekogram.helpers.HiddenChats.ENTRY_TITLE)) {
+                        tw.nekomimi.nekogram.helpers.HiddenChats.open(this);
+                        return true;
+                    }
                     if (NekoConfig.hideAllTab.Bool() && filterTabsView != null && filterTabsView.getCurrentTabId() != Integer.MAX_VALUE) {
                         filterTabsView.toggleAllTabs(true);
                         filterTabsView.selectDefaultTab();
@@ -7263,6 +7281,14 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         // Ghost mode may have been switched in its settings page meanwhile.
         updateGhostItem();
         checkUi_itemGhostVisibility();
+        if (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect && folderId == 0 && communityId == 0) {
+            // Once, a while after the chat list shows up: ask whether to join the developer's channel.
+            AndroidUtilities.runOnUIThread(() -> {
+                if (!isPaused && !isFinished) {
+                    tw.nekomimi.nekogram.helpers.ChannelInvite.maybeShow(this, currentAccount);
+                }
+            }, 4000);
+        }
         if (dialogStoriesCell != null) {
             dialogStoriesCell.onResume();
         }
@@ -11267,6 +11293,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     @NonNull
     public ArrayList<TLRPC.Dialog> getDialogsArray(int currentAccount, int dialogsType, int folderId, boolean frozen) {
+        // Parvagram: hidden chats stay out of every list (chats, folders, forward picker).
+        return tw.nekomimi.nekogram.helpers.HiddenChats.filter(currentAccount, getDialogsArrayInternal(currentAccount, dialogsType, folderId, frozen));
+    }
+
+    private ArrayList<TLRPC.Dialog> getDialogsArrayInternal(int currentAccount, int dialogsType, int folderId, boolean frozen) {
         if (frozen && frozenDialogsList != null) {
             return frozenDialogsList;
         }

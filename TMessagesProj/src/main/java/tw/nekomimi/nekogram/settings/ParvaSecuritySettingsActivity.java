@@ -46,6 +46,18 @@ public class ParvaSecuritySettingsActivity extends ParvaPageActivity {
         }
         info(R.string.ChatLockHowTo);
 
+        header(R.string.HiddenChatsTitle);
+        link("hiddenChatsOpen", R.string.HiddenChatsOpen, R.string.HiddenChatsOpenRowInfo, () -> tw.nekomimi.nekogram.helpers.HiddenChats.open(this));
+        link("hiddenChatsSettings", R.string.HiddenChatsSettings, R.string.HiddenChatsSettingsInfo, () -> {
+            // The settings show how the section opens, so they ask for the password too.
+            if (ChatLock.hasPassword()) {
+                ChatLock.authenticate(this, () -> presentFragment(new HiddenChatsSettingsActivity()));
+            } else {
+                presentFragment(new HiddenChatsSettingsActivity());
+            }
+        });
+        shadow();
+
         header(R.string.ContactChangesTitle);
         link("contactChanges", R.string.ContactChangesOpen, 0, () -> presentFragment(new ContactChangesActivity()))
                 .titleText = unseenTitle();

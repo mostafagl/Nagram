@@ -176,14 +176,18 @@ public final class ChatLock {
 
     /** Asks for the fingerprint (when allowed) or the password, then runs {@code onSuccess}. */
     public static void requestUnlock(BaseFragment fragment, int account, long dialogId, Runnable onSuccess) {
+        authenticate(fragment, () -> {
+            markUnlocked(account, dialogId);
+            onSuccess.run();
+        });
+    }
+
+    /** Asks for the fingerprint (when allowed) or the chat lock password, then runs {@code success}. */
+    public static void authenticate(BaseFragment fragment, Runnable success) {
         final Context context = fragment.getParentActivity();
         if (context == null) {
             return;
         }
-        final Runnable success = () -> {
-            markUnlocked(account, dialogId);
-            onSuccess.run();
-        };
         if (useFingerprint() && canUseFingerprint(context) && context instanceof FragmentActivity) {
             try {
                 final BiometricPrompt prompt = new BiometricPrompt((FragmentActivity) context, ContextCompat.getMainExecutor(context), new BiometricPrompt.AuthenticationCallback() {
