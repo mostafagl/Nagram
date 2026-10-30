@@ -2947,6 +2947,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 observersGroup.addGlobal(NotificationCenter.closeSearchByActiveAction);
                 observersGroup.addGlobal(NotificationCenter.proxySettingsChanged);
                 observersGroup.addGlobal(NotificationCenter.parvaUpdateAvailable);
+                observersGroup.addGlobal(NotificationCenter.ghostModeChanged);
                 observersGroup.add(NotificationCenter.filterSettingsUpdated);
                 observersGroup.add(NotificationCenter.dialogsUnreadCounterChanged);
             }
@@ -3337,7 +3338,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 tw.nekomimi.nekogram.utils.AyuGhostUtils.setAllowReadPacket(false, -1);
                 updateGhostItem();
                 getNotificationCenter().postNotificationName(NotificationCenter.mainUserInfoChanged);
-                BulletinFactory.of(this).createSimpleBulletin(R.drawable.icon_ghost,
+                BulletinFactory.of(this).createSimpleBulletin(androidx.core.content.ContextCompat.getDrawable(getContext(), R.drawable.icon_ghost),
                         getString(NekoConfig.isGhostModeActive() ? R.string.GhostModeTurnedOn : R.string.GhostModeTurnedOff)).show();
             });
             ghostItem.setOnLongClickListener(v -> {
@@ -7231,6 +7232,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @Override
     public void onResume() {
         super.onResume();
+        // Ghost mode may have been switched in its settings page meanwhile.
+        updateGhostItem();
+        checkUi_itemGhostVisibility();
         if (dialogStoriesCell != null) {
             dialogStoriesCell.onResume();
         }
@@ -10744,6 +10748,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     public void didReceivedNotification(int id, int account, Object... args) {
         if (id == NotificationCenter.parvaUpdateAvailable) {
             updateDialogsHint();
+            return;
+        }
+        if (id == NotificationCenter.ghostModeChanged) {
+            updateGhostItem();
+            checkUi_itemGhostVisibility();
             return;
         }
         if (id == NotificationCenter.dialogsNeedReload) {

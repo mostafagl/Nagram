@@ -138,6 +138,54 @@ public final class ParvaUpdater {
         }, "parva-update-check").start();
     }
 
+    /** "Check for updates" in settings: checks now and offers the update, or says there is none. */
+    public static void checkNow(Activity activity) {
+        if (activity == null) {
+            return;
+        }
+        final AlertDialog progress = new AlertDialog(activity, AlertDialog.ALERT_TYPE_SPINNER);
+        progress.setCanCancel(false);
+        progress.show();
+        new Thread(() -> {
+            Release release = null;
+            String error = null;
+            try {
+                release = fetchLatest();
+                prefs().edit().putLong(PREF_LAST_CHECK, System.currentTimeMillis()).apply();
+                if (release != null && release.build > BuildConfig.BUILD_TIMESTAMP) {
+                    prefs().edit().putString(PREF_RELEASE, release.toJson().toString()).remove(PREF_DISMISSED).apply();
+                }
+            } catch (Throwable e) {
+                FileLog.e(e);
+                // 404: nothing has been published as a release yet, so there's nothing newer.
+                error = e.getMessage() != null && e.getMessage().contains("404") ? null : String.valueOf(e.getMessage());
+            }
+            final Release found = release;
+            final String finalError = error;
+            AndroidUtilities.runOnUIThread(() -> {
+                try {
+                    progress.dismiss();
+                } catch (Exception ignore) {
+                }
+                if (found != null && found.build > BuildConfig.BUILD_TIMESTAMP) {
+                    NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.parvaUpdateAvailable);
+                    new AlertDialog.Builder(activity)
+                            .setTitle(LocaleController.formatString(R.string.ParvaUpdateHintTitle, found.name))
+                            .setMessage(TextUtils.isEmpty(found.notes) ? LocaleController.getString(R.string.ParvaUpdateHintText) : found.notes)
+                            .setPositiveButton(LocaleController.getString(R.string.ParvaUpdateInstall), (d, w) -> startUpdate(activity, found))
+                            .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                            .show();
+                } else {
+                    new AlertDialog.Builder(activity)
+                            .setTitle(LocaleController.getString(R.string.ParvaUpdateTitle))
+                            .setMessage(finalError != null ? LocaleController.formatString(R.string.ParvaUpdateCheckFailed, finalError) : LocaleController.getString(R.string.ParvaUpdateLatest))
+                            .setPositiveButton(LocaleController.getString(R.string.OK), null)
+                            .show();
+                }
+            });
+        }, "parva-update-check-now").start();
+    }
+
     private static String repoPath() {
         return Uri.parse(BuildVars.GITHUB_REPO_URL).getPath().replaceFirst("^/", "");
     }

@@ -16438,6 +16438,7 @@ public class ChatActivity extends BaseFragment implements
         }
         if (force && messageObject != null && !messageObject.isOut() && messageObject.isTimedMedia() && messageObject.messageOwner.destroyTime == 0) {
             final int ttl = messageObject.messageOwner.ttl > 0 && messageObject.messageOwner.ttl != 0x7FFFFFFF ? messageObject.messageOwner.ttl : 0;
+            messageObject.messageOwner.media_unread = false; // marked viewed: no eye button any more
             if (currentEncryptedChat != null) {
                 getMessagesController().markMessageAsRead(dialog_id, messageObject.messageOwner.random_id, ttl);
             } else {
@@ -40893,6 +40894,32 @@ public class ChatActivity extends BaseFragment implements
         }
 
         @Override
+        public void didPressQuickButton(ChatMessageCell cell, int type) {
+            final MessageObject message = cell.getMessageObject();
+            if (message == null || getParentActivity() == null) {
+                return;
+            }
+            if (type == ChatMessageCell.QUICK_TIMED_VIEW) {
+                // Tell the sender it was opened; the copy on this device stays.
+                tw.nekomimi.nekogram.utils.AyuGhostUtils.setAllowReadPacket(true, 1);
+                sendSecretMessageRead(message, true, true);
+                cell.forceResetMessageObject();
+                updateVisibleRows();
+                BulletinFactory.of(ChatActivity.this).createSimpleBulletin(androidx.core.content.ContextCompat.getDrawable(getContext(), R.drawable.msg_view_file), getString(R.string.TimedMediaMarkedViewed)).show();
+            } else if (type == ChatMessageCell.QUICK_EDIT) {
+                startEditingMessageObject(message, false);
+            } else if (type == ChatMessageCell.QUICK_FORWARD_NOQUOTE) {
+                selectedObject = message;
+                selectedObjectGroup = null;
+                processSelectedOption(OPTION_FORWARD);
+                noForwardQuote = true; // OPTION_FORWARD resets it; the chat picker is already open
+                if (messagePreviewParams != null) {
+                    messagePreviewParams.setHideForwardSendersName(true);
+                }
+            }
+        }
+
+        @Override
         public void didPressTime(ChatMessageCell cell) {
             if (xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, cell.getMessageObject()) != 0) {
                 xyz.nextalone.nagram.history.MessageEditHistoryDialog.show(ChatActivity.this, cell.getMessageObject());
@@ -48872,7 +48899,7 @@ public class ChatActivity extends BaseFragment implements
                         }
                     }
                     if (NekoConfig.keepTimedMedia && !selectedObject.isOut() && selectedObject.isTimedMedia()
-                            && selectedObject.messageOwner.destroyTime == 0) {
+                            && selectedObject.messageOwner.destroyTime == 0 && selectedObject.isContentUnread()) {
                         // Kept timed media: let the sender see it was opened (starts the timer).
                         items.add(LocaleController.getString(R.string.TimedMediaMarkViewed));
                         options.add(nkbtn_timed_viewed);

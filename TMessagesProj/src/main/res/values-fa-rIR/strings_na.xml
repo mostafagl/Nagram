@@ -600,4 +600,22 @@
     <string name="ParvaUpdateFailed">دریافت ناموفق بود (%1$s). اتصال را بررسی کنید یا پروکسی را روشن کنید و دوباره امتحان کنید.</string>
     <string name="ParvaUpdateHintTitle">نسخهٔ جدید: %1$s</string>
     <string name="ParvaUpdateHintText">برای دریافت و نصب به‌روزرسانی بزنید</string>
+    <string name="TimedMediaMarkedViewed">علامت «دیده شد» زده شد: فرستنده می‌بیند باز شده. نسخهٔ شما می‌ماند.</string>
+    <string name="MessageButtonsTitle">دکمه‌های کنار پیام</string>
+    <string name="MessageButtonsInfo">دکمه‌های گرد کنار حباب پیام برای انجام کار با یک ضربه. فقط روی پیام‌هایی دیده می‌شوند که آن کار برایشان ممکن است.</string>
+    <string name="MessageButtonHistory">تاریخچهٔ ویرایش و حذف</string>
+    <string name="MessageButtonHistoryInfo">روی پیام‌های ویرایش‌شده یا حذف‌شده: نسخه‌های قبلی را نشان می‌دهد.</string>
+    <string name="MessageButtonTimedView">علامت دیده شدن رسانهٔ تایم‌دار (چشم)</string>
+    <string name="MessageButtonTimedViewInfo">روی عکس و ویدیوی تایم‌دارِ نگه‌داشته‌شده: به فرستنده نشان می‌دهد که باز کرده‌اید.</string>
+    <string name="MessageButtonEdit">ویرایش (مداد)</string>
+    <string name="MessageButtonEditInfo">روی پیام‌هایی که می‌توانید ویرایش کنید: ویرایش متن را شروع می‌کند.</string>
+    <string name="MessageButtonForward">فوروارد بدون نقل قول</string>
+    <string name="MessageButtonForwardInfo">روی همهٔ پیام‌ها: پیام را بدون نشان دادن فرستندهٔ اصلی فوروارد می‌کند.</string>
+    <string name="ParvaFeaturesHeader">امکانات اختصاصی پرواگرام</string>
+    <string name="ParvaGeneralSettingsHeader">تنظیمات عمومی</string>
+    <string name="ParvaProxyAndV2Ray">پروکسی و V2Ray</string>
+    <string name="ParvaCheckUpdates">بررسی به‌روزرسانی</string>
+    <string name="ParvaUpdateInstall">به‌روزرسانی</string>
+    <string name="ParvaUpdateLatest">آخرین نسخه را دارید.</string>
+    <string name="ParvaUpdateCheckFailed">بررسی به‌روزرسانی ممکن نشد (%1$s). اتصال را بررسی کنید یا پروکسی را روشن کنید.</string>
 </resources>

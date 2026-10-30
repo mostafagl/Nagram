@@ -46,6 +46,11 @@ public class NekoConfig {
     /** Text shown before the time of deleted messages; empty: the bin icon. */
     public static String deletedMark;
     public static boolean showKillButtonInDrawer;
+    // Buttons beside messages.
+    public static boolean showHistoryButton;
+    public static boolean showTimedViewButton;
+    public static boolean showEditButton;
+    public static boolean showNoQuoteForwardButton;
     public static final String channelAliasPrefix = "channelAliasPrefix_";
 
     private static boolean configLoaded = false;
@@ -303,6 +308,10 @@ public class NekoConfig {
             saveMediaBots = preferences.getBoolean("saveMediaBots", false);
             deletedMark = preferences.getString("deletedMark", "");
             showKillButtonInDrawer = preferences.getBoolean("showKillButtonInDrawer", false);
+            showHistoryButton = preferences.getBoolean("showHistoryButton", true);
+            showTimedViewButton = preferences.getBoolean("showTimedViewButton", true);
+            showEditButton = preferences.getBoolean("showEditButton", false);
+            showNoQuoteForwardButton = preferences.getBoolean("showNoQuoteForwardButton", false);
 
             NkmrConfig.compact();
             configLoaded = true;
@@ -323,6 +332,13 @@ public class NekoConfig {
                 .putBoolean("sendReadStoryPackets", sendReadStoryPackets)
                 .putBoolean("sendOfflineAfterOnline", sendOfflineAfterOnline)
                 .apply();
+        notifyGhostModeChanged();
+    }
+
+    /** Lets the ghost button in the chat list follow changes made anywhere. */
+    public static void notifyGhostModeChanged() {
+        org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> org.telegram.messenger.NotificationCenter.getGlobalInstance()
+                .postNotificationName(org.telegram.messenger.NotificationCenter.ghostModeChanged));
     }
 
     public static void putBoolean(String key, boolean value) {

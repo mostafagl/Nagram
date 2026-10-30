@@ -59,6 +59,16 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
             "ShowHiddenFeature"
     ));
 
+    // Parvagram's own features
+    private int parvaHeaderRow;
+    private int parvaGhostRow;
+    private int parvaButtonsRow;
+    private int parvaProxyRow;
+    private int parvaSubscriptionsRow;
+    private int parvaFontRow;
+    private int parvaUpdateRow;
+    private int parva2Row;
+
     private int categoriesRow;
     private int generalRow;
     private int accountRow;
@@ -106,8 +116,18 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
             presentFragment(new NekoAccountSettingsActivity());
         } else if (position == chatRow) {
             presentFragment(new NekoChatSettingsActivity());
-        } else if (position == ghostRow) {
+        } else if (position == ghostRow || position == parvaGhostRow) {
             presentFragment(new NekoGhostModeActivity());
+        } else if (position == parvaButtonsRow) {
+            presentFragment(new MessageButtonsActivity());
+        } else if (position == parvaProxyRow) {
+            presentFragment(new org.telegram.ui.ProxyListActivity());
+        } else if (position == parvaSubscriptionsRow) {
+            presentFragment(new org.telegram.ui.V2RaySubscriptionsActivity());
+        } else if (position == parvaFontRow) {
+            presentFragment(new xyz.nextalone.nagram.font.FontSettingsActivity());
+        } else if (position == parvaUpdateRow) {
+            tw.nekomimi.nekogram.helpers.ParvaUpdater.checkNow(getParentActivity());
         } else if (position == passcodeRow) {
             presentFragment(new NekoPasscodeSettingsActivity());
         } else if (position == experimentRow) {
@@ -165,11 +185,20 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
     protected void updateRows() {
         super.updateRows();
 
+        parvaHeaderRow = addRow("parvagram");
+        parvaGhostRow = addRow("ghost");
+        parvaButtonsRow = addRow("messageButtons");
+        parvaProxyRow = addRow("proxy");
+        parvaSubscriptionsRow = addRow("subscriptions");
+        parvaFontRow = addRow("font");
+        parvaUpdateRow = addRow("update");
+        parva2Row = addRow();
+
         categoriesRow = addRow("categories");
         generalRow = addRow("general");
         accountRow = addRow("account");
         chatRow = addRow("chat");
-        ghostRow = addRow("ghost");
+        ghostRow = -1;
         if (!PasscodeHelper.isSettingsHidden()) {
             passcodeRow = addRow("passcode");
         } else {
@@ -230,8 +259,10 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
                 }
                 case TYPE_HEADER: {
                     HeaderCell headerCell = (HeaderCell) holder.itemView;
-                    if (position == categoriesRow) {
-                        headerCell.setText(LocaleController.getString(R.string.Categories));
+                    if (position == parvaHeaderRow) {
+                        headerCell.setText(LocaleController.getString(R.string.ParvaFeaturesHeader));
+                    } else if (position == categoriesRow) {
+                        headerCell.setText(LocaleController.getString(R.string.ParvaGeneralSettingsHeader));
                     } else if (position == aboutRow) {
                         headerCell.setText(LocaleController.getString(R.string.About));
                     } else if (position == settingsRow) {
@@ -247,8 +278,18 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.Account), R.drawable.msg_contacts, divider);
                     } else if (position == chatRow) {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.Chat), R.drawable.msg_discussion, divider);
-                    } else if (position == ghostRow) {
+                    } else if (position == ghostRow || position == parvaGhostRow) {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.GhostAndSpyTitle), R.drawable.icon_ghost, divider);
+                    } else if (position == parvaButtonsRow) {
+                        textCell.setTextAndIcon(LocaleController.getString(R.string.MessageButtonsTitle), R.drawable.msg_forward_noquote, divider);
+                    } else if (position == parvaProxyRow) {
+                        textCell.setTextAndIcon(LocaleController.getString(R.string.ParvaProxyAndV2Ray), R.drawable.proxy_check, divider);
+                    } else if (position == parvaSubscriptionsRow) {
+                        textCell.setTextAndIcon(LocaleController.getString(R.string.V2RaySubscriptions), R.drawable.msg_link, divider);
+                    } else if (position == parvaFontRow) {
+                        textCell.setTextAndIcon(LocaleController.getString(R.string.CustomFontTitle), R.drawable.msg_photo_text_regular, divider);
+                    } else if (position == parvaUpdateRow) {
+                        textCell.setTextAndIcon(LocaleController.getString(R.string.ParvaCheckUpdates), R.drawable.msg_retry, divider);
                     } else if (position == passcodeRow) {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.PasscodeNeko), R.drawable.msg_secret, divider);
                     } else if (position == experimentRow) {
@@ -263,11 +304,11 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
 
         @Override
         public int getItemViewType(int position) {
-            if (position == categories2Row || position == about2Row || position == settings2Row) {
+            if (position == parva2Row || position == categories2Row || position == about2Row || position == settings2Row) {
                 return TYPE_SHADOW;
-            } else if (position == categoriesRow || position == aboutRow || position == settingsRow) {
+            } else if (position == parvaHeaderRow || position == categoriesRow || position == aboutRow || position == settingsRow) {
                 return TYPE_HEADER;
-            } else if (position > categoriesRow && position < categories2Row) {
+            } else if (position > parvaHeaderRow && position < parva2Row || position > categoriesRow && position < categories2Row) {
                 return TYPE_TEXT;
             } else if (position >= sourceCodeRow && position < about2Row) {
                 return TYPE_SETTINGS;

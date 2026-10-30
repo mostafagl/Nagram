@@ -178,6 +178,7 @@ public class NekoGhostModeActivity extends BaseNekoSettingsActivity {
         }
 
         NotificationCenter.getInstance(UserConfig.selectedAccount).postNotificationName(NotificationCenter.mainUserInfoChanged);
+        NekoConfig.notifyGhostModeChanged();
     }
 
     private void refresh() {
@@ -274,6 +275,7 @@ public class NekoGhostModeActivity extends BaseNekoSettingsActivity {
         } else if (position == showGhostToggleInActionBarRow) {
             NekoConfig.putBoolean("showGhostToggleInActionBar", NekoConfig.showGhostToggleInActionBar ^= true);
             ((TextCheckCell) view).setChecked(NekoConfig.showGhostToggleInActionBar);
+            NekoConfig.notifyGhostModeChanged();
             NotificationCenter.getInstance(UserConfig.selectedAccount).postNotificationName(NotificationCenter.mainUserInfoChanged);
         } else if (position == showGhostToggleInDrawerRow) {
             NekoConfig.putBoolean("showGhostToggleInDrawer", NekoConfig.showGhostToggleInDrawer ^= true);

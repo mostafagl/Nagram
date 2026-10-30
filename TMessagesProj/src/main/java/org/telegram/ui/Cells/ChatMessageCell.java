@@ -669,6 +669,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         default void didPressGroupImage(ChatMessageCell cell, ImageReceiver imageReceiver, TLRPC.MessageExtendedMedia media, float x, float y) {
         }
 
+        /** One of Parvagram's buttons beside the bubble (see ChatMessageCell.QUICK_*), other than history. */
+        default void didPressQuickButton(ChatMessageCell cell, int type) {
+        }
+
         default void didPressSideButton(ChatMessageCell cell) {
         }
 
@@ -1693,12 +1697,18 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     private boolean sideButtonPressed;
     private boolean drawSummarizeButton;
     private boolean summarizeButtonPressed;
-    // Round button beside an edited/deleted message that opens its local history.
-    private boolean drawHistoryButton;
-    private boolean historyButtonPressed;
-    private boolean historyButtonVisible;
-    private float historyButtonX, historyButtonY;
-    private Drawable historyEditedIcon, historyDeletedIcon;
+    // Parvagram's round buttons beside the bubble, stacked upwards from its bottom.
+    public static final int QUICK_HISTORY = 1;
+    public static final int QUICK_TIMED_VIEW = 2;
+    public static final int QUICK_EDIT = 3;
+    public static final int QUICK_FORWARD_NOQUOTE = 4;
+    private final int[] quickButtons = new int[4];
+    private final float[] quickButtonY = new float[4];
+    private int quickButtonCount;
+    private int quickButtonsShown;
+    private float quickButtonX;
+    private int pressedQuickButton = -1;
+    private final android.util.SparseArray<Drawable> quickIcons = new android.util.SparseArray<>();
     private int pressedSideButton;
     private boolean inQuickShareMode;
     private Path sideButtonPath1, sideButtonPath2;
@@ -5205,7 +5215,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             otherPressed = false;
             sideButtonPressed = false;
             summarizeButtonPressed = false;
-            historyButtonPressed = false;
+            pressedQuickButton = -1;
             pressedSideButton = 0;
             imagePressed = false;
             timePressed = false;
@@ -5317,8 +5327,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                         summarizeButtonPressed = true;
                         result = true;
                         invalidate();
-                    } else if (isInsideHistoryButton(x, y)) {
-                        historyButtonPressed = true;
+                    } else if (findQuickButton(x, y) >= 0) {
+                        pressedQuickButton = findQuickButton(x, y);
                         result = true;
                         invalidate();
                     }
@@ -5467,15 +5477,20 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                         }
                     }
                     invalidate();
-                } else if (historyButtonPressed) {
+                } else if (pressedQuickButton >= 0) {
                     if (event.getAction() == MotionEvent.ACTION_UP) {
                         playSoundEffect(SoundEffectConstants.CLICK);
-                        historyButtonPressed = false;
-                        if (delegate != null) {
-                            delegate.didPressTime(this);
+                        final int type = pressedQuickButton < quickButtonCount ? quickButtons[pressedQuickButton] : 0;
+                        pressedQuickButton = -1;
+                        if (delegate != null && type != 0) {
+                            if (type == QUICK_HISTORY) {
+                                delegate.didPressTime(this);
+                            } else {
+                                delegate.didPressQuickButton(this, type);
+                            }
                         }
-                    } else if (event.getAction() == MotionEvent.ACTION_CANCEL || event.getAction() == MotionEvent.ACTION_MOVE && !isInsideHistoryButton(x, y)) {
-                        historyButtonPressed = false;
+                    } else if (event.getAction() == MotionEvent.ACTION_CANCEL || event.getAction() == MotionEvent.ACTION_MOVE && findQuickButton(x, y) != pressedQuickButton) {
+                        pressedQuickButton = -1;
                     }
                     invalidate();
                 } else if (summarizeButtonPressed) {
@@ -7119,7 +7134,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 }
             }
             drawSummarizeButton = TranslateController.isSummarizable(messageObject);
-            drawHistoryButton = currentMessagesGroup == null && xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, messageObject) != 0;
+            updateQuickButtons(messageObject);
             hasReplyQuote = false;
             isReplyQuote = false;
             isReplyTaskOrPollOption = false;
@@ -21742,57 +21757,105 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
         drawSideButton(canvas);
         drawSummarizeButton(canvas);
-        drawHistoryButton(canvas);
+        drawQuickButtons(canvas);
     }
 
-    private boolean isInsideHistoryButton(float x, float y) {
-        return historyButtonVisible && drawHistoryButton
-                && x >= historyButtonX - dp(4) && x <= historyButtonX + dp(36)
-                && y >= historyButtonY - dp(4) && y <= historyButtonY + dp(36);
+    /** Which of Parvagram's buttons this message gets, per the "message buttons" settings. */
+    private void updateQuickButtons(MessageObject messageObject) {
+        quickButtonCount = 0;
+        if (currentMessagesGroup != null || messageObject == null || messageObject.isSponsored() || messageObject.messageOwner == null
+                || messageObject.type == MessageObject.TYPE_DATE || messageObject.isDateObject || messageObject.getId() == 0) {
+            return;
+        }
+        if (tw.nekomimi.nekogram.NekoConfig.showHistoryButton && xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, messageObject) != 0) {
+            quickButtons[quickButtonCount++] = QUICK_HISTORY;
+        }
+        if (tw.nekomimi.nekogram.NekoConfig.showTimedViewButton && tw.nekomimi.nekogram.NekoConfig.keepTimedMedia && !messageObject.isOut()
+                && messageObject.isTimedMedia() && messageObject.messageOwner.destroyTime == 0 && messageObject.isContentUnread()) {
+            quickButtons[quickButtonCount++] = QUICK_TIMED_VIEW;
+        }
+        if (messageObject.getId() > 0 && !messageObject.scheduled) {
+            final TLRPC.Chat chat = messageObject.getDialogId() < 0 ? MessagesController.getInstance(currentAccount).getChat(-messageObject.getDialogId()) : null;
+            if (tw.nekomimi.nekogram.NekoConfig.showEditButton && messageObject.canEditMessage(chat)) {
+                quickButtons[quickButtonCount++] = QUICK_EDIT;
+            }
+            if (tw.nekomimi.nekogram.NekoConfig.showNoQuoteForwardButton && !messageObject.isTimedMedia() && messageObject.type != MessageObject.TYPE_PHONE_CALL
+                    && !MessagesController.getInstance(currentAccount).isPeerNoForwardsWithOverride(messageObject.getDialogId())) {
+                quickButtons[quickButtonCount++] = QUICK_FORWARD_NOQUOTE;
+            }
+        }
     }
 
-    private void drawHistoryButton(Canvas canvas) {
-        historyButtonVisible = false;
-        if (!drawHistoryButton || currentMessageObject == null || SizeNotifierFrameLayout.drawingBlur) {
+    /** The quick button at (x, y), as its index, or -1. */
+    private int findQuickButton(float x, float y) {
+        if (quickButtonsShown == 0 || x < quickButtonX - dp(4) || x > quickButtonX + dp(36)) {
+            return -1;
+        }
+        for (int i = 0; i < quickButtonsShown; i++) {
+            if (y >= quickButtonY[i] - dp(4) && y <= quickButtonY[i] + dp(36)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int quickIconRes(int type) {
+        switch (type) {
+            case QUICK_HISTORY:
+                return (xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, currentMessageObject)
+                        & xyz.nextalone.nagram.history.MessageHistoryController.FLAG_DELETED) != 0 ? R.drawable.msg_delete : R.drawable.msg_recent;
+            case QUICK_TIMED_VIEW:
+                return R.drawable.msg_view_file;
+            case QUICK_EDIT:
+                return R.drawable.msg_edit;
+            default:
+                return R.drawable.msg_forward_noquote;
+        }
+    }
+
+    private void drawQuickButtons(Canvas canvas) {
+        quickButtonsShown = 0;
+        if (quickButtonCount == 0 || currentMessageObject == null || SizeNotifierFrameLayout.drawingBlur) {
             return;
         }
         if (currentMessageObject.isOutOwner()) {
-            historyButtonX = transitionParams.lastBackgroundLeft - dp(8 + 32);
+            quickButtonX = transitionParams.lastBackgroundLeft - dp(8 + 32);
         } else {
-            historyButtonX = transitionParams.lastBackgroundRight + dp(8);
+            quickButtonX = transitionParams.lastBackgroundRight + dp(8);
         }
-        // Next to the bottom of the bubble, above the share button when there is one.
-        historyButtonY = layoutHeight + transitionParams.deltaBottom - dp(41);
-        if (drawSideButton != 0 && sideButtonVisible) {
-            historyButtonY = sideStartY - dp(40);
-        }
-        historyButtonY = Math.max(historyButtonY, getPaddingTop() + dp(4));
-        if (historyButtonX < 0 || historyButtonX + dp(32) >= getMeasuredWidth()) {
+        if (quickButtonX < 0 || quickButtonX + dp(32) >= getMeasuredWidth()) {
             return;
         }
-        historyButtonVisible = true;
-        rect.set(historyButtonX, historyButtonY, historyButtonX + dp(32), historyButtonY + dp(32));
-        applyServiceShaderMatrix();
-        canvas.drawRoundRect(rect, dp(16), dp(16), getThemedPaint(historyButtonPressed ? Theme.key_paint_chatActionBackgroundSelected : Theme.key_paint_chatActionBackground));
-        if (hasGradientService()) {
-            canvas.drawRoundRect(rect, dp(16), dp(16), Theme.chat_actionBackgroundGradientDarkenPaint);
+        // From the bottom of the bubble upwards, above the share button when there is one.
+        float y = layoutHeight + transitionParams.deltaBottom - dp(41);
+        if (drawSideButton != 0 && sideButtonVisible) {
+            y = sideStartY - dp(40);
         }
-        final boolean deleted = (xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, currentMessageObject)
-                & xyz.nextalone.nagram.history.MessageHistoryController.FLAG_DELETED) != 0;
-        Drawable icon = deleted ? historyDeletedIcon : historyEditedIcon;
-        if (icon == null) {
-            icon = getContext().getResources().getDrawable(deleted ? R.drawable.msg_delete : R.drawable.msg_edit).mutate();
-            if (deleted) {
-                historyDeletedIcon = icon;
-            } else {
-                historyEditedIcon = icon;
-            }
-        }
-        icon.setColorFilter(new android.graphics.PorterDuffColorFilter(getThemedColor(Theme.key_chat_serviceIcon), android.graphics.PorterDuff.Mode.SRC_IN));
         final int size = dp(20);
-        final int cx = (int) (historyButtonX + dp(16)), cy = (int) (historyButtonY + dp(16));
-        icon.setBounds(cx - size / 2, cy - size / 2, cx + size / 2, cy + size / 2);
-        icon.draw(canvas);
+        for (int i = 0; i < quickButtonCount; i++) {
+            if (y < getPaddingTop()) {
+                break; // no room on short messages
+            }
+            quickButtonY[i] = y;
+            quickButtonsShown++;
+            rect.set(quickButtonX, y, quickButtonX + dp(32), y + dp(32));
+            applyServiceShaderMatrix();
+            canvas.drawRoundRect(rect, dp(16), dp(16), getThemedPaint(pressedQuickButton == i ? Theme.key_paint_chatActionBackgroundSelected : Theme.key_paint_chatActionBackground));
+            if (hasGradientService()) {
+                canvas.drawRoundRect(rect, dp(16), dp(16), Theme.chat_actionBackgroundGradientDarkenPaint);
+            }
+            final int res = quickIconRes(quickButtons[i]);
+            Drawable icon = quickIcons.get(res);
+            if (icon == null) {
+                icon = getContext().getResources().getDrawable(res).mutate();
+                quickIcons.put(res, icon);
+            }
+            icon.setColorFilter(new android.graphics.PorterDuffColorFilter(getThemedColor(Theme.key_chat_serviceIcon), android.graphics.PorterDuff.Mode.SRC_IN));
+            final int cx = (int) (quickButtonX + dp(16)), cy = (int) (y + dp(16));
+            icon.setBounds(cx - size / 2, cy - size / 2, cx + size / 2, cy + size / 2);
+            icon.draw(canvas);
+            y -= dp(40);
+        }
     }
 
     public void drawAnimatedEmojis(Canvas canvas, float alpha) {

@@ -170,6 +170,18 @@ public class SettingsHelper {
             result.description = texts[1] != 0 ? LocaleController.getString(texts[1]) : null;
             items.add(result);
         }
+        final String buttonsTitle = LocaleController.getString(R.string.MessageButtonsTitle);
+        for (int i = 0; i < tw.nekomimi.nekogram.settings.MessageButtonsActivity.SEARCH_KEYS.length; i++) {
+            final String key = tw.nekomimi.nekogram.settings.MessageButtonsActivity.SEARCH_KEYS[i];
+            final int[] texts = tw.nekomimi.nekogram.settings.MessageButtonsActivity.SEARCH_ROWS[i];
+            final SettingsSearchResult result = new SettingsSearchResult(30200 + i, LocaleController.getString(texts[0]), n_title, buttonsTitle, R.drawable.msg_forward_noquote, () -> {
+                final tw.nekomimi.nekogram.settings.MessageButtonsActivity f = new tw.nekomimi.nekogram.settings.MessageButtonsActivity();
+                callback.presentFragment(f);
+                AndroidUtilities.runOnUIThread(() -> f.scrollToRow(key, null), 300);
+            });
+            result.description = LocaleController.getString(texts[1]);
+            items.add(result);
+        }
         // Parvagram's own pages.
         items.add(new SettingsSearchResult(30100, LocaleController.getString(R.string.ProxySettings), n_title, null, R.drawable.proxy_check,
                 () -> callback.presentFragment(new org.telegram.ui.ProxyListActivity())));

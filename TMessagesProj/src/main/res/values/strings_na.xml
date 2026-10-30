@@ -600,4 +600,22 @@
     <string name="ParvaUpdateFailed">The download failed (%1$s). Check your connection or turn on a proxy and try again.</string>
     <string name="ParvaUpdateHintTitle">New version: %1$s</string>
     <string name="ParvaUpdateHintText">Tap to download and install the update</string>
+    <string name="TimedMediaMarkedViewed">Marked as viewed: the sender sees it was opened. Your copy stays.</string>
+    <string name="MessageButtonsTitle">Buttons beside messages</string>
+    <string name="MessageButtonsInfo">Round buttons next to the bubble, for one-tap actions. They appear on messages where the action is possible.</string>
+    <string name="MessageButtonHistory">Edit and delete history</string>
+    <string name="MessageButtonHistoryInfo">On edited or deleted messages: opens their earlier versions.</string>
+    <string name="MessageButtonTimedView">Mark timed media viewed (eye)</string>
+    <string name="MessageButtonTimedViewInfo">On kept timed photos and videos: lets the sender see you opened it.</string>
+    <string name="MessageButtonEdit">Edit (pencil)</string>
+    <string name="MessageButtonEditInfo">On messages you can edit: starts editing the text.</string>
+    <string name="MessageButtonForward">Forward without quote</string>
+    <string name="MessageButtonForwardInfo">On every message: forwards it without showing who it came from.</string>
+    <string name="ParvaFeaturesHeader">Parvagram features</string>
+    <string name="ParvaGeneralSettingsHeader">General settings</string>
+    <string name="ParvaProxyAndV2Ray">Proxy and V2Ray</string>
+    <string name="ParvaCheckUpdates">Check for updates</string>
+    <string name="ParvaUpdateInstall">Update</string>
+    <string name="ParvaUpdateLatest">You have the latest version.</string>
+    <string name="ParvaUpdateCheckFailed">Couldn\'t check for updates (%1$s). Check your connection or turn on a proxy.</string>
 </resources>
