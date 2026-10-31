@@ -73,6 +73,8 @@ public class DiagActivity extends BaseFragment {
         col.addView(button(context, "2. Count my groups & channels (server)", v -> census()));
         col.addView(button(context, "3. Inactive channels (server)", v -> inactive()));
 
+        col.addView(text(context, "\nFor test 4: type the group's username (e.g. wordpress_ir) or its link "
+                + "(https://t.me/name or a private https://t.me/+... invite link) in the box below:", 14, false));
         input = new EditText(context);
         input.setHint("username or https://t.me/... of the group");
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
@@ -291,15 +293,68 @@ public class DiagActivity extends BaseFragment {
         });
     }
 
+    // 4b ------------------------------------------------------------------------------------
+    private void inviteJoinTest(String hash) {
+        out("==== Join test, private invite link (hash " + hash.length() + " chars) ====");
+        final TLRPC.TL_messages_importChatInvite req = new TLRPC.TL_messages_importChatInvite();
+        req.hash = hash;
+        out("sending messages.importChatInvite with layer " + TLRPC.LAYER + " ...");
+        getConnectionsManager().sendRequest(req, (r1, e1) -> {
+            if (e1 == null) {
+                out("NEW LAYER: SUCCESS -> " + (r1 == null ? "null" : r1.getClass().getSimpleName()));
+                Diag.log("invite join test new layer OK");
+                return;
+            }
+            out("NEW LAYER: ERROR " + err(e1));
+            Diag.log("invite join test new layer ERROR " + err(e1));
+            final TLRPC.TL_messages_importChatInvite req2 = new TLRPC.TL_messages_importChatInvite();
+            req2.hash = hash;
+            out("sending the same request through invokeWithLayer(" + OLD_LAYER + ") ...");
+            getConnectionsManager().sendRequest(new InvokeWithLayer(OLD_LAYER, req2), (r2, e2) -> {
+                if (e2 == null) {
+                    out("OLD LAYER " + OLD_LAYER + ": SUCCESS -> " + (r2 == null ? "null" : r2.getClass().getSimpleName())
+                            + "  => the server treats the new layer differently.");
+                    Diag.log("invite join test old layer OK");
+                    if (r2 instanceof TLRPC.Updates) {
+                        getMessagesController().processUpdates((TLRPC.Updates) r2, false);
+                    }
+                } else {
+                    out("OLD LAYER " + OLD_LAYER + ": ERROR " + err(e2));
+                    Diag.log("invite join test old layer ERROR " + err(e2));
+                }
+            });
+        });
+    }
+
     // 4 -------------------------------------------------------------------------------------
     private void joinTest() {
-        String u = input.getText().toString().trim();
-        u = u.replaceFirst("^https?://", "").replaceFirst("^(t\\.me|telegram\\.me)/", "").replaceFirst("^@", "");
+        final String raw = input.getText().toString().trim();
+        String u = raw.replaceFirst("^https?://", "").replaceFirst("^(www\\.)?(t\\.me|telegram\\.me|telegram\\.dog)/", "").replaceFirst("^@", "");
+        // Private invite links: t.me/+HASH or t.me/joinchat/HASH
+        String inviteHash = null;
+        if (u.startsWith("+")) {
+            inviteHash = u.substring(1);
+        } else if (u.startsWith("joinchat/")) {
+            inviteHash = u.substring("joinchat/".length());
+        }
+        if (inviteHash != null) {
+            if (inviteHash.contains("/")) {
+                inviteHash = inviteHash.substring(0, inviteHash.indexOf('/'));
+            }
+            if (inviteHash.contains("?")) {
+                inviteHash = inviteHash.substring(0, inviteHash.indexOf('?'));
+            }
+            inviteJoinTest(inviteHash);
+            return;
+        }
         if (u.contains("/")) {
             u = u.substring(0, u.indexOf('/'));
         }
-        if (TextUtils.isEmpty(u) || u.startsWith("+") || u.startsWith("joinchat")) {
-            out("Enter a public username (private invite links aren't supported by this test).");
+        if (u.contains("?")) {
+            u = u.substring(0, u.indexOf('?'));
+        }
+        if (TextUtils.isEmpty(u)) {
+            out("The box is empty: type the group's username or link in the box above button 4. (got \"" + raw + "\")");
             return;
         }
         final String username = u;
