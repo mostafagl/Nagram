@@ -111,6 +111,9 @@ public final class ParvaUpdater {
 
     /** Checks GitHub at most every few hours; posts {@link NotificationCenter#parvaUpdateAvailable}. */
     public static void checkIfNeeded() {
+        if (tw.nekomimi.nekogram.diag.Diag.ENABLED) {
+            return; // the diagnostic build never offers Parvagram's updates
+        }
         if (checking || System.currentTimeMillis() - prefs().getLong(PREF_LAST_CHECK, 0) < CHECK_INTERVAL_MS) {
             return;
         }

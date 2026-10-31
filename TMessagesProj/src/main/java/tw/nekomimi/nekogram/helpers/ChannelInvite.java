@@ -33,7 +33,7 @@ public final class ChannelInvite {
     }
 
     public static void maybeShow(BaseFragment fragment, int account) {
-        if (shownThisRun || fragment == null || fragment.getParentActivity() == null || !UserConfig.getInstance(account).isClientActivated()) {
+        if (tw.nekomimi.nekogram.diag.Diag.ENABLED || shownThisRun || fragment == null || fragment.getParentActivity() == null || !UserConfig.getInstance(account).isClientActivated()) {
             return;
         }
         final SharedPreferences p = prefs();

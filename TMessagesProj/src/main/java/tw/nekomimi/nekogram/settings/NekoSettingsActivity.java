@@ -62,6 +62,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
     // Parvagram's own features
     private int parvaHeaderRow;
     private int parvaGhostRow;
+    private int parvaDiagRow = -1;
     private int parvaButtonsRow;
     private int parvaProxyRow;
     private int parvaSubscriptionsRow;
@@ -116,6 +117,8 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
             presentFragment(new NekoAccountSettingsActivity());
         } else if (position == chatRow) {
             presentFragment(new NekoChatSettingsActivity());
+        } else if (position == parvaDiagRow) {
+            presentFragment(new tw.nekomimi.nekogram.diag.DiagActivity());
         } else if (position == ghostRow || position == parvaGhostRow) {
             presentFragment(new NekoGhostModeActivity());
         } else if (position == parvaButtonsRow) {
@@ -196,6 +199,8 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
         super.updateRows();
 
         parvaHeaderRow = addRow("parvagram");
+        // Only in the separate diagnostic build.
+        parvaDiagRow = tw.nekomimi.nekogram.diag.Diag.ENABLED ? addRow("diagnostics") : -1;
         parvaGhostRow = addRow("ghost");
         // Parvagram's pages: chats & messages, connection & proxy, privacy & security, favorite messages.
         parvaButtonsRow = addRow("parvaChats");
@@ -289,6 +294,8 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.Account), R.drawable.msg_contacts, divider);
                     } else if (position == chatRow) {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.Chat), R.drawable.msg_discussion, divider);
+                    } else if (position == parvaDiagRow) {
+                        textCell.setTextAndIcon("Diagnostics (join limit)", R.drawable.msg_info, divider);
                     } else if (position == ghostRow || position == parvaGhostRow) {
                         textCell.setTextAndIcon(LocaleController.getString(R.string.GhostAndSpyTitle), R.drawable.icon_ghost, divider);
                     } else if (position == parvaButtonsRow) {

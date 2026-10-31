@@ -15977,6 +15977,10 @@ public class MessagesController extends BaseController implements NotificationCe
             if (isChannel && inputUser instanceof TLRPC.TL_inputUserSelf) {
                 AndroidUtilities.runOnUIThread(() -> joiningToChannels.remove(chatId));
             }
+            if (tw.nekomimi.nekogram.diag.Diag.ENABLED) {
+                tw.nekomimi.nekogram.diag.Diag.log("addUserToChat chat_id=" + chatId + " request=" + request.getClass().getSimpleName()
+                        + " -> " + (error == null ? "OK " + (response == null ? "null" : response.getClass().getSimpleName()) : "ERROR code=" + error.code + " text=" + error.text));
+            }
             if (error != null) {
                 if ("JOIN_GUARD_TIMEOUT".equals(error.text)) {
                     AndroidUtilities.runOnUIThread(() -> {
