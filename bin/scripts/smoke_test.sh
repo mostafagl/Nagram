@@ -3,7 +3,9 @@
 # app is not alive after startup. Prints crash/ANR details from logcat.
 
 APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk' | head -1)
-PKG=com.mostafagl.parvagram
+# The diagnostic build uses its own package (com.mostafagl.parvagram.diag).
+PKG=${PKG:-$(grep -o 'applicationId = "[^"]*"' TMessagesProj/build.gradle | head -1 | sed 's/.*"\(.*\)"/\1/')}
+PKG=${PKG:-com.mostafagl.parvagram}
 echo "APK: $APK"
 echo "===== NATIVE LIBS IN APK ====="
 unzip -l "$APK" | grep "lib/"
