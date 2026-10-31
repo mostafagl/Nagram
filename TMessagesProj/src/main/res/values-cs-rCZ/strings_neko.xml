@@ -232,7 +232,7 @@
     <string name="PassQRNewPassword">Chraňte tento QR kód heslem</string>
     <string name="ConfirmNewPassword">Potvrzení hesla</string>
     <string name="PassQRAbout">Uloží vaše heslo jako šifrovaný QR kód. Můžete jej naskenovat a přihlásit se na jiném zařízení.</string>
-    <string name="PassQREncryption">Naskenujte Nagram pro přihlášení.</string>
+    <string name="PassQREncryption">Naskenujte Parvagram pro přihlášení.</string>
     <string name="InvalidPassQr">Invalid Passkey QR</string>
     <string name="PassQRPasswordTooShort">Heslo musí mít alespoň 8 znaků</string>
     <string name="PassQRPasswordWarning">Bezpečnostní varování: toto heslo je jediná věc, která chrání váš klíč. Slabé heslo může být roztrženo offline, takže se promísí velká velká a malá písmena, čísla a symboly.</string>

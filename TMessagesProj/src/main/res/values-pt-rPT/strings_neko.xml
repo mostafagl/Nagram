@@ -232,7 +232,7 @@
     <string name="PassQRNewPassword">Proteja este código QR com uma senha</string>
     <string name="ConfirmNewPassword">Confirmar senha</string>
     <string name="PassQRAbout">Salva sua senha como um código QR criptografado. Você pode digitalizá-la para fazer login em outro dispositivo.</string>
-    <string name="PassQREncryption">Escaneie com Nagrama para entrar.</string>
+    <string name="PassQREncryption">Escaneie com Parvagram para entrar.</string>
     <string name="InvalidPassQr">Invalid Passkey QR</string>
     <string name="PassQRPasswordTooShort">A senha deve ter pelo menos 8 caracteres</string>
     <string name="PassQRPasswordWarning">Aviso de segurança: esta senha é a única coisa que protege a sua chave. Uma senha fraca pode ser quebrada off-line, então mistura maiúsculas, números e símbolos.</string>

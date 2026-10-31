@@ -446,6 +446,9 @@ public class ChatActivity extends BaseFragment implements
     private final static int nkheaderbtn_to_the_message = 2034;
     private final static int nkheaderbtn_hide_title = 2029;
     private final static int nkheaderbtn_reload_messages = 2035;
+    private final static int nkheaderbtn_parva_lock = 2090;
+    private final static int nkheaderbtn_parva_favorites = 2091;
+    private final static int nkheaderbtn_parva_hide = 2092;
 
     // shared with actionbar
     public final static int nkbtn_translate = 2008;
@@ -475,6 +478,8 @@ public class ChatActivity extends BaseFragment implements
     public final static int nkbtn_setReminder = 2029;
     public final static int nkbtn_sticker_copy = 2031;
     public final static int nkbtn_sticker_copy_png = 2032;
+    public final static int nkbtn_edit_history = 2033;
+    public final static int nkbtn_timed_viewed = 2034;
 
 
     public int shareAlertDebugMode = DEBUG_SHARE_ALERT_MODE_NORMAL;
@@ -1274,6 +1279,7 @@ public class ChatActivity extends BaseFragment implements
     private int scrollCallbackAnimationIndex;
 
     public boolean allowExpandPreviewByClick;
+    private boolean mediaTouchInPreview;
     private boolean showSearchAsIcon;
     private boolean showAudioCallAsIcon;
     public MessageEnterTransitionContainer messageEnterTransitionContainer;
@@ -3217,6 +3223,7 @@ public class ChatActivity extends BaseFragment implements
             .add(NotificationCenter.didLoadSendAsPeers)
             .add(NotificationCenter.closeChatActivity)
             .add(NotificationCenter.messagesDeleted)
+            .add(NotificationCenter.messageHistoryChanged)
             .add(NotificationCenter.historyCleared)
             .add(NotificationCenter.messageReceivedByServer)
             .add(NotificationCenter.messageReceivedByAck)
@@ -4879,6 +4886,12 @@ public class ChatActivity extends BaseFragment implements
                 toTheMessage = headerItem.lazilyAddSubItem(nkheaderbtn_to_the_message, R.drawable.msg_go_up, LocaleController.getString(R.string.ToTheMessage));
                 hideTitleItem = headerItem.lazilyAddSubItem(nkheaderbtn_hide_title, R.drawable.hide_title, LocaleController.getString(R.string.HideTitle));
                 reloadMessagesItem = headerItem.lazilyAddSubItem(nkheaderbtn_reload_messages, com.google.android.gms.cast.framework.R.drawable.quantum_ic_refresh_white_24, LocaleController.getString(R.string.ClearCache));
+                headerItem.lazilyAddSubItem(nkheaderbtn_parva_favorites, R.drawable.parva_star_outline, LocaleController.getString(R.string.FavoriteMessagesInChat));
+                if (dialog_id != getUserConfig().getClientUserId() && chatMode == 0) {
+                    headerItem.lazilyAddSubItem(nkheaderbtn_parva_lock, R.drawable.msg_secret, LocaleController.getString(R.string.ChatLockMenu));
+                    headerItem.lazilyAddSubItem(nkheaderbtn_parva_hide, R.drawable.msg_archive_hide, LocaleController.getString(
+                            tw.nekomimi.nekogram.helpers.HiddenChats.isHidden(currentAccount, dialog_id) ? R.string.HiddenChatsUnhide : R.string.HiddenChatsHide));
+                }
                 if (ChatObject.isMegagroup(currentChat) || currentChat != null && !ChatObject.isChannel(currentChat)) {
                     headerItem.lazilyAddSubItem(nkheaderbtn_zibi, R.drawable.msg_delete, LocaleController.getString("DeleteAllFromSelf", R.string.DeleteAllFromSelf));
                 }
@@ -9470,8 +9483,75 @@ public class ChatActivity extends BaseFragment implements
         onBottomItemsVisibilityChanged();
         ViewCompat.setOnApplyWindowInsetsListener(fragmentView, this::onApplyWindowInsets);
         Timer.finish(t);
+        parvaCheckLock();
 
         return fragmentView;
+    }
+
+    private FrameLayout parvaLockOverlay;
+
+    /** Covers a locked chat (Parvagram's chat lock) until it is opened with the password or fingerprint. */
+    private void parvaCheckLock() {
+        if (!(fragmentView instanceof ViewGroup) || getContext() == null) {
+            return;
+        }
+        final boolean needs = dialog_id != 0 && tw.nekomimi.nekogram.helpers.ChatLock.needsUnlock(currentAccount, dialog_id);
+        if (!needs) {
+            if (parvaLockOverlay != null) {
+                ((ViewGroup) fragmentView).removeView(parvaLockOverlay);
+                parvaLockOverlay = null;
+            }
+            return;
+        }
+        if (parvaLockOverlay != null) {
+            return;
+        }
+        final Context context = getContext();
+        parvaLockOverlay = new FrameLayout(context);
+        parvaLockOverlay.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        parvaLockOverlay.setClickable(true);
+        final LinearLayout column = new LinearLayout(context);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setGravity(Gravity.CENTER_HORIZONTAL);
+        final ImageView icon = new ImageView(context);
+        icon.setImageResource(R.drawable.msg_secret);
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        icon.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_windowBackgroundWhiteBlueIcon), PorterDuff.Mode.SRC_IN));
+        column.addView(icon, LayoutHelper.createLinear(56, 56, Gravity.CENTER_HORIZONTAL, 0, 0, 0, 16));
+        final TextView title = new TextView(context);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
+        title.setTypeface(AndroidUtilities.bold());
+        title.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+        title.setGravity(Gravity.CENTER);
+        title.setText(LocaleController.getString(R.string.ChatLockLockedTitle));
+        column.addView(title, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 32, 0, 32, 20));
+        final TextView unlock = new TextView(context);
+        unlock.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+        unlock.setTypeface(AndroidUtilities.bold());
+        unlock.setTextColor(getThemedColor(Theme.key_featuredStickers_buttonText));
+        unlock.setGravity(Gravity.CENTER);
+        unlock.setPadding(AndroidUtilities.dp(24), 0, AndroidUtilities.dp(24), 0);
+        unlock.setBackground(Theme.AdaptiveRipple.filledRectByKey(Theme.key_featuredStickers_addButton, 8));
+        unlock.setText(LocaleController.getString(R.string.ChatLockUnlock));
+        final Runnable ask = () -> tw.nekomimi.nekogram.helpers.ChatLock.requestUnlock(this, currentAccount, dialog_id, this::parvaCheckLock);
+        unlock.setOnClickListener(v -> ask.run());
+        column.addView(unlock, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 44, Gravity.CENTER_HORIZONTAL));
+        parvaLockOverlay.addView(column, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
+        final ImageView back = new ImageView(context);
+        back.setImageResource(R.drawable.ic_ab_back);
+        back.setScaleType(ImageView.ScaleType.CENTER);
+        back.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_windowBackgroundWhiteBlackText), PorterDuff.Mode.SRC_IN));
+        back.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), Theme.RIPPLE_MASK_CIRCLE_20DP));
+        back.setOnClickListener(v -> finishFragment());
+        parvaLockOverlay.addView(back, LayoutHelper.createFrame(48, 48, Gravity.TOP | Gravity.LEFT, 4, 4 + AndroidUtilities.statusBarHeight / AndroidUtilities.density, 0, 0));
+        ((ViewGroup) fragmentView).addView(parvaLockOverlay, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        if (!inPreviewMode) {
+            AndroidUtilities.runOnUIThread(() -> {
+                if (parvaLockOverlay != null && !isFinished && !isPaused()) {
+                    ask.run();
+                }
+            }, 350);
+        }
     }
 
     private void createSearchHashtagViewsIfNeeded() {
@@ -10875,6 +10955,10 @@ public class ChatActivity extends BaseFragment implements
         if (currentEncryptedChat == null && getDialogId() != UserObject.VERIFY && !NaConfig.INSTANCE.getDisableActionBarButtonForward().Bool()) {
             actionModeViews.add(actionMode.addItemWithWidth(forward, R.drawable.msg_forward, dp(48), LocaleController.getString(R.string.Forward)));
         }
+        final boolean noQuoteForwardInActionBar = currentEncryptedChat == null && getDialogId() != UserObject.VERIFY && NaConfig.INSTANCE.getShowNoQuoteForward().Bool() && !NaConfig.INSTANCE.getDisableActionBarButtonForwardNoQuote().Bool();
+        if (noQuoteForwardInActionBar) {
+            actionModeViews.add(actionMode.addItemWithWidth(nkbtn_forward_noquote, R.drawable.msg_forward_noquote, dp(48), LocaleController.getString(R.string.NoQuoteForward)));
+        }
 
         actionModeViews.add(actionMode.addItemWithWidth(delete, R.drawable.msg_delete, dp(48), LocaleController.getString(R.string.Delete)));
         actionModeViews.add(actionModeOtherItem = actionMode.addItemWithWidth(nkactionbarbtn_action_mode_other, R.drawable.ic_ab_other, dp(48), LocaleController.getString(R.string.MessageMenu)));
@@ -10883,7 +10967,7 @@ public class ChatActivity extends BaseFragment implements
 
         if (currentEncryptedChat == null || !noforward) {
             final boolean isSavedMessages = getDialogId() == getUserConfig().getClientUserId() && (chatMode == 0 || chatMode == MODE_SAVED);
-            if (NaConfig.INSTANCE.getShowNoQuoteForward().Bool()) {
+            if (NaConfig.INSTANCE.getShowNoQuoteForward().Bool() && !noQuoteForwardInActionBar) {
                 actionModeOtherItem.addSubItem(nkbtn_forward_noquote, R.drawable.msg_forward_noquote, LocaleController.getString("NoQuoteForward", R.string.NoQuoteForward));
             }
             if (isSavedMessages) {
@@ -16420,6 +16504,24 @@ public class ChatActivity extends BaseFragment implements
     }
 
     private Runnable sendSecretMessageRead(MessageObject messageObject, boolean readNow) {
+        return sendSecretMessageRead(messageObject, readNow, false);
+    }
+
+    /** {@code force}: the user chose to let the timer start, even with "keep timed media" on. */
+    private Runnable sendSecretMessageRead(MessageObject messageObject, boolean readNow, boolean force) {
+        if (NekoConfig.keepTimedMedia && !force) {
+            return null; // marking it read would start the self-destruct timer
+        }
+        if (force && messageObject != null && !messageObject.isOut() && messageObject.isTimedMedia() && messageObject.messageOwner.destroyTime == 0) {
+            final int ttl = messageObject.messageOwner.ttl > 0 && messageObject.messageOwner.ttl != 0x7FFFFFFF ? messageObject.messageOwner.ttl : 0;
+            messageObject.messageOwner.media_unread = false; // marked viewed: no eye button any more
+            if (currentEncryptedChat != null) {
+                getMessagesController().markMessageAsRead(dialog_id, messageObject.messageOwner.random_id, ttl);
+            } else {
+                getMessagesController().markMessageAsRead2(dialog_id, messageObject.getId(), null, ttl, 0, false);
+            }
+            return null;
+        }
         if (messageObject == null || messageObject.isOut() || !messageObject.isSecretMedia() || messageObject.messageOwner.destroyTime != 0 || messageObject.messageOwner.ttl <= 0) {
             return null;
         }
@@ -16449,6 +16551,9 @@ public class ChatActivity extends BaseFragment implements
     }
 
     private Runnable sendSecretMediaDelete(MessageObject messageObject) {
+        if (NekoConfig.keepTimedMedia) {
+            return null;
+        }
         if (messageObject == null || messageObject.isOut() || !messageObject.isSecretMedia() || messageObject.messageOwner.ttl != 0x7FFFFFFF) {
             return null;
         }
@@ -18360,6 +18465,7 @@ public class ChatActivity extends BaseFragment implements
 
             if (isInPreviewMode() && allowExpandPreviewByClick) {
                 if (ev.getAction() == MotionEvent.ACTION_DOWN) {
+                    mediaTouchInPreview = false;
                     boolean pressedOnPageDownButtons = false, pressedOnAction = false;
                     int[] off = new int[2];
                     getLocationInWindow(off);
@@ -18405,15 +18511,20 @@ public class ChatActivity extends BaseFragment implements
                     if (avatarContainer != null) {
                         avatarContainer.bounce.setPressed(false);
                     }
-                    if (pressActionBar || MathUtils.distance(x, y, ev.getX(), ev.getY()) < AndroidUtilities.dp(6) && SystemClock.elapsedRealtime() - pressTime <= ViewConfiguration.getTapTimeout()) {
+                    if (mediaTouchInPreview) {
+                        mediaTouchInPreview = false;
+                    } else if (pressActionBar || MathUtils.distance(x, y, ev.getX(), ev.getY()) < AndroidUtilities.dp(6) && SystemClock.elapsedRealtime() - pressTime <= ViewConfiguration.getTapTimeout()) {
                         if (pressActionBar) {
                             final INavigationLayout layout = parentLayout;
                             removeSelfFromStack(false);
                             layout.presentFragment(ProfileActivity.of(dialog_id));
-                        } else {
+                            ev.setAction(MotionEvent.ACTION_CANCEL);
+                        } else if (!NaConfig.INSTANCE.getAllowMediaInChatPreview().Bool()) {
                             parentLayout.expandPreviewFragment();
+                            ev.setAction(MotionEvent.ACTION_CANCEL);
                         }
-                        ev.setAction(MotionEvent.ACTION_CANCEL);
+                        // Otherwise the preview stays a preview: expanding it opens the chat and
+                        // marks it as read, which is what the read-only preview avoids.
                     }
                     pressTime = -1;
                 } else if (ev.getAction() == MotionEvent.ACTION_CANCEL) {
@@ -20101,6 +20212,10 @@ public class ChatActivity extends BaseFragment implements
 
                 if (forwardNoQuoteItem != null) {
                     forwardNoQuoteItem.setVisibility(canForward && NaConfig.INSTANCE.getShowNoQuoteForward().Bool());
+                }
+                ActionBarMenuItem forwardNoQuoteActionItem = actionBar.createActionMode().getItem(nkbtn_forward_noquote);
+                if (forwardNoQuoteActionItem != null) {
+                    forwardNoQuoteActionItem.setVisibility(canForward ? View.VISIBLE : View.GONE);
                 }
                 if (saveMessageItem != null) {
                     saveMessageItem.setVisibility(canForward);
@@ -23045,7 +23160,8 @@ public class ChatActivity extends BaseFragment implements
                 int mode = (Integer) args[3];
                 if (mode != chatMode && chatMode != MODE_SAVED && chatMode != MODE_SUGGESTIONS) {
                     if (chatMode != MODE_SCHEDULED && mode == MODE_SCHEDULED && !isPaused && LaunchActivity.getSafeLastFragment() == this && messagePreviewParams == null) {
-                        if (!arr.isEmpty() && arr.get(0).getId() < 0) {
+                        // Not for messages that ghost mode's "send as scheduled" scheduled on its own.
+                        if (!arr.isEmpty() && arr.get(0).getId() < 0 && !tw.nekomimi.nekogram.utils.AyuGhostUtils.getAutomaticallyScheduled()) {
                             openScheduledMessages(arr.get(0).getId(), arr.get(0).messageOwner != null && arr.get(0).messageOwner.video_processing_pending);
                         }
                     }
@@ -23334,6 +23450,17 @@ public class ChatActivity extends BaseFragment implements
             removeUnreadPlane(true);
             if (updated && chatAdapter != null) {
                 chatAdapter.notifyDataSetChanged(false);
+            }
+        } else if (id == NotificationCenter.messageHistoryChanged) {
+            // A visible message got an edit/deletion record: rebuild cells so the icon shows.
+            if (chatListView != null) {
+                for (int i = 0, n = chatListView.getChildCount(); i < n; i++) {
+                    View child = chatListView.getChildAt(i);
+                    if (child instanceof ChatMessageCell && ((ChatMessageCell) child).getMessageObject() != null) {
+                        ((ChatMessageCell) child).getMessageObject().forceUpdate = true;
+                    }
+                }
+                updateVisibleRows();
             }
         } else if (id == NotificationCenter.messagesDeleted) {
             boolean scheduled = (Boolean) args[2];
@@ -30806,6 +30933,9 @@ public class ChatActivity extends BaseFragment implements
     @Override
     public void setInPreviewMode(boolean value) {
         super.setInPreviewMode(value);
+        if (!value) {
+            MediaController.getInstance().setSkipMarkContentAsRead(false);
+        }
         if (currentUser != null && audioCallIconItem != null) {
             TLRPC.UserFull userFull = getMessagesController().getUserFull(currentUser.id);
             if (userFull != null && userFull.phone_calls_available) {
@@ -30892,6 +31022,7 @@ public class ChatActivity extends BaseFragment implements
     @Override
     public void onResume() {
         super.onResume();
+        parvaCheckLock();
         checkShowBlur(false);
         activityResumeTime = System.currentTimeMillis();
         if (openImport && getSendMessagesHelper().getImportingHistory(dialog_id) != null) {
@@ -37887,9 +38018,16 @@ public class ChatActivity extends BaseFragment implements
         }
         boolean noforwards = isPeerNoForwards() || (messageObject != null && messageObject.messageOwner != null && messageObject.messageOwner.noforwards);
         boolean noforwardsOverride = noforwards && !NekoXConfig.disableFlagSecure && !NaConfig.INSTANCE.getForceCopy().Bool();
+        if (!longPress && url instanceof URLSpan && org.telegram.utils.proxy.V2RayConfig.isV2RayLink(((URLSpan) url).getURL())) {
+            V2RayConfigSheet.show(getParentActivity(), ((URLSpan) url).getURL());
+            return;
+        }
         if (url instanceof URLSpanMono) {
             if (!noforwardsOverride || getDialogId() == UserObject.VERIFY) {
                 ((URLSpanMono) url).copyToClipboard();
+                if (!longPress && V2RayConfigSheet.open(getParentActivity(), ((URLSpanMono) url).getText())) {
+                    return;
+                }
                 UndoView undoView = getUndoView();
                 if (undoView != null) {
                     undoView.showWithAction(0, UndoView.ACTION_TEXT_COPIED, null);
@@ -40817,6 +40955,7 @@ public class ChatActivity extends BaseFragment implements
                 showDialog(secretVoicePlayer);
                 return false;
             } else if (messageObject.isVoice() || messageObject.isRoundVideo()) {
+                MediaController.getInstance().setSkipMarkContentAsRead(isInPreviewMode());
                 boolean result = MediaController.getInstance().playMessage(messageObject, muted);
                 MediaController.getInstance().setVoiceMessagesPlaylist(result ? createVoiceMessagesPlaylist(messageObject, false) : null, false);
                 return result;
@@ -40832,7 +40971,52 @@ public class ChatActivity extends BaseFragment implements
         }
 
         @Override
+        public void didPressQuickButton(ChatMessageCell cell, int type) {
+            final MessageObject message = cell.getMessageObject();
+            if (message == null || getParentActivity() == null) {
+                return;
+            }
+            if (type == ChatMessageCell.QUICK_TIMED_VIEW) {
+                // Tell the sender it was opened; the copy on this device stays.
+                tw.nekomimi.nekogram.utils.AyuGhostUtils.setAllowReadPacket(true, 1);
+                sendSecretMessageRead(message, true, true);
+                cell.forceResetMessageObject();
+                updateVisibleRows();
+                BulletinFactory.of(ChatActivity.this).createSimpleBulletin(androidx.core.content.ContextCompat.getDrawable(getContext(), R.drawable.msg_view_file), getString(R.string.TimedMediaMarkedViewed)).show();
+            } else if (type == ChatMessageCell.QUICK_EDIT) {
+                startEditingMessageObject(message, false);
+            } else if (type == ChatMessageCell.QUICK_FORWARD_NOQUOTE) {
+                selectedObject = message;
+                selectedObjectGroup = null;
+                nkbtn_onclick(nkbtn_forward_noquote);
+            } else if (type == ChatMessageCell.QUICK_SAVE) {
+                // Forward to Saved Messages (the cloud), keeping the original sender.
+                final ArrayList<MessageObject> list = new ArrayList<>();
+                list.add(message);
+                final long selfId = getUserConfig().getClientUserId();
+                // From a chat that restricts forwarding (allowed by "force copy"), send a copy instead.
+                final boolean copy = getMessagesController().isPeerNoForwards(message.getDialogId());
+                final int result = getSendMessagesHelper().sendMessage(list, selfId, copy, false, true, 0, 0);
+                AlertsCreator.showSendMediaAlert(result, ChatActivity.this, null);
+                if (result == 0) {
+                    BulletinFactory.createForwardedBulletin(getContext(), ChatActivity.this, null, 1, selfId, 1,
+                            getThemedColor(Theme.key_undo_background), getThemedColor(Theme.key_undo_infoColor), Bulletin.DURATION_SHORT).show();
+                }
+            } else if (type == ChatMessageCell.QUICK_FAVORITE) {
+                final boolean starred = tw.nekomimi.nekogram.helpers.FavoriteMessages.toggle(currentAccount, message);
+                cell.invalidate();
+                BulletinFactory.of(ChatActivity.this).createSimpleBulletin(androidx.core.content.ContextCompat.getDrawable(getContext(),
+                        starred ? R.drawable.parva_star_filled : R.drawable.parva_star_outline),
+                        getString(starred ? R.string.FavoriteMessageAdded : R.string.FavoriteMessageRemoved)).show();
+            }
+        }
+
+        @Override
         public void didPressTime(ChatMessageCell cell) {
+            if (xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, cell.getMessageObject()) != 0) {
+                xyz.nextalone.nagram.history.MessageEditHistoryDialog.show(ChatActivity.this, cell.getMessageObject());
+                return;
+            }
             if (!cell.getMessageObject().isImportedForward()) {
                 if (NaConfig.INSTANCE.getShowTimeHint().Bool()) {
                     showTimeHint(cell);
@@ -42132,6 +42316,16 @@ public class ChatActivity extends BaseFragment implements
         @Override
         public boolean canPerformReply() {
             return !isReport() && !inPreviewMode;
+        }
+
+        @Override
+        public boolean canPerformMediaActionsInPreview() {
+            return inPreviewMode && allowExpandPreviewByClick && NaConfig.INSTANCE.getAllowMediaInChatPreview().Bool();
+        }
+
+        @Override
+        public void didStartMediaTouchInPreview() {
+            mediaTouchInPreview = true;
         }
 
         @Override
@@ -46002,6 +46196,26 @@ public class ChatActivity extends BaseFragment implements
             }
             updateActionModeTitle();
             updateVisibleRows();
+        } else if (id == nkheaderbtn_parva_hide) {
+            if (tw.nekomimi.nekogram.helpers.HiddenChats.isHidden(currentAccount, dialog_id)) {
+                tw.nekomimi.nekogram.helpers.HiddenChats.setHidden(currentAccount, dialog_id, false);
+                BulletinFactory.of(this).createSimpleBulletin(R.raw.contact_check, LocaleController.getString(R.string.HiddenChatsUnhidden)).show();
+            } else {
+                tw.nekomimi.nekogram.helpers.HiddenChats.hideFromChat(this, currentAccount, dialog_id, () -> {
+                    if (getParentActivity() != null) {
+                        android.widget.Toast.makeText(getParentActivity(), LocaleController.getString(R.string.HiddenChatsHidden), android.widget.Toast.LENGTH_LONG).show();
+                    }
+                    finishFragment();
+                });
+            }
+        } else if (id == nkheaderbtn_parva_favorites) {
+            presentFragment(new tw.nekomimi.nekogram.settings.FavoriteMessagesActivity(dialog_id, this));
+        } else if (id == nkheaderbtn_parva_lock) {
+            final boolean wasLocked = tw.nekomimi.nekogram.helpers.ChatLock.isLocked(currentAccount, dialog_id);
+            tw.nekomimi.nekogram.helpers.ChatLock.toggleFromChat(this, currentAccount, dialog_id, () -> {
+                BulletinFactory.of(this).createSimpleBulletin(androidx.core.content.ContextCompat.getDrawable(getContext(), R.drawable.msg_secret),
+                        LocaleController.getString(wasLocked ? R.string.ChatLockRemoved : R.string.ChatLockAdded)).show();
+            });
         } else if (id == nkheaderbtn_zibi) {
             getMessageHelper().createDeleteHistoryAlert(ChatActivity.this, currentChat, forumTopic, mergeDialogId, themeDelegate);
 //            Context context = getParentActivity();
@@ -46251,6 +46465,19 @@ public class ChatActivity extends BaseFragment implements
                 builder.setNegativeButton(LocaleController.getString("Cancel"), (dialog, which) -> {
                 });
                 builder.show();
+                break;
+            }
+            case nkbtn_timed_viewed: {
+                if (selectedObject != null) {
+                    tw.nekomimi.nekogram.utils.AyuGhostUtils.setAllowReadPacket(true, 1);
+                    sendSecretMessageRead(selectedObject, true, true);
+                }
+                break;
+            }
+            case nkbtn_edit_history: {
+                if (selectedObject != null) {
+                    xyz.nextalone.nagram.history.MessageEditHistoryDialog.show(this, selectedObject);
+                }
                 break;
             }
             case nkbtn_savemessage: {
@@ -48782,6 +49009,19 @@ public class ChatActivity extends BaseFragment implements
                             options.add(nkbtn_savemessage);
                             icons.add(R.drawable.msg_saved);
                         }
+                    }
+                    if (NekoConfig.keepTimedMedia && !selectedObject.isOut() && selectedObject.isTimedMedia()
+                            && selectedObject.messageOwner.destroyTime == 0 && selectedObject.isContentUnread()) {
+                        // Kept timed media: let the sender see it was opened (starts the timer).
+                        items.add(LocaleController.getString(R.string.TimedMediaMarkViewed));
+                        options.add(nkbtn_timed_viewed);
+                        icons.add(R.drawable.msg_autodelete);
+                    }
+                    if (selectedObjectGroup == null
+                            && xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, selectedObject) != 0) {
+                        items.add(LocaleController.getString(R.string.MessageHistoryViewEdits));
+                        options.add(nkbtn_edit_history);
+                        icons.add(R.drawable.msg_edit);
                     }
                     boolean allowRepeat = currentUser != null
                             || (currentChat != null && ChatObject.canSendMessages(currentChat));

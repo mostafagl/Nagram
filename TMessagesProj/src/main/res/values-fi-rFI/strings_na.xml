@@ -22,7 +22,7 @@
     <string name="SendReactions">Lähetä Reaktioita</string>
     <string name="ShowReactions">Näytä Reaktiot</string>
     <string name="CustomTitle">Oma Otsikko</string>
-    <string name="CustomTitleHint">Jätä tyhjäksi käyttääksesi Nagramia</string>
+    <string name="CustomTitleHint">Jätä tyhjäksi käyttääksesi Parvagramia</string>
     <string name="CodeSyntaxHighlight">Koodin syntaksin korostus</string>
     <string name="CreateMono">Luo Monospace</string>
     <string name="CreateMonoLanguage">Koodin kieli</string>
@@ -362,7 +362,7 @@
     <string name="ForceVideoNewRewindMethod">Pakota video käyttämään uutta hakutapaa</string>
     <string name="TabStyleStroke">Välilehden ilmaisin ääriviivat</string>
     <string name="AddCommaAfterMention">Lisää pilkku maininnan jälkeen</string>
-    <string name="NagramMessages">Viestit</string>
+    <string name="ParvagramMessages">Viestit</string>
     <string name="MessagePreviewText">koska I want the code to be terrible i am ||vibe-coding||</string>
     <string name="MessagePreviewPollQuestion">Miten koodi on?</string>
     <string name="MessagePreviewPollAnswerTerrible">Kauhea</string>

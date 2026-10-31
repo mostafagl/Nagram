@@ -730,6 +730,7 @@ public class Browser {
             }
             return true;
         } else if ("tg".equals(uri.getScheme()) ||
+                "vless".equals(uri.getScheme()) ||
                 "vmess".equals(uri.getScheme()) ||
                 "vmesss1".equals(uri.getScheme()) ||
                 "ss".equals(uri.getScheme()) ||

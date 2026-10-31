@@ -8025,8 +8025,41 @@ public class MessageObject {
             entities.add(entityItalic);
             return addEntitiesToText(text, entities, isOutOwner(), true, photoViewer, useManualParse);
         } else {
-            return addEntitiesToText(text, getEntities(), isOutOwner(), true, photoViewer, useManualParse);
+            final boolean hasUrls = addEntitiesToText(text, getEntities(), isOutOwner(), true, photoViewer, useManualParse);
+            return addV2RayLinks(text) || hasUrls;
         }
+    }
+
+    /**
+     * Makes whole vless://, vmess://, trojan:// and ss:// links clickable. Neither the server
+     * nor the web link parser knows these schemes, so at best they link the host part
+     * ("www.example.com:443?...") which would open in a browser.
+     */
+    public static boolean addV2RayLinks(CharSequence text) {
+        if (!(text instanceof Spannable) || TextUtils.indexOf(text, "://") < 0) {
+            return false;
+        }
+        final Spannable spannable = (Spannable) text;
+        final java.util.regex.Matcher matcher = org.telegram.utils.proxy.V2RayConfig.LINK_PATTERN.matcher(text);
+        boolean found = false;
+        while (matcher.find()) {
+            final String link = org.telegram.utils.proxy.V2RayConfig.trimLink(matcher.group());
+            final int start = matcher.start();
+            final int end = start + link.length();
+            if (spannable.getSpans(start, end, URLSpanMono.class).length > 0) {
+                // Code: tapping copies it, and the copy handler offers to import the config.
+                continue;
+            }
+            if (org.telegram.utils.proxy.V2RayConfig.parse(link) == null) {
+                continue;
+            }
+            for (URLSpan span : spannable.getSpans(start, end, URLSpan.class)) {
+                spannable.removeSpan(span);
+            }
+            spannable.setSpan(new URLSpanNoUnderline(link), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            found = true;
+        }
+        return found;
     }
 
     public void replaceEmojiToLottieFrame(CharSequence text, int[] emojiOnly) {
@@ -10110,7 +10143,8 @@ public class MessageObject {
     }
 
     public boolean needDrawBluredPreview() {
-        if (NekoXConfig.disableFlagSecure) {
+        if (NekoXConfig.disableFlagSecure && !hasExtendedMediaPreview()) {
+            // Paid media keeps its preview: its real content isn't available until paid for.
             return false;
         }
         if (isRepostPreview) {
@@ -10118,6 +10152,9 @@ public class MessageObject {
         }
         if (hasExtendedMediaPreview()) {
             return true;
+        } else if (NekoConfig.keepTimedMedia && !isOutOwner()) {
+            // Timed media received: shown and opened like normal media, nothing self-destructs.
+            return false;
         } else if (messageOwner instanceof TLRPC.TL_message_secret) {
             int ttl = Math.max(messageOwner.ttl, getMedia(messageOwner).ttl_seconds);
             return ttl > 0 && ((getMedia(messageOwner) instanceof TLRPC.TL_messageMediaPhoto || isVideo() || isGif()) && ttl <= 60 || isRoundVideo());
@@ -10129,6 +10166,20 @@ public class MessageObject {
 
     public boolean isSecret() {
         return messageOwner instanceof TLRPC.TL_message_secret;
+    }
+
+    /**
+     * Whether this is self-destructing or view-once media, regardless of settings that change how
+     * such media is shown (isSecretMedia() is false when screenshots are allowed).
+     */
+    public boolean isTimedMedia() {
+        final TLRPC.MessageMedia media = getMedia(messageOwner);
+        if (messageOwner instanceof TLRPC.TL_message_secret) {
+            return messageOwner.ttl > 0 && media != null && !(media instanceof TLRPC.TL_messageMediaEmpty) && !(media instanceof TLRPC.TL_messageMediaWebPage);
+        } else if (messageOwner instanceof TLRPC.TL_message) {
+            return media != null && media.ttl_seconds != 0 && (media instanceof TLRPC.TL_messageMediaPhoto || media instanceof TLRPC.TL_messageMediaDocument);
+        }
+        return false;
     }
 
     public boolean isSecretMedia() {

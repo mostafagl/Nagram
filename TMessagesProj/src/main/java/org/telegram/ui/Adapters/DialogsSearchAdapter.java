@@ -286,6 +286,11 @@ public class DialogsSearchAdapter extends RecyclerListView.SelectionAdapter {
     }
 
     private boolean filter(Object obj) {
+        // Parvagram: hidden chats never show up in search.
+        if (obj instanceof TLRPC.User && tw.nekomimi.nekogram.helpers.HiddenChats.isHidden(currentAccount, ((TLRPC.User) obj).id)
+                || obj instanceof TLRPC.Chat && tw.nekomimi.nekogram.helpers.HiddenChats.isHidden(currentAccount, -((TLRPC.Chat) obj).id)) {
+            return false;
+        }
         if (dialogsType != DialogsActivity.DIALOGS_TYPE_START_ATTACH_BOT) {
             return true;
         }
@@ -644,6 +649,9 @@ public class DialogsSearchAdapter extends RecyclerListView.SelectionAdapter {
                                 if (foundDuplicate) {
                                     continue;
                                 }
+                            }
+                            if (tw.nekomimi.nekogram.helpers.HiddenChats.isHidden(currentAccount, MessageObject.getDialogId(message))) {
+                                continue;
                             }
                             searchResultMessages.add(msg);
                             long dialog_id = MessageObject.getDialogId(message);

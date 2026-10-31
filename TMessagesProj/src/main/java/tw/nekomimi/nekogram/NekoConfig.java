@@ -34,6 +34,32 @@ public class NekoConfig {
     public static boolean sendReadStoryPackets;
     public static boolean markReadAfterSend;
     public static boolean showGhostToggleInDrawer;
+    public static boolean showGhostToggleInActionBar;
+    public static boolean useScheduledMessages;
+    /** Timed ("self-destructing") photos, videos and voice: shown normally, kept, timer not started. */
+    public static boolean keepTimedMedia;
+    public static boolean saveDeletedMedia;
+    public static boolean saveMediaPrivate;
+    public static boolean saveMediaGroups;
+    public static boolean saveMediaChannels;
+    public static boolean saveMediaBots;
+    /** Text shown before the time of deleted messages; empty: the bin icon. */
+    public static String deletedMark;
+    public static boolean showKillButtonInDrawer;
+    // Buttons beside messages.
+    public static boolean showHistoryButton;
+    public static boolean showTimedViewButton;
+    public static boolean showEditButton;
+    public static boolean showNoQuoteForwardButton;
+    public static boolean showSaveButton;
+    /** Tap on an avatar in the chat list: 0 Telegram's default (stories, else the chat), or one of AVATAR_TAP_*. */
+    public static int avatarTapAction;
+    /** Avatar corners in the chat list and chats: 50 = circle (Telegram's), 0 = square. */
+    public static int avatarRoundness;
+    public static final int AVATAR_TAP_CHAT = 1;
+    public static final int AVATAR_TAP_PROFILE = 2;
+    public static final int AVATAR_TAP_PHOTO = 3;
+    public static boolean showFavoriteButton;
     public static final String channelAliasPrefix = "channelAliasPrefix_";
 
     private static boolean configLoaded = false;
@@ -89,7 +115,7 @@ public class NekoConfig {
     public static ConfigItem unlimitedFavedStickers = addConfig("UnlimitedFavoredStickers", configTypeBool, false);
     public static ConfigItem unlimitedPinnedDialogs = addConfig("UnlimitedPinnedDialogs", configTypeBool, false);
     public static ConfigItem disablePhotoSideAction = addConfig("DisablePhotoViewerSideAction", configTypeBool, false);
-    public static ConfigItem openArchiveOnPull = addConfig("OpenArchiveOnPull", configTypeBool, false);
+    public static ConfigItem openArchiveOnPull = addConfig("OpenArchiveOnPull", configTypeBool, true);
     public static ConfigItem disablePullDownSearch = addConfig("DisablePullDownSearch", configTypeBool, false);
     public static ConfigItem hideKeyboardOnChatScroll = addConfig("HideKeyboardOnChatScroll", configTypeBool, false);
     public static ConfigItem avatarBackgroundBlur = addConfig("BlurAvatarBackground", configTypeBool, false);
@@ -123,10 +149,10 @@ public class NekoConfig {
 
     public static ConfigItem ignoreMutedCount = addConfig("IgnoreMutedCount", configTypeBool, true);
 //    public static ConfigItem useDefaultTheme = addConfig("UseDefaultTheme", configTypeBool, false);
-    public static ConfigItem showIdAndDc = addConfig("ShowIdAndDc", configTypeBool, false);
+    public static ConfigItem showIdAndDc = addConfig("ShowIdAndDc", configTypeBool, true);
 
     public static ConfigItem cachePath = addConfig("cache_path", configTypeString, "");
-    public static ConfigItem customSavePath = addConfig("customSavePath", configTypeString, "Nagram");
+    public static ConfigItem customSavePath = addConfig("customSavePath", configTypeString, "Parvagram");
 
     public static ConfigItem translationProvider = addConfig("translationProvider", configTypeInt, 1);
     public static ConfigItem translateToLang = addConfig("TransToLang", configTypeString, ""); // "" -> translate to current language (MessageTrans.kt & Translator.kt)
@@ -140,7 +166,7 @@ public class NekoConfig {
     public static ConfigItem ccToLang = addConfig("opencc_to_lang", configTypeString, "");
     public static ConfigItem ccInputLang = addConfig("opencc_input_to_lang", configTypeString, "");
 
-    public static ConfigItem tabsTitleType = addConfig("TabTitleType", configTypeInt, NekoXConfig.TITLE_TYPE_TEXT);
+    public static ConfigItem tabsTitleType = addConfig("TabTitleType", configTypeInt, NekoXConfig.TITLE_TYPE_MIX);
     public static ConfigItem confirmAVMessage = addConfig("ConfirmAVMessage", configTypeBool, false);
     public static ConfigItem askBeforeCall = addConfig("AskBeforeCalling", configTypeBool, false);
     public static ConfigItem disableNumberRounding = addConfig("DisableNumberRounding", configTypeBool, false);
@@ -177,7 +203,7 @@ public class NekoConfig {
     public static ConfigItem disableChoosingSticker = addConfig("disableChoosingSticker", configTypeBool, false);
     public static ConfigItem hideGroupSticker = addConfig("hideGroupSticker", configTypeBool, false);
     public static ConfigItem disablePremiumStickerAnimation = addConfig("disablePremiumStickerAnimation", configTypeBool, false);
-    public static ConfigItem hideSponsoredMessage = addConfig("hideSponsoredMessage", configTypeBool, false);
+    public static ConfigItem hideSponsoredMessage = addConfig("hideSponsoredMessage", configTypeBool, true);
     public static ConfigItem rememberAllBackMessages = addConfig("rememberAllBackMessages", configTypeBool, false);
     public static ConfigItem hideSendAsChannel = addConfig("hideSendAsChannel", configTypeBool, false);
     public static ConfigItem showSpoilersDirectly = addConfig("showSpoilersDirectly", configTypeBool, false);
@@ -281,6 +307,24 @@ public class NekoConfig {
             markReadAfterSend = preferences.getBoolean("markReadAfterSend", true);
             // ~ Ghost other options
             showGhostToggleInDrawer = preferences.getBoolean("showGhostToggleInDrawer", false);
+            showGhostToggleInActionBar = preferences.getBoolean("showGhostToggleInActionBar", true);
+            useScheduledMessages = preferences.getBoolean("useScheduledMessages", false);
+            keepTimedMedia = preferences.getBoolean("keepTimedMedia", true);
+            saveDeletedMedia = preferences.getBoolean("saveDeletedMedia", true);
+            saveMediaPrivate = preferences.getBoolean("saveMediaPrivate", true);
+            saveMediaGroups = preferences.getBoolean("saveMediaGroups", true);
+            saveMediaChannels = preferences.getBoolean("saveMediaChannels", false);
+            saveMediaBots = preferences.getBoolean("saveMediaBots", false);
+            deletedMark = preferences.getString("deletedMark", "");
+            showKillButtonInDrawer = preferences.getBoolean("showKillButtonInDrawer", false);
+            showHistoryButton = preferences.getBoolean("showHistoryButton", true);
+            showTimedViewButton = preferences.getBoolean("showTimedViewButton", true);
+            showEditButton = preferences.getBoolean("showEditButton", false);
+            showNoQuoteForwardButton = preferences.getBoolean("showNoQuoteForwardButton", false);
+            showSaveButton = preferences.getBoolean("showSaveButton", false);
+            avatarTapAction = preferences.getInt("avatarTapAction", 0);
+            avatarRoundness = preferences.getInt("avatarRoundness", 50);
+            showFavoriteButton = preferences.getBoolean("showFavoriteButton", false);
 
             NkmrConfig.compact();
             configLoaded = true;
@@ -301,10 +345,25 @@ public class NekoConfig {
                 .putBoolean("sendReadStoryPackets", sendReadStoryPackets)
                 .putBoolean("sendOfflineAfterOnline", sendOfflineAfterOnline)
                 .apply();
+        notifyGhostModeChanged();
+    }
+
+    /** Lets the ghost button in the chat list follow changes made anywhere. */
+    public static void notifyGhostModeChanged() {
+        org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> org.telegram.messenger.NotificationCenter.getGlobalInstance()
+                .postNotificationName(org.telegram.messenger.NotificationCenter.ghostModeChanged));
     }
 
     public static void putBoolean(String key, boolean value) {
         preferences.edit().putBoolean(key, value).apply();
+    }
+
+    public static void putString(String key, String value) {
+        preferences.edit().putString(key, value).apply();
+    }
+
+    public static void putInt(String key, int value) {
+        preferences.edit().putInt(key, value).apply();
     }
     public static void toggleGhostMode() {
         setGhostMode(!isGhostModeActive());
@@ -452,7 +511,7 @@ public class NekoConfig {
             ccInputLang.setConfigString(preferences.getString("opencc_input_to_lang", null));
 
         if (preferences.contains("tabsTitleType"))
-            tabsTitleType.setConfigInt(preferences.getInt("tabsTitleType", NekoXConfig.TITLE_TYPE_TEXT));
+            tabsTitleType.setConfigInt(preferences.getInt("tabsTitleType", NekoXConfig.TITLE_TYPE_MIX));
         if (preferences.contains("confirmAVMessage"))
             confirmAVMessage.setConfigBool(preferences.getBoolean("confirmAVMessage", false));
         if (preferences.contains("askBeforeCall"))

@@ -317,6 +317,9 @@ public class NotificationCenter {
     public static final int didSetNewWallpapper = totalEvents++;
     public static final int proxySettingsChanged = totalEvents++;
     public static final int proxyCheckDone = totalEvents++;
+    public static final int messageHistoryChanged = totalEvents++;
+    public static final int parvaUpdateAvailable = totalEvents++;
+    public static final int ghostModeChanged = totalEvents++;
     public static final int proxyChangedByRotation = totalEvents++;
     public static final int liveLocationsChanged = totalEvents++;
     public static final int newLocationAvailable = totalEvents++;

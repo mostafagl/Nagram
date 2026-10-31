@@ -198,6 +198,12 @@ public class MessagesController extends BaseController implements NotificationCe
     public LongSparseArray<LongSparseArray<Integer>> printingStringsTypes = new LongSparseArray<>();
     public LongSparseArray<LongSparseArray<Boolean>>[] sendingTypings = new LongSparseArray[12];
     public ConcurrentHashMap<Long, Integer> onlinePrivacy = new ConcurrentHashMap<>(20, 1.0f, 2);
+
+    /** Telegram's short "online" for users who hide it, also kept as their approximate last seen (Parvagram). */
+    private void parvaOnlinePrivacyPut(long userId, int date) {
+        onlinePrivacy.put(userId, date);
+        tw.nekomimi.nekogram.helpers.LocalLastSeen.record(currentAccount, userId, date);
+    }
     private LongSparseIntArray pendingUnreadCounter = new LongSparseIntArray();
     private int lastPrintingStringCount;
     private SparseArray<ChatlistUpdatesStat> chatlistFoldersUpdates = new SparseArray<>();
@@ -14665,6 +14671,10 @@ public class MessagesController extends BaseController implements NotificationCe
         if (messageObject.scheduled) {
             return;
         }
+        if (NekoConfig.keepTimedMedia && !messageObject.isOut() && messageObject.isTimedMedia()) {
+            // Reading a timed or view-once message's content starts its timer on the server.
+            return;
+        }
         ArrayList<Integer> arrayList = new ArrayList<>();
         if (messageObject.messageOwner.mentioned) {
             getMessagesStorage().markMentionMessageAsRead(-messageObject.messageOwner.peer_id.channel_id, messageObject.getId(), messageObject.getDialogId());
@@ -15966,6 +15976,10 @@ public class MessagesController extends BaseController implements NotificationCe
         getConnectionsManager().sendRequest(request, (response, error) -> {
             if (isChannel && inputUser instanceof TLRPC.TL_inputUserSelf) {
                 AndroidUtilities.runOnUIThread(() -> joiningToChannels.remove(chatId));
+            }
+            if (tw.nekomimi.nekogram.diag.Diag.ENABLED) {
+                tw.nekomimi.nekogram.diag.Diag.log("addUserToChat chat_id=" + chatId + " request=" + request.getClass().getSimpleName()
+                        + " -> " + (error == null ? "OK " + (response == null ? "null" : response.getClass().getSimpleName()) : "ERROR code=" + error.code + " text=" + error.text));
             }
             if (error != null) {
                 if ("JOIN_GUARD_TIMEOUT".equals(error.text)) {
@@ -18329,7 +18343,7 @@ public class MessagesController extends BaseController implements NotificationCe
                 }
             }
             if (!updates.out && user != null && user.status != null && user.status.expires <= 0 && Math.abs(getConnectionsManager().getCurrentTime() - updates.date) < 30) {
-                onlinePrivacy.put(user.id, updates.date);
+                parvaOnlinePrivacyPut(user.id, updates.date);
                 updateStatus = true;
             }
 
@@ -18948,7 +18962,7 @@ public class MessagesController extends BaseController implements NotificationCe
                                 return false;
                             }
                             if (!message.out && a == 1 && user.status != null && user.status.expires <= 0 && Math.abs(getConnectionsManager().getCurrentTime() - message.date) < 30) {
-                                onlinePrivacy.put(userId, message.date);
+                                parvaOnlinePrivacyPut(userId, message.date);
                                 interfaceUpdateMask |= UPDATE_MASK_STATUS;
                             }
                         }
@@ -19186,7 +19200,7 @@ public class MessagesController extends BaseController implements NotificationCe
                     dialogId = update.peer.user_id;
                     TLRPC.User user = getUser(update.peer.user_id);
                     if (user != null && user.status != null && user.status.expires <= 0 && Math.abs(getConnectionsManager().getCurrentTime() - date) < 30) {
-                        onlinePrivacy.put(update.peer.user_id, date);
+                        parvaOnlinePrivacyPut(update.peer.user_id, date);
                         interfaceUpdateMask |= UPDATE_MASK_STATUS;
                     }
                 }
@@ -19372,7 +19386,7 @@ public class MessagesController extends BaseController implements NotificationCe
                         }
                     }
                     if (Math.abs(getConnectionsManager().getCurrentTime() - date) < 30) {
-                        onlinePrivacy.put(userId, date);
+                        parvaOnlinePrivacyPut(userId, date);
                     }
                 }
             } else if (baseUpdate instanceof TL_update.TL_updateChatParticipants) {
@@ -19535,7 +19549,7 @@ public class MessagesController extends BaseController implements NotificationCe
                         printChanged = true;
                     }
                     if (Math.abs(getConnectionsManager().getCurrentTime() - date) < 30) {
-                        onlinePrivacy.put(encryptedChat.user_id, date);
+                        parvaOnlinePrivacyPut(encryptedChat.user_id, date);
                     }
                 }
             } else if (baseUpdate instanceof TL_update.TL_updateEncryptedMessagesRead) {
@@ -20210,6 +20224,8 @@ public class MessagesController extends BaseController implements NotificationCe
 
 
         if (editingMessages != null) {
+            // Before the edits are queued for writing, so the stored copy still has the old text.
+            xyz.nextalone.nagram.history.MessageHistoryController.onEditUpdates(currentAccount, editingMessages);
             for (int b = 0, size = editingMessages.size(); b < size; b++) {
                 TLRPC.TL_messages_messages messagesRes = new TLRPC.TL_messages_messages();
                 ArrayList<MessageObject> messageObjects = editingMessages.valueAt(b);
@@ -21405,6 +21421,13 @@ public class MessagesController extends BaseController implements NotificationCe
         LongSparseIntArray markAsReadMessagesOutboxFinal = markAsReadMessagesOutbox;
         LongSparseArray<ArrayList<Integer>> markContentAsReadMessagesFinal = markContentAsReadMessages;
         SparseIntArray markAsReadEncryptedFinal = markAsReadEncrypted;
+        if (deletedMessages != null && xyz.nextalone.nagram.history.MessageHistoryController.isKeepingDeletedMessages()) {
+            // Keep messages deleted by others: record them and skip both the database delete
+            // and the removal from open chats. Deletions made on this device never come
+            // through here, they are applied locally right away.
+            xyz.nextalone.nagram.history.MessageHistoryController.onRemoteDeletion(currentAccount, deletedMessages);
+            deletedMessages = null;
+        }
         LongSparseArray<ArrayList<Integer>> deletedMessagesFinal = deletedMessages;
         LongSparseArray<ArrayList<Integer>> deletedQuickRepliesMessagesFinal = deletedQuickReplyMessages;
         LongSparseArray<ArrayList<Integer>> scheduledDeletedMessagesFinal = scheduledDeletedMessages;

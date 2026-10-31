@@ -270,7 +270,9 @@ public class AndroidUtilities {
 
     public static Typeface bold() {
         if (mediumTypeface == null) {
-            if (SharedConfig.useSystemBoldFont && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            if (xyz.nextalone.nagram.font.CustomFonts.getMedium() != null) {
+                mediumTypeface = xyz.nextalone.nagram.font.CustomFonts.getMedium();
+            } else if (SharedConfig.useSystemBoldFont && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 mediumTypeface = Typeface.create(null, 500, false);
             } else {
                 mediumTypeface = getTypeface(TYPEFACE_ROBOTO_MEDIUM);
@@ -2383,6 +2385,13 @@ public class AndroidUtilities {
 
     public static Typeface getTypeface(String assetPath) {
         synchronized (typefaceCache) {
+            final Typeface customMedium = xyz.nextalone.nagram.font.CustomFonts.getMedium();
+            if (customMedium != null && !assetPath.contains("mono") && !assetPath.contains("mw_bold") && !assetPath.contains("num") && !assetPath.contains("gram")) {
+                final boolean italic = assetPath.contains("italic");
+                final boolean heavy = assetPath.contains("medium") || assetPath.contains("bold");
+                final Typeface base = heavy ? customMedium : xyz.nextalone.nagram.font.CustomFonts.getRegular();
+                return italic ? Typeface.create(base, Typeface.ITALIC) : base;
+            }
             if (NekoConfig.typeface.Bool() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 if (assetPath.contains("medium") && assetPath.contains("italic")) {
                     return Typeface.create("sans-serif-medium", Typeface.ITALIC);
@@ -3645,7 +3654,7 @@ public class AndroidUtilities {
         }
         File storageDir = null;
         if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
-            storageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Nagram");
+            storageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Parvagram");
             if (!storageDir.mkdirs()) {
                 if (!storageDir.exists()) {
                     if (BuildVars.LOGS_ENABLED) {
@@ -4587,6 +4596,10 @@ public class AndroidUtilities {
                 return false;
             }
             Uri data = intent.getData();
+            if (data != null && org.telegram.utils.proxy.V2RayConfig.isV2RayLink(data.toString())) {
+                if (invoked) org.telegram.ui.V2RayConfigSheet.show(activity, data.toString());
+                return true;
+            }
             if (data != null) {
                 final ProxySettings proxySettings = ProxySettings.fromUri(data);
                 if (proxySettings != null && proxySettings.isValid()) {
@@ -4629,6 +4642,10 @@ public class AndroidUtilities {
 
     public static void showProxyAlert(Activity activity, final ProxySettings settings) {
         if (settings == null || !settings.isValid()) {
+            return;
+        }
+        if (settings.getType() == ProxySettings.Type.V2RAY) {
+            org.telegram.ui.V2RayConfigSheet.show(activity, settings.getSecret());
             return;
         }
 
@@ -6640,7 +6657,7 @@ public class AndroidUtilities {
 
     public static String getBuildVersionInfo() {
         String[] abi = Build.SUPPORTED_ABIS[0].toLowerCase(Locale.ROOT).split("-");
-        return "Nagram v" + BuildConfig.VERSION_NAME + " (" + BuildConfig.BUILD_TIMESTAMP + ") " + abi[abi.length - 1];
+        return "Parvagram v" + BuildConfig.VERSION_NAME + " (" + BuildConfig.BUILD_TIMESTAMP + ") " + abi[abi.length - 1];
 //        try {
 //            PackageInfo pInfo = ApplicationLoader.applicationContext.getPackageManager().getPackageInfo(ApplicationLoader.applicationContext.getPackageName(), 0);
 //            int code = pInfo.versionCode / 10;
