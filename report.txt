@@ -1,0 +1,113 @@
+installing apk/Parvagram-v13.0.2(1255)-x86_64.apk Performing Streamed Install
+Success
+
+===== p01_launch =====
+[screen 01_intro.png] Parvagram | The world's fastest messaging app. It is free and secure. | Switch to night theme | Start Messaging | Web tabs 
+PASS: app launches to the intro screen -- alive=True
+
+===== p02_vless_link =====
+[screen 02_v2ray_sheet.png] V2Ray server | 🇩🇪SV1 | Name | 🇩🇪SV1 | Protocol | VLESS | Server | www.speedtest.net | Port | 2053 | Transport | WebSocket | Security | TLS | SNI | noone.bingnet.online | Status | Check Status | Connect | Copy link | Save only
+PASS: vless link opens the V2Ray sheet
+PASS: sheet shows the parsed config -- V2Ray server 🇩🇪SV1 Name 🇩🇪SV1 Protocol VLESS Server www.speedtest.net Port 2053 Transport WebSocket Security TLS SNI noone.bingnet.online Status Check Status Connect Copy link Save only
+[screen 03_v2ray_ping.png] V2Ray server | 🇩🇪SV1 | Name | 🇩🇪SV1 | Protocol | VLESS | Server | www.speedtest.net | Port | 2053 | Transport | WebSocket | Security | TLS | SNI | noone.bingnet.online | Status | No response | Connect | Copy link | Save only
+PASS: ping test through V2Ray finishes -- No response
+[screen 04_v2ray_connect.png] Parvagram | The world's fastest messaging app. It is free and secure. | Switch to night theme | Start Messaging | Web tabs 
+PASS: connect to Telegram through the VLESS server -- Connected through 🇩🇪SV1
+v2ray log:
+  I/GoLog   ( 4228): 2026/10/31 06:26:02.987912 [Warning] core: Xray 26.10.21 started
+  I/GoLog   ( 4228): [Warning] core: Xray 26.10.21 started
+
+===== p03_proxy_list =====
+[screen 05_proxy_list.png] Go back | Proxy Settings | More options | Use Proxy | Use Proxy | Turn off proxy while a VPN is on Turned back on when the VPN disconnects | Turn off proxy while a VPN is on | Turned back on when the VPN disconnects | Stay connected in the background Keeps the connection and notifications working  | Stay connected in the background | Keeps the connection and notifications working when the app is closed | Staying connected in the background shows a silent notification. Android or the  | Staying connected in the background shows a silent notification. Android or the  | Connections | Sort Default | Sort | Default | 🇩🇪SV1 (V2Ray) | Connected | Share | Edit | Add V2Ray config | Add V2Ray config | Import From Clipboard | Import From Clipboard | V2Ray subscriptions | V2Ray subscriptions | Add MTProto Proxy | Add MTProto Proxy | Test ping of all | Test ping of all | Delete configs without ping | Delete configs without ping | Web tabs 
+PASS: proxy list has the V2Ray rows -- Go back | Proxy Settings | More options | Use Proxy | Use Proxy | Turn off proxy while a VPN is on
+Turned back on when the VPN disconnects | Turn off proxy while a VPN is on | Turned back on when the VPN disconnects | Stay connected in the background
+Keeps the connection and notifications working when the app is closed | Stay connected in the background | Keeps the connection and notifications working when the app is closed | Staying connected in the background shows a silent notification. Android or the phone maker's battery saver may still stop the app; allow Parvagram to run unrestricted in battery settings for the most reliable notifications. | Staying connected in the background shows a silent notification. Android or the phone maker's battery saver may still stop the app; allow Parvagram to run unrestricted in battery settings for the most reliable notifications. | Connections | Sort
+Default | Sort | Default | 🇩🇪SV1 (V2Ray) | Connected | Share | Edit | Add V2Ray config | Add V2Ray config | Import From Clipboard | Import From Clipboard
+[screen 06_proxy_ping_all.png] Go back | Proxy Settings | More options | Use Proxy | Use Proxy | Turn off proxy while a VPN is on Turned back on when the VPN disconnects | Turn off proxy while a VPN is on | Turned back on when the VPN disconnects | Stay connected in the background Keeps the connection and notifications working  | Stay connected in the background | Keeps the connection and notifications working when the app is closed | Staying connected in the background shows a silent notification. Android or the  | Staying connected in the background shows a silent notification. Android or the  | Connections | Sort Default | Sort | Default | 🇩🇪SV1 (V2Ray) | Connected | Share | Edit | Add V2Ray config | Add V2Ray config | Import From Clipboard | Import From Clipboard | V2Ray subscriptions | V2Ray subscriptions | Add MTProto Proxy | Add MTProto Proxy | Test ping of all | Test ping of all | Delete configs without ping | Delete configs without ping | Web tabs 
+PASS: ping all shows ms or no response
+[screen 07_proxy_sorted.png] Go back | Proxy Settings | More options | Use Proxy | Use Proxy | Turn off proxy while a VPN is on Turned back on when the VPN disconnects | Turn off proxy while a VPN is on | Turned back on when the VPN disconnects | Stay connected in the background Keeps the connection and notifications working  | Stay connected in the background | Keeps the connection and notifications working when the app is closed | Staying connected in the background shows a silent notification. Android or the  | Staying connected in the background shows a silent notification. Android or the  | Connections | Sort Lowest ping first | Sort | Lowest ping first | 🇩🇪SV1 (V2Ray) | Connected | Share | Edit | Add V2Ray config | Add V2Ray config | Import From Clipboard | Import From Clipboard | V2Ray subscriptions | V2Ray subscriptions | Add MTProto Proxy | Add MTProto Proxy | Test ping of all | Test ping of all | Delete configs without ping | Delete configs without ping | Web tabs 
+PASS: sort by ping is selectable
+
+===== p04_subscription =====
+[screen 08_subscription_add.png] Add subscription | https://raw.githubusercontent.com/barry-far/V2ray-Config/main/Sub1.txt | Barry public list | 5 | Automatic update manual updates | Automatic update | manual updates | Cancel | Add and update
+[screen 09_subscription_result.png] Update finished | Barry public list Links: 456 · duplicates: 245 · invalid: 3 Tested: 8 · working: | OK
+PASS: subscription import finishes -- Update finished Barry public list
+Links: 456 · duplicates: 245 · invalid: 3
+Tested: 8 · working: 5 · added: 5
+The maximum number of configs for this subscription has been reached.
+The new configs are at the top of the proxy list. OK
+PASS: import stops at the limit of 5 working configs -- Links: 456 · duplicates: 245 · invalid: 3
+Tested: 8 · working: 5 · added: 5
+PASS: subscription had links
+[screen 10_subscription_second_update.png] Update finished | Barry public list Links: 456 · duplicates: 250 · invalid: 3 Tested: 0 · working: | OK
+PASS: second update skips duplicates -- duplicates: 250 · invalid: 3
+Tested: 0 · working: 0 · added: 0
+[screen 11_proxy_list_after_subscription.png] Go back | Proxy Settings | More options | Use Proxy | Use Proxy | Auto-switch proxies | Auto-switch proxies | Turn off proxy while a VPN is on Turned back on when the VPN disconnects | Turn off proxy while a VPN is on | Turned back on when the VPN disconnects | Stay connected in the background Keeps the connection and notifications working  | Stay connected in the background | Keeps the connection and notifications working when the app is closed | Staying connected in the background shows a silent notification. Android or the  | Staying connected in the background shows a silent notification. Android or the  | Connections | Sort Lowest ping first | Sort | Lowest ping first | 🌟 @MTproxy22_v2ray (V2Ray) | Ping 90 ms | Share | Edit | @FarazV2ray  (V2Ray) | Ping 104 ms | Share | Edit | سرور رایگان و پرسرعت:v2rayvpno@ (V2Ray) | Ping 106 ms | Share | Edit | @vpnbaz🍂 (V2Ray) | Ping 116 ms | Share | Edit | 🇮🇱𝙏𝙚𝙡𝙚𝙜𝙧𝙖𝙢⫸@𝙫𝟮𝙧𝙖𝙮𝙉𝙂_𝙈𝙖𝙩𝙨𝙪𝙧𝙞 (V2Ray) | Ping 143 ms | Share | Edit | 🇩🇪SV1 (V2Ray) | Share | Edit | Web tabs 
+
+===== p05_login =====
+phone fields: [Node('', 'Country code', [133,1040][278,1135]), Node('', 'Phone number', [323,1040][948,1135])]
+[screen 12_login_phone.png] Your phone number | Please confirm your country code and enter your phone number. | Country | Test Number | + | 999 | 66 2 0017 | Test Backend | Test Backend | %1$d items | Done | Web tabs 
+[screen 13_login_code.png] Parvagram | Invalid code, please try again. | OK
+[screen 14_logged_in.png] Enter code | We’ve sent an SMS with an activation code to your phone +999 66 2 0017. | Didn't get the code? | Go back | %1$d items | Web tabs 
+phone fields: [Node('', '', [277,755][367,866]), Node('', '', [386,755][476,866]), Node('', '', [495,755][585,866]), Node('', '', [604,755][694,866]), Node('', '', [713,755][803,866])]
+[screen 15_login_phone.png] Enter code | We’ve sent an SMS with an activation code to your phone +999 66 2 0017. | Wrong code, please try again. | Go back | %1$d items | Web tabs 
+[screen 16_login_code.png] Enter code | We’ve sent an SMS with an activation code to your phone +999 66 2 0017. | Didn't get the code? | Go back | %1$d items | Web tabs 
+[screen 17_logged_in.png] Enter code | We’ve sent an SMS with an activation code to your phone +999 66 2 0017. | Didn't get the code? | Go back | %1$d items | Web tabs 
+phone fields: [Node('', '', [277,755][367,866]), Node('', '', [386,755][476,866]), Node('', '', [495,755][585,866]), Node('', '', [604,755][694,866]), Node('', '', [713,755][803,866])]
+[screen 18_login_phone.png] Enter code | We’ve sent an SMS with an activation code to your phone +999 66 2 0017. | Wrong code, please try again. | Go back | %1$d items | Web tabs 
+[screen 19_login_code.png] Enter code | We’ve sent an SMS with an activation code to your phone +999 66 2 0017. | Didn't get the code? | Go back | %1$d items | Web tabs 
+[screen 20_logged_in.png] Enter code | We’ve sent an SMS with an activation code to your phone +999 66 2 0017. | Didn't get the code? | Go back | %1$d items | Web tabs 
+FAIL: log in on the test DC
+
+===== p06_peer_messages =====
+FAIL: peer messages -- not logged in
+
+===== p07_chat_history =====
+FAIL: chat history -- no peer
+
+===== p08_chat_preview =====
+FAIL: chat preview -- no peer
+
+===== p09_background =====
+PASS: connection notification is shown
+PASS: process alive 60 s after leaving the app
+
+===== p10_persian_nconfig =====
+FAIL: Persian N-Config -- not logged in
+
+===== p11_font_and_bubbles =====
+FAIL: font -- not logged in
+
+===== p12_v2ray_sheet_fa =====
+[screen 21_v2ray_sheet_fa.png] V2Ray server | 🇩🇪SV1 | Name | 🇩🇪SV1 | Protocol | VLESS | Server | www.speedtest.net | Port | 2053 | Transport | WebSocket | Security | TLS | SNI | noone.bingnet.online | Status | No response | Connected | Copy link | Disconnect
+
+===== SUMMARY =====
+PASS app launches to the intro screen -- alive=True
+PASS vless link opens the V2Ray sheet
+PASS sheet shows the parsed config -- V2Ray server 🇩🇪SV1 Name 🇩🇪SV1 Protocol VLESS Server www.speedtest.net Port 2053 Transport WebSocket Security TLS SNI noone.bingnet.online Status Check Status Connect Copy link Save only
+PASS ping test through V2Ray finishes -- No response
+PASS connect to Telegram through the VLESS server -- Connected through 🇩🇪SV1
+PASS proxy list has the V2Ray rows -- Go back | Proxy Settings | More options | Use Proxy | Use Proxy | Turn off proxy while a VPN is on
+Turned back on when the VPN disconnects | Turn off proxy while a VPN is on | Turned back on when the VPN disconnects | Stay connected in the background
+Keeps the connection and notifications working when the app is closed | Stay connected in the background | Keeps the connection and notifications working when the app is closed | Staying connected in the background shows a silent notification. Android or the phone maker's battery saver may still stop the app; allow Parvagram to run unrestricted in battery settings for the most reliable notifications. | Staying connected in the background shows a silent notification. Android or the phone maker's battery saver may still stop the app; allow Parvagram to run unrestricted in battery settings for the most reliable notifications. | Connections | Sort
+Default | Sort | Default | 🇩🇪SV1 (V2Ray) | Connected | Share | Edit | Add V2Ray config | Add V2Ray config | Import From Clipboard | Import From Clipboard
+PASS ping all shows ms or no response
+PASS sort by ping is selectable
+PASS subscription import finishes -- Update finished Barry public list
+Links: 456 · duplicates: 245 · invalid: 3
+Tested: 8 · working: 5 · added: 5
+The maximum number of configs for this subscription has been reached.
+The new configs are at the top of the proxy list. OK
+PASS import stops at the limit of 5 working configs -- Links: 456 · duplicates: 245 · invalid: 3
+Tested: 8 · working: 5 · added: 5
+PASS subscription had links
+PASS second update skips duplicates -- duplicates: 250 · invalid: 3
+Tested: 0 · working: 0 · added: 0
+FAIL log in on the test DC
+FAIL peer messages -- not logged in
+FAIL chat history -- no peer
+FAIL chat preview -- no peer
+PASS connection notification is shown
+PASS process alive 60 s after leaving the app
+FAIL Persian N-Config -- not logged in
+FAIL font -- not logged in
