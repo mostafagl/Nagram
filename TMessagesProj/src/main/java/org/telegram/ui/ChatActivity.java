@@ -16531,6 +16531,11 @@ public class ChatActivity extends BaseFragment implements
                 getMessagesController().markMessageAsRead(dialog_id, messageObject.messageOwner.random_id, ttl);
             } else {
                 getMessagesController().markMessageAsRead2(dialog_id, messageObject.getId(), null, ttl, 0, false);
+                // Remember it in the database too, or the eye comes back when the chat is opened
+                // again. Only the "content read" flag is set; no deletion is scheduled.
+                final ArrayList<Integer> ids = new ArrayList<>();
+                ids.add(messageObject.getId());
+                getMessagesStorage().markMessagesContentAsRead(dialog_id, ids, 0, 0);
             }
             return null;
         }
