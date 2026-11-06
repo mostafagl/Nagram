@@ -563,7 +563,7 @@
     <string name="EditedMarkTitle">علامت پیام ویرایش‌شده</string>
     <string name="MarkTextHint">کنار ساعت پیام نشان داده می‌شود. برای حالت پیش‌فرض خالی بگذارید.</string>
     <string name="RegexFiltersTitle">فیلتر پیام‌ها (Regex)</string>
-    <string name="MarkReadAfterActionInfo">وقتی پیام می‌فرستید، آن چت خوانده‌شده حساب می‌شود، انگار عادی خوانده‌اید.</string>
+    <string name="MarkReadAfterActionInfo">وقتی پیام می‌فرستید یا به پیامی واکنش (مثلاً لایک) می‌دهید، آن چت خوانده‌شده حساب می‌شود، انگار عادی خوانده‌اید.</string>
     <string name="UseScheduledMessages">ارسال به‌صورت زمان‌بندی‌شده</string>
     <string name="UseScheduledMessagesInfo">پیام‌ها حدود ۱۲ ثانیه بعد به‌صورت زمان‌بندی‌شده فرستاده می‌شوند تا با فرستادن پیام آنلاین دیده نشوید.</string>
     <string name="KeepTimedMedia">نگه داشتن عکس و ویدیوی تایم‌دار</string>
@@ -800,4 +800,23 @@
     <string name="HiddenStickersNone">چیزی مخفی نشده. برای مخفی کردن، در پنل روی استیکر یا گیف انگشت نگه دارید.</string>
     <string name="HiddenStickersRevealed">استیکرها و گیف‌های مخفی تا خروج از این گفتگو نمایش داده می‌شوند</string>
     <string name="HiddenStickersRehidden">دوباره مخفی شدند</string>
+    <string name="HiddenStickersPacksInfo">پک‌های تیک‌خورده مخفی هستند. برای مخفی یا آشکار کردن، روی پک بزنید.</string>
+    <string name="HiddenStickersNoGifs">هیچ گیفی مخفی نشده است.</string>
+    <string name="HiddenStickersUnhideAllGifs">نمایش دوبارهٔ همهٔ گیف‌های مخفی (%1$d)</string>
+    <string name="HiddenStickersUnhideGifConfirm">این گیف دوباره در پنل گیف نمایش داده شود؟</string>
+    <string name="HiddenStickersUnhideButton">نمایش</string>
+    <string name="PdfViewerPage">صفحهٔ %1$d از %2$d</string>
+    <string name="PdfViewerSetting">باز کردن PDF داخل پرواگرام</string>
+    <string name="PdfViewerSettingInfo">فایل‌های PDF در نمایشگر خود پرواگرام باز می‌شوند (برای بزرگ‌نمایی دو انگشت یا دو بار ضربه). فایل‌های رمزدار همچنان با برنامهٔ دیگری باز می‌شوند.</string>
+    <string name="PdfViewerCantOpen">این PDF اینجا قابل نمایش نیست</string>
+    <string name="MenuHoldAndDrag">نگه‌داشتن و کشیدن در منوی پیام</string>
+    <string name="MenuHoldAndDragInfo">بعد از نگه‌داشتن انگشت روی پیام، انگشت را روی گزینهٔ دلخواه بکشید و رها کنید تا انتخاب شود؛ بدون ضربهٔ دوباره.</string>
+    <string name="SearchFilterPhotos">عکس‌ها</string>
+    <string name="SearchFilterVideos">ویدیوها</string>
+    <string name="SearchFilterRoundVideos">ویدیو مسیج‌ها</string>
+    <string name="LyricsTitle">متن آهنگ</string>
+    <string name="LyricsLoading">در حال پیدا کردن متن آهنگ…</string>
+    <string name="LyricsNotFound">متنی برای این آهنگ پیدا نشد</string>
+    <string name="LyricsSetting">متن آهنگ در موزیک‌پلیر</string>
+    <string name="LyricsSettingInfo">گزینهٔ «متن آهنگ» به منوی پلیر اضافه می‌شود: متن همگام با آهنگ روی پس‌زمینه‌ای از رنگ‌های کاور. متن از سایت lrclib.net گرفته می‌شود؛ فقط نام آهنگ، خواننده و مدت آن فرستاده می‌شود و فقط وقتی متن را باز کنید.</string>
 </resources>

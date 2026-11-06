@@ -2,12 +2,14 @@ package tw.nekomimi.nekogram.helpers;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Base64;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.MediaDataController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.UserConfig;
+import org.telegram.tgnet.SerializedData;
 import org.telegram.tgnet.TLRPC;
 
 import java.util.ArrayList;
@@ -87,18 +89,53 @@ public final class HiddenStickers {
         if (document == null) {
             return;
         }
+        final SharedPreferences.Editor editor = prefs().edit();
         if (hide) {
             gifs().add(String.valueOf(document.id));
+            // Kept so the settings page can show a preview even after it left the saved GIFs.
+            try {
+                final SerializedData data = new SerializedData(document.getObjectSize());
+                document.serializeToStream(data);
+                editor.putString("gif_" + document.id, Base64.encodeToString(data.toByteArray(), Base64.NO_WRAP));
+                data.cleanup();
+            } catch (Throwable ignore) {
+            }
         } else {
             gifs().remove(String.valueOf(document.id));
+            editor.remove("gif_" + document.id);
         }
-        prefs().edit().putStringSet("gifs", new HashSet<>(gifs())).apply();
+        editor.putStringSet("gifs", new HashSet<>(gifs())).apply();
         notifyChanged();
     }
 
+    /** The hidden GIFs that can be previewed (hidden by this version or later). */
+    public static synchronized ArrayList<TLRPC.Document> hiddenGifDocuments() {
+        final ArrayList<TLRPC.Document> result = new ArrayList<>();
+        for (String id : gifs()) {
+            final String encoded = prefs().getString("gif_" + id, null);
+            if (encoded == null) {
+                continue;
+            }
+            try {
+                final SerializedData data = new SerializedData(Base64.decode(encoded, Base64.NO_WRAP));
+                final TLRPC.Document document = TLRPC.Document.TLdeserialize(data, data.readInt32(false), false);
+                data.cleanup();
+                if (document != null) {
+                    result.add(document);
+                }
+            } catch (Throwable ignore) {
+            }
+        }
+        return result;
+    }
+
     public static synchronized void clearGifs() {
+        final SharedPreferences.Editor editor = prefs().edit();
+        for (String id : gifs()) {
+            editor.remove("gif_" + id);
+        }
         gifs().clear();
-        prefs().edit().putStringSet("gifs", new HashSet<>()).apply();
+        editor.putStringSet("gifs", new HashSet<>()).apply();
         notifyChanged();
     }
 

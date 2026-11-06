@@ -386,17 +386,38 @@ public class ConnectionsManager extends BaseController {
             peer = ((TLRPC.TL_messages_sendMedia) object).peer;
         } else if (object instanceof TLRPC.TL_messages_sendMultiMedia) {
             peer = ((TLRPC.TL_messages_sendMultiMedia) object).peer;
+        } else if (object instanceof TLRPC.TL_messages_sendReaction && !((TLRPC.TL_messages_sendReaction) object).reaction.isEmpty()) {
+            // Reacting to a message is reading it too (removing a reaction is not).
+            peer = ((TLRPC.TL_messages_sendReaction) object).peer;
         } else {
             peer = null;
         }
         if (peer == null) return origCallback;
         var dialogId = AyuGhostUtils.getDialogId(peer);
         return (response, error) -> {
-            origCallback.run(response, error);
+            if (origCallback != null) {
+                origCallback.run(response, error);
+            }
+            if (error != null) {
+                return; // nothing was sent or reacted to
+            }
             getMessagesStorage().getDialogMaxMessageId(dialogId, maxId -> {
-                TLRPC.TL_messages_readHistory request = new TLRPC.TL_messages_readHistory();
-                request.peer = peer;
-                request.max_id = maxId;
+                final TLObject request;
+                if (peer instanceof TLRPC.TL_inputPeerChannel) {
+                    // Channels and supergroups are read with channels.readHistory; messages.readHistory fails for them.
+                    final TLRPC.TL_channels_readHistory channelRead = new TLRPC.TL_channels_readHistory();
+                    final TLRPC.TL_inputChannel channel = new TLRPC.TL_inputChannel();
+                    channel.channel_id = peer.channel_id;
+                    channel.access_hash = peer.access_hash;
+                    channelRead.channel = channel;
+                    channelRead.max_id = maxId;
+                    request = channelRead;
+                } else {
+                    final TLRPC.TL_messages_readHistory read = new TLRPC.TL_messages_readHistory();
+                    read.peer = peer;
+                    read.max_id = maxId;
+                    request = read;
+                }
                 AyuGhostUtils.setAllowReadPacket(true, 1);
                 sendRequest(request, (a1, a2) -> {});
             });

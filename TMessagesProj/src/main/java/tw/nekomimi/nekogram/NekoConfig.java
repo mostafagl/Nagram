@@ -58,6 +58,9 @@ public class NekoConfig {
     public static int avatarRoundness;
     /** Deleted messages kept in the chat: drawn faded (percent opacity) and with a bin icon of this color (0 = theme). */
     public static boolean deletedDim;
+    public static boolean inAppPdfViewer;
+    public static boolean menuHoldAndDrag;
+    public static boolean musicLyrics;
     public static int deletedDimAlpha;
     public static int deletedIconColor;
     public static final int AVATAR_TAP_CHAT = 1;
@@ -329,6 +332,9 @@ public class NekoConfig {
             avatarTapAction = preferences.getInt("avatarTapAction", 0);
             avatarRoundness = preferences.getInt("avatarRoundness", 50);
             deletedDim = preferences.getBoolean("deletedDim", true);
+            inAppPdfViewer = preferences.getBoolean("inAppPdfViewer", true);
+            menuHoldAndDrag = preferences.getBoolean("menuHoldAndDrag", true);
+            musicLyrics = preferences.getBoolean("musicLyrics", true);
             deletedDimAlpha = preferences.getInt("deletedDimAlpha", 50);
             deletedIconColor = preferences.getInt("deletedIconColor", 0);
             showFavoriteButton = preferences.getBoolean("showFavoriteButton", false);

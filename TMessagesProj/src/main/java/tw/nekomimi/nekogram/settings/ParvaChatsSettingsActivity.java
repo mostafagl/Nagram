@@ -56,6 +56,21 @@ public class ParvaChatsSettingsActivity extends ParvaPageActivity {
                 () -> NaConfig.INSTANCE.getAllowMediaInChatPreview().Bool(), v -> NaConfig.INSTANCE.getAllowMediaInChatPreview().setConfigBool(v));
         check("DontSendGreetingSticker", R.string.DontSendGreetingSticker, R.string.DontSendGreetingStickerInfo,
                 () -> NekoConfig.dontSendGreetingSticker.Bool(), v -> NekoConfig.dontSendGreetingSticker.setConfigBool(v));
+        check("inAppPdfViewer", R.string.PdfViewerSetting, R.string.PdfViewerSettingInfo,
+                () -> NekoConfig.inAppPdfViewer, v -> {
+                    NekoConfig.inAppPdfViewer = v;
+                    NekoConfig.putBoolean("inAppPdfViewer", v);
+                });
+        check("menuHoldAndDrag", R.string.MenuHoldAndDrag, R.string.MenuHoldAndDragInfo,
+                () -> NekoConfig.menuHoldAndDrag, v -> {
+                    NekoConfig.menuHoldAndDrag = v;
+                    NekoConfig.putBoolean("menuHoldAndDrag", v);
+                });
+        check("musicLyrics", R.string.LyricsSetting, R.string.LyricsSettingInfo,
+                () -> NekoConfig.musicLyrics, v -> {
+                    NekoConfig.musicLyrics = v;
+                    NekoConfig.putBoolean("musicLyrics", v);
+                });
         link("hiddenStickers", R.string.HiddenStickersTitle, R.string.HiddenStickersInfo, () -> presentFragment(new HiddenStickersActivity()));
         shadow();
 

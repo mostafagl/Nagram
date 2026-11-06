@@ -1160,6 +1160,7 @@ public class ChatActivity extends BaseFragment implements
     private boolean scrimPopupWindowHideDimOnDismiss = true;
     private int scrimPopupX, scrimPopupY;
     private ActionBarMenuSubItem[] scrimPopupWindowItems;
+    private final tw.nekomimi.nekogram.helpers.MenuDragSelect parvaMenuDrag = new tw.nekomimi.nekogram.helpers.MenuDragSelect();
     private ActionBarMenuSubItem menuDeleteItem;
     private final Runnable updateDeleteItemRunnable = new Runnable() {
         @Override
@@ -11186,6 +11187,10 @@ public class ChatActivity extends BaseFragment implements
     private ArrayList<Pair<String, TLRPC.MessagesFilter>> searchFilters = new ArrayList<>() {{
         add(Pair.create(LocaleController.getString(R.string.FilterAllChatsShort), null));
         add(Pair.create(LocaleController.getString(R.string.SharedMediaTab2), new TLRPC.TL_inputMessagesFilterPhotoVideo()));
+        add(Pair.create(LocaleController.getString(R.string.SearchFilterPhotos), new TLRPC.TL_inputMessagesFilterPhotos()));
+        add(Pair.create(LocaleController.getString(R.string.SearchFilterVideos), new TLRPC.TL_inputMessagesFilterVideo()));
+        add(Pair.create(LocaleController.getString(R.string.SharedLinksTab2), new TLRPC.TL_inputMessagesFilterUrl()));
+        add(Pair.create(LocaleController.getString(R.string.SearchFilterRoundVideos), new TLRPC.TL_inputMessagesFilterRoundVideo()));
         add(Pair.create(LocaleController.getString(R.string.SharedVoiceTab2), new TLRPC.TL_inputMessagesFilterVoice()));
         add(Pair.create(LocaleController.getString(R.string.SharedFilesTab2), new TLRPC.TL_inputMessagesFilterDocument()));
         add(Pair.create(LocaleController.getString(R.string.SharedMusicTab2), new TLRPC.TL_inputMessagesFilterMusic()));
@@ -18414,6 +18419,15 @@ public class ChatActivity extends BaseFragment implements
         public boolean dispatchTouchEvent(MotionEvent ev) {
             if (messageMetricsView != null) {
                 messageMetricsView.setIsUserActive();
+            }
+            if (parvaMenuDrag.onTouch(ev, this, scrimPopupWindow != null ? scrimPopupWindowItems : null)) {
+                if (parvaMenuDrag.takeCancelChildren()) {
+                    final MotionEvent cancel = MotionEvent.obtain(ev);
+                    cancel.setAction(MotionEvent.ACTION_CANCEL);
+                    super.dispatchTouchEvent(cancel);
+                    cancel.recycle();
+                }
+                return true;
             }
 
             float expandY;
@@ -33632,11 +33646,14 @@ public class ChatActivity extends BaseFragment implements
             final int finalPopupY = scrimPopupY = popupY;
             scrimPopupContainerLayout.setMaxHeight(maxY + height - popupY);
             ReactionsContainerLayout finalReactionsLayout = reactionsLayout;
+            final boolean parvaOpenedByLongPress = longpress;
             Runnable showMenu = () -> {
                 if (scrimPopupWindow == null || fragmentView == null || scrimPopupWindow.isShowing() || !AndroidUtilities.isActivityRunning(getParentActivity())) {
                     return;
                 }
                 scrimPopupWindow.showAtLocation(chatListView, Gravity.LEFT | Gravity.TOP, finalPopupX, finalPopupY);
+                // The finger that long-pressed is usually still down: let it slide onto an item and release.
+                parvaMenuDrag.begin(parvaOpenedByLongPress && NekoConfig.menuHoldAndDrag);
                 if (isReactionsAvailableFinal && finalReactionsLayout != null) {
                     finalReactionsLayout.startEnterAnimation(true);
                 }

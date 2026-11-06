@@ -4254,6 +4254,9 @@ public class AndroidUtilities {
 
     public static boolean openForView(File f, String fileName, String mimeType, final Activity activity, Theme.ResourcesProvider resourcesProvider, boolean restrict) {
         if (f != null && f.exists()) {
+            if (tw.nekomimi.nekogram.pdf.PdfViewerActivity.openIfPdf(f, fileName, mimeType, activity)) {
+                return true; // Parvagram's own PDF viewer
+            }
             String realMimeType = null;
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);

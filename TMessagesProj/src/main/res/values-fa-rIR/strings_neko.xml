@@ -126,7 +126,7 @@
     <string name="disableSwipeToNextChannel">نرفتن به کانال بعدی با کشیدن</string>
     <string name="disableChoosingSticker">نمایش «در حال نوشتن» به‌جای «در حال انتخاب استیکر»</string>
     <string name="disableRemoteEmojiInteractions">غیرفعال کردن تعامل ایموجی از طرف مقابل</string>
-    <string name="enablePublicProxy">پروکسی عمومی NekoX</string>
+    <string name="enablePublicProxy">پروکسی عمومی</string>
     <string name="autoUpdateSubInfo">به‌روزرسانی خودکار پروکسی‌ها</string>
     <string name="hideSendAsChannel">پنهان کردن «ارسال به‌عنوان کانال»</string>
     <string name="showSpoilersDirectly">نمایش مستقیم متن‌های اسپویلر</string>

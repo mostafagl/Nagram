@@ -563,7 +563,7 @@
     <string name="EditedMarkTitle">Edited message mark</string>
     <string name="MarkTextHint">Shown next to the message time. Leave empty for the default.</string>
     <string name="RegexFiltersTitle">Message filters (regex)</string>
-    <string name="MarkReadAfterActionInfo">When you reply, the chat is marked as read, as if you had read it normally.</string>
+    <string name="MarkReadAfterActionInfo">When you reply or react to a message, the chat is marked as read, as if you had read it normally.</string>
     <string name="UseScheduledMessages">Send as scheduled</string>
     <string name="UseScheduledMessagesInfo">Messages are sent about 12 seconds later as scheduled messages, so sending doesn\'t show you online.</string>
     <string name="KeepTimedMedia">Keep timed photos and videos</string>
@@ -800,4 +800,23 @@
     <string name="HiddenStickersNone">Nothing is hidden. Long-press a sticker or GIF in the panel to hide it.</string>
     <string name="HiddenStickersRevealed">Hidden stickers and GIFs are shown until you leave this chat</string>
     <string name="HiddenStickersRehidden">Hidden again</string>
+    <string name="HiddenStickersPacksInfo">Packs with a check mark are hidden. Tap a pack to hide or show it.</string>
+    <string name="HiddenStickersNoGifs">No GIFs are hidden.</string>
+    <string name="HiddenStickersUnhideAllGifs">Unhide all hidden GIFs (%1$d)</string>
+    <string name="HiddenStickersUnhideGifConfirm">Show this GIF in the GIF panel again?</string>
+    <string name="HiddenStickersUnhideButton">Show</string>
+    <string name="PdfViewerPage">Page %1$d of %2$d</string>
+    <string name="PdfViewerSetting">Open PDFs inside Parvagram</string>
+    <string name="PdfViewerSettingInfo">PDF files open in Parvagram\'s own viewer (pinch or double-tap to zoom). Password-protected files still open in another app.</string>
+    <string name="PdfViewerCantOpen">This PDF can\'t be shown here</string>
+    <string name="MenuHoldAndDrag">Hold and drag in message menu</string>
+    <string name="MenuHoldAndDragInfo">After long-pressing a message, slide your finger to an option and lift it to choose it, without tapping again.</string>
+    <string name="SearchFilterPhotos">Photos</string>
+    <string name="SearchFilterVideos">Videos</string>
+    <string name="SearchFilterRoundVideos">Video messages</string>
+    <string name="LyricsTitle">Lyrics</string>
+    <string name="LyricsLoading">Looking for lyrics…</string>
+    <string name="LyricsNotFound">No lyrics found for this song</string>
+    <string name="LyricsSetting">Song lyrics in the music player</string>
+    <string name="LyricsSettingInfo">Adds \"Lyrics\" to the player\'s menu: synced lyrics that follow the song over a background from its cover. Lyrics come from lrclib.net; only the song\'s title, artist and length are sent, and only when you open them.</string>
 </resources>

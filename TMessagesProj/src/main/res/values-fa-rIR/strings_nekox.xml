@@ -59,7 +59,7 @@
     <string name="ApplySuggestion">باشه، اعمال کن</string>
     <string name="DoNotRemindAgain">دیگر یادآوری نشود</string>
     <string name="RemoveTitleEmoji">حذف ایموجی از عنوان</string>
-    <string name="NekoXProxy">پروکسی عمومی NekoX</string>
+    <string name="NekoXProxy">پروکسی عمومی</string>
     <string name="PublicPrefix">عمومی</string>
     <string name="DisableChatAction">نشان ندادن وضعیت «در حال نوشتن» من</string>
     <string name="FakeScreenshot">اعلام اسکرین‌شات ساختگی</string>
