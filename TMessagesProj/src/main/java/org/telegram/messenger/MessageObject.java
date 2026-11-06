@@ -10094,8 +10094,25 @@ public class MessageObject {
         return 0;
     }
 
+    /**
+     * A self-destructing or view-once photo/video/voice/round video received in a regular chat
+     * while "keep timed media" is on. Such media is kept as an ordinary file (not encrypted, not
+     * in the temporary cache), so the viewer, "save to gallery" and the download state all find it.
+     * Secret chats keep their own handling.
+     */
+    public static boolean isKeptTimedIncoming(TLRPC.Message message) {
+        if (!NekoConfig.keepTimedMedia || message == null || message.out || message instanceof TLRPC.TL_message_secret || !(message instanceof TLRPC.TL_message)) {
+            return false;
+        }
+        final TLRPC.MessageMedia media = getMedia(message);
+        return media != null && media.ttl_seconds != 0 && (media instanceof TLRPC.TL_messageMediaPhoto || media instanceof TLRPC.TL_messageMediaDocument);
+    }
+
     public static boolean shouldEncryptPhotoOrVideo(int currentAccount, TLRPC.Message message) {
         if (NekoXConfig.disableFlagSecure) {
+            return false;
+        }
+        if (isKeptTimedIncoming(message)) {
             return false;
         }
         if (message != null && message.media != null && (isVoiceDocument(getDocument(message)) || isRoundVideoMessage(message)) && message.media.ttl_seconds == 0x7FFFFFFF) {

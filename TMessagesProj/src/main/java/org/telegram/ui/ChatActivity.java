@@ -49059,8 +49059,10 @@ public class ChatActivity extends BaseFragment implements
                         options.add(nkbtn_timed_viewed);
                         icons.add(R.drawable.msg_autodelete);
                     }
-                    if (NekoConfig.keepTimedMedia && tw.nekomimi.nekogram.helpers.TimedMediaSaver.canSave(selectedObject)) {
-                        // Kept timed media is stored encrypted, so the regular save options don't apply.
+                    if (NekoConfig.keepTimedMedia && tw.nekomimi.nekogram.helpers.TimedMediaSaver.canSave(selectedObject)
+                            && (!selectedObject.mediaExists() || selectedObject.isRoundVideo() || selectedObject.isVoice())) {
+                        // When the regular "save to gallery" can't be offered: not downloaded yet (it is
+                        // downloaded first), stored encrypted by an older version, or a round video / voice.
                         items.add(LocaleController.getString(selectedObject.isVoice() ? R.string.SaveToDownloads : R.string.SaveToGallery));
                         options.add(nkbtn_timed_save);
                         icons.add(selectedObject.isVoice() ? R.drawable.msg_download : R.drawable.msg_gallery);

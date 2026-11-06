@@ -1,6 +1,7 @@
 package tw.nekomimi.nekogram.helpers;
 
 import android.app.Activity;
+import android.content.Context;
 import android.widget.Toast;
 
 import org.telegram.messenger.AndroidUtilities;
@@ -45,29 +46,51 @@ public final class TimedMediaSaver {
         if (activity == null || !canSave(message)) {
             return;
         }
-        final File plain = FileLoader.getInstance(message.currentAccount).getPathToMessage(message.messageOwner);
+        withFile(activity, message, file -> saveFile(activity, message, file));
+    }
+
+    /**
+     * Calls {@code onReady} on the UI thread with a readable (not encrypted) copy of the message's
+     * media: the downloaded file, a decrypted copy of one an older version stored encrypted, or the
+     * file after downloading it. Shows a toast when that isn't possible.
+     */
+    public static void withFile(Context context, MessageObject message, Utilities.Callback<File> onReady) {
+        withFile(context, message, onReady, false);
+    }
+
+    private static void withFile(Context context, MessageObject message, Utilities.Callback<File> onReady, boolean afterDownload) {
+        final FileLoader loader = FileLoader.getInstance(message.currentAccount);
+        final File plain = loader.getPathToMessage(message.messageOwner);
+        // Older versions kept timed media encrypted in the cache folder.
+        final File legacy = loader.getPathToMessage(message.messageOwner, true, false);
         if (plain == null || plain.getName().isEmpty()) {
-            toast(activity, R.string.TimedMediaSaveFailed);
+            toast(context, R.string.TimedMediaSaveFailed);
             return;
         }
         Utilities.globalQueue.postRunnable(() -> {
-            final File source = readableCopy(plain);
+            File source = readableCopy(plain, plain);
+            if (source == null && legacy != null && !legacy.getName().isEmpty()) {
+                source = readableCopy(legacy, plain);
+            }
+            final File found = source;
             AndroidUtilities.runOnUIThread(() -> {
-                if (source != null) {
-                    saveFile(activity, message, source);
+                if (found != null) {
+                    onReady.run(found);
+                } else if (afterDownload) {
+                    toast(context, R.string.TimedMediaSaveFailed); // downloaded, yet not where expected: don't loop
                 } else {
-                    download(activity, message, plain);
+                    download(context, message, plain, onReady);
                 }
             });
         });
     }
 
-    /** The plain file, or a decrypted copy of the encrypted one; null when neither is on the device. */
-    private static File readableCopy(File plain) {
-        if (plain.isFile() && plain.length() > 0) {
-            return plain;
+    /** {@code file} itself, or a decrypted copy of {@code file}.enc; null when neither is on the device. */
+    private static File readableCopy(File file, File plain) {
+        if (file.isFile() && file.length() > 0) {
+            return file;
         }
-        final File encrypted = new File(plain.getAbsolutePath() + ".enc");
+        final File encrypted = new File(file.getAbsolutePath() + ".enc");
         final File key = new File(FileLoader.getInternalCacheDir(), encrypted.getName() + ".key");
         if (!encrypted.isFile() || !key.isFile()) {
             return null;
@@ -95,7 +118,7 @@ public final class TimedMediaSaver {
         }
     }
 
-    private static void download(Activity activity, MessageObject message, File plain) {
+    private static void download(Context context, MessageObject message, File plain, Utilities.Callback<File> onReady) {
         final int account = message.currentAccount;
         final String name = plain.getName();
         final NotificationCenter center = NotificationCenter.getInstance(account);
@@ -105,20 +128,22 @@ public final class TimedMediaSaver {
                 return;
             }
             final String loaded = (String) args[0];
-            if (!name.equals(loaded) && !(name + ".enc").equals(loaded) && !loaded.endsWith(name)) {
+            if (!name.equals(loaded) && !loaded.endsWith(name)) {
                 return;
             }
             center.removeObserver(holder[0], NotificationCenter.fileLoaded);
             center.removeObserver(holder[0], NotificationCenter.fileLoadFailed);
             if (id == NotificationCenter.fileLoaded) {
-                save(activity, message);
+                withFile(context, message, onReady, true);
             } else {
-                toast(activity, R.string.TimedMediaSaveFailed);
+                toast(context, R.string.TimedMediaSaveFailed);
             }
         };
         center.addObserver(holder[0], NotificationCenter.fileLoaded);
         center.addObserver(holder[0], NotificationCenter.fileLoadFailed);
 
+        // Same place as getPathToMessage: the regular media folder for kept timed media.
+        final int cacheType = MessageObject.isKeptTimedIncoming(message.messageOwner) ? 0 : 1;
         final TLRPC.MessageMedia media = MessageObject.getMedia(message.messageOwner);
         final FileLoader loader = FileLoader.getInstance(account);
         if (media instanceof TLRPC.TL_messageMediaPhoto && media.photo != null) {
@@ -126,14 +151,14 @@ public final class TimedMediaSaver {
             if (size == null) {
                 center.removeObserver(holder[0], NotificationCenter.fileLoaded);
                 center.removeObserver(holder[0], NotificationCenter.fileLoadFailed);
-                toast(activity, R.string.TimedMediaSaveFailed);
+                toast(context, R.string.TimedMediaSaveFailed);
                 return;
             }
-            loader.loadFile(ImageLocation.getForPhoto(size, media.photo), message, "jpg", FileLoader.PRIORITY_HIGH, 1);
+            loader.loadFile(ImageLocation.getForPhoto(size, media.photo), message, "jpg", FileLoader.PRIORITY_HIGH, cacheType);
         } else if (message.getDocument() != null) {
-            loader.loadFile(message.getDocument(), message, FileLoader.PRIORITY_HIGH, 1);
+            loader.loadFile(message.getDocument(), message, FileLoader.PRIORITY_HIGH, cacheType);
         }
-        toast(activity, R.string.TimedMediaSaveDownloading);
+        toast(context, R.string.TimedMediaSaveDownloading);
     }
 
     private static void saveFile(Activity activity, MessageObject message, File file) {
@@ -150,7 +175,7 @@ public final class TimedMediaSaver {
         }
     }
 
-    private static void toast(Activity activity, int res) {
+    private static void toast(Context activity, int res) {
         AndroidUtilities.runOnUIThread(() -> {
             try {
                 Toast.makeText(activity, LocaleController.getString(res), Toast.LENGTH_SHORT).show();

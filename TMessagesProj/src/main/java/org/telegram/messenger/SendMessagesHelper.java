@@ -2243,6 +2243,33 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         if (messages == null || messages.isEmpty()) {
             return 0;
         }
+        if (!DialogObject.isEncryptedDialog(peer)) {
+            // Self-destructing media can't be forwarded: the kept copies are sent again as new media.
+            messages = tw.nekomimi.nekogram.helpers.TimedMediaForward.sendKeptTimed(currentAccount, messages, peer, hideCaption, notify, scheduleDate, replyToTopMsg);
+            if (messages.isEmpty()) {
+                return 0;
+            }
+        }
+        return sendMessageForward(messages, peer, forwardFromMyName, hideCaption, notify, scheduleDate, scheduleRepeatPeriod, replyToTopMsg, video_timestamp, payStars, monoForumPeerId, suggestionParams);
+    }
+
+    private int sendMessageForward(
+        ArrayList<MessageObject> messages,
+        final long peer,
+        boolean forwardFromMyName,
+        boolean hideCaption,
+        boolean notify,
+        int scheduleDate,
+        int scheduleRepeatPeriod,
+        MessageObject replyToTopMsg,
+        int video_timestamp,
+        long payStars,
+        long monoForumPeerId,
+        MessageSuggestionParams suggestionParams
+    ) {
+        if (messages == null || messages.isEmpty()) {
+            return 0;
+        }
         int sendResult = 0;
         long myId = getUserConfig().getClientUserId();
         boolean isChannel = false;
