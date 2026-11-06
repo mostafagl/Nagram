@@ -449,6 +449,7 @@ public class ChatActivity extends BaseFragment implements
     private final static int nkheaderbtn_parva_lock = 2090;
     private final static int nkheaderbtn_parva_favorites = 2091;
     private final static int nkheaderbtn_parva_hide = 2092;
+    private final static int nkheaderbtn_parva_stickers = 2093;
 
     // shared with actionbar
     public final static int nkbtn_translate = 2008;
@@ -480,6 +481,7 @@ public class ChatActivity extends BaseFragment implements
     public final static int nkbtn_sticker_copy_png = 2032;
     public final static int nkbtn_edit_history = 2033;
     public final static int nkbtn_timed_viewed = 2034;
+    public final static int nkbtn_timed_save = 2120;
 
 
     public int shareAlertDebugMode = DEBUG_SHARE_ALERT_MODE_NORMAL;
@@ -3653,6 +3655,10 @@ public class ChatActivity extends BaseFragment implements
 
     @Override
     public void onFragmentDestroy() {
+        if (tw.nekomimi.nekogram.helpers.HiddenStickers.isRevealed()) {
+            // Hidden stickers and GIFs are shown only while the chat they were revealed in is open.
+            tw.nekomimi.nekogram.helpers.HiddenStickers.setRevealed(false);
+        }
         super.onFragmentDestroy();
         MessageTransKt.cancelTranslations(this);
         if (messageMetricsView != null) {
@@ -4887,6 +4893,7 @@ public class ChatActivity extends BaseFragment implements
                 hideTitleItem = headerItem.lazilyAddSubItem(nkheaderbtn_hide_title, R.drawable.hide_title, LocaleController.getString(R.string.HideTitle));
                 reloadMessagesItem = headerItem.lazilyAddSubItem(nkheaderbtn_reload_messages, com.google.android.gms.cast.framework.R.drawable.quantum_ic_refresh_white_24, LocaleController.getString(R.string.ClearCache));
                 headerItem.lazilyAddSubItem(nkheaderbtn_parva_favorites, R.drawable.parva_star_outline, LocaleController.getString(R.string.FavoriteMessagesInChat));
+                headerItem.lazilyAddSubItem(nkheaderbtn_parva_stickers, R.drawable.msg_sticker, LocaleController.getString(R.string.HiddenStickersToggleMenu));
                 if (dialog_id != getUserConfig().getClientUserId() && chatMode == 0) {
                     headerItem.lazilyAddSubItem(nkheaderbtn_parva_lock, R.drawable.msg_secret, LocaleController.getString(R.string.ChatLockMenu));
                     headerItem.lazilyAddSubItem(nkheaderbtn_parva_hide, R.drawable.msg_archive_hide, LocaleController.getString(
@@ -6025,7 +6032,7 @@ public class ChatActivity extends BaseFragment implements
                         }
                         canvas.save();
                         canvas.translate(cell.getLeft() + cell.getNonAnimationTranslationX(false), cell.getY() + cell.getPaddingTop());
-                        cell.drawTime(canvas, cell.shouldDrawAlphaLayer() ? cell.getAlpha() : 1f, true);
+                        cell.drawTime(canvas, (cell.shouldDrawAlphaLayer() ? cell.getAlpha() : 1f) * cell.parvaDimAlpha(), true);
                         canvas.restore();
                     }
                     drawTimeAfter.clear();
@@ -6039,7 +6046,7 @@ public class ChatActivity extends BaseFragment implements
                         }
                         float canvasOffsetX = cell.getLeft() + cell.getNonAnimationTranslationX(false);
                         float canvasOffsetY = cell.getY() + cell.getPaddingTop();
-                        float alpha = cell.shouldDrawAlphaLayer() ? cell.getAlpha() : 1f;
+                        float alpha = (cell.shouldDrawAlphaLayer() ? cell.getAlpha() : 1f) * cell.parvaDimAlpha();
 
                         canvas.save();
                         canvas.translate(canvasOffsetX, canvasOffsetY);
@@ -6061,7 +6068,7 @@ public class ChatActivity extends BaseFragment implements
                         if (cell.getCurrentPosition() != null) {
                             selectionOnly = (cell.getCurrentPosition().flags & MessageObject.POSITION_FLAG_LEFT) == 0;
                         }
-                        float alpha = cell.shouldDrawAlphaLayer() ? cell.getAlpha() : 1f;
+                        float alpha = (cell.shouldDrawAlphaLayer() ? cell.getAlpha() : 1f) * cell.parvaDimAlpha();
                         float canvasOffsetX = cell.getLeft() + cell.getNonAnimationTranslationX(false);
                         float canvasOffsetY = cell.getY() + cell.getPaddingTop();
                         canvas.save();
@@ -6103,7 +6110,7 @@ public class ChatActivity extends BaseFragment implements
                         if (cell.getCurrentPosition() != null) {
                             selectionOnly = (cell.getCurrentPosition().flags & MessageObject.POSITION_FLAG_LEFT) == 0;
                         }
-                        float alpha = cell.shouldDrawAlphaLayer() ? cell.getAlpha() : 1f;
+                        float alpha = (cell.shouldDrawAlphaLayer() ? cell.getAlpha() : 1f) * cell.parvaDimAlpha();
                         float canvasOffsetX = cell.getLeft() + cell.getNonAnimationTranslationX(false);
                         float canvasOffsetY = cell.getY() + cell.getPaddingTop();
                         canvas.save();
@@ -18661,7 +18668,7 @@ public class ChatActivity extends BaseFragment implements
             int restoreCount = canvas.save();
             float canvasOffsetX = chatListView.getLeft() + cell.getX();
             float canvasOffsetY = chatListView.getY() + cell.getY() + cell.getPaddingTop();
-            float alpha = cell.shouldDrawAlphaLayer() ? cell.getAlpha() : 1f;
+            float alpha = (cell.shouldDrawAlphaLayer() ? cell.getAlpha() : 1f) * cell.parvaDimAlpha();
             canvas.clipRect(chatListView.getLeft(), listTop, chatListView.getRight(), chatListView.getY() + chatListView.getMeasuredHeight() - blurredViewBottomOffset - windowInsetsStateHolder.getCurrentMaxBottomInset() - inputIslandHeightCurrent - dp(9));
             canvas.translate(canvasOffsetX, canvasOffsetY);
             cell.setInvalidatesParent(true);
@@ -46208,6 +46215,14 @@ public class ChatActivity extends BaseFragment implements
                     finishFragment();
                 });
             }
+        } else if (id == nkheaderbtn_parva_stickers) {
+            if (!tw.nekomimi.nekogram.helpers.HiddenStickers.hasAny()) {
+                BulletinFactory.of(this).createSimpleBulletin(R.raw.info, LocaleController.getString(R.string.HiddenStickersNone)).show();
+            } else {
+                final boolean reveal = !tw.nekomimi.nekogram.helpers.HiddenStickers.isRevealed();
+                tw.nekomimi.nekogram.helpers.HiddenStickers.setRevealed(reveal);
+                BulletinFactory.of(this).createSimpleBulletin(R.raw.contact_check, LocaleController.getString(reveal ? R.string.HiddenStickersRevealed : R.string.HiddenStickersRehidden)).show();
+            }
         } else if (id == nkheaderbtn_parva_favorites) {
             presentFragment(new tw.nekomimi.nekogram.settings.FavoriteMessagesActivity(dialog_id, this));
         } else if (id == nkheaderbtn_parva_lock) {
@@ -46471,6 +46486,16 @@ public class ChatActivity extends BaseFragment implements
                 if (selectedObject != null) {
                     tw.nekomimi.nekogram.utils.AyuGhostUtils.setAllowReadPacket(true, 1);
                     sendSecretMessageRead(selectedObject, true, true);
+                }
+                break;
+            }
+            case nkbtn_timed_save: {
+                if (selectedObject != null) {
+                    if (Build.VERSION.SDK_INT >= 23 && (Build.VERSION.SDK_INT <= 28 || BuildVars.NO_SCOPED_STORAGE) && getParentActivity().checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                        getParentActivity().requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 4);
+                        break;
+                    }
+                    tw.nekomimi.nekogram.helpers.TimedMediaSaver.save(getParentActivity(), selectedObject);
                 }
                 break;
             }
@@ -49016,6 +49041,12 @@ public class ChatActivity extends BaseFragment implements
                         items.add(LocaleController.getString(R.string.TimedMediaMarkViewed));
                         options.add(nkbtn_timed_viewed);
                         icons.add(R.drawable.msg_autodelete);
+                    }
+                    if (NekoConfig.keepTimedMedia && tw.nekomimi.nekogram.helpers.TimedMediaSaver.canSave(selectedObject)) {
+                        // Kept timed media is stored encrypted, so the regular save options don't apply.
+                        items.add(LocaleController.getString(selectedObject.isVoice() ? R.string.SaveToDownloads : R.string.SaveToGallery));
+                        options.add(nkbtn_timed_save);
+                        icons.add(selectedObject.isVoice() ? R.drawable.msg_download : R.drawable.msg_gallery);
                     }
                     if (selectedObjectGroup == null
                             && xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, selectedObject) != 0) {

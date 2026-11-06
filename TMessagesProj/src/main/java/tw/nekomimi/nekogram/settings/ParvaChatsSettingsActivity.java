@@ -16,6 +16,10 @@ public class ParvaChatsSettingsActivity extends ParvaPageActivity {
     private static final int[] AVATAR_TAP_NAMES = {R.string.AvatarTapDefault, R.string.AvatarTapChat, R.string.AvatarTapProfile, R.string.AvatarTapPhoto};
     private static final int[] TAB_STYLE_NAMES = {R.string.TabStyleText, R.string.TabStyleIcon, R.string.TabStyleMix};
     private static final int[] ROUNDNESS_VALUES = {50, 30, 16, 0};
+    private static final int[] DIM_VALUES = {70, 50, 35};
+    private static final int[] DIM_NAMES = {R.string.DeletedDimLight, R.string.DeletedDimMedium, R.string.DeletedDimStrong};
+    private static final int[] ICON_COLORS = {0, 0xFFE53935, 0xFFFB8C00, 0xFF8E8E93, 0xFF1E88E5};
+    private static final int[] ICON_COLOR_NAMES = {R.string.DeletedIconColorDefault, R.string.DeletedIconColorRed, R.string.DeletedIconColorOrange, R.string.DeletedIconColorGrey, R.string.DeletedIconColorBlue};
     private static final int[] ROUNDNESS_NAMES = {R.string.AvatarShapeCircle, R.string.AvatarShapeRounded, R.string.AvatarShapeSlightlyRounded, R.string.AvatarShapeSquare};
 
     @Override
@@ -32,11 +36,27 @@ public class ParvaChatsSettingsActivity extends ParvaPageActivity {
                 () -> NaConfig.INSTANCE.getShowMessageEditHistory().Bool(), v -> NaConfig.INSTANCE.getShowMessageEditHistory().setConfigBool(v));
         check("ShowDeletedMessages", R.string.ShowDeletedMessages, R.string.ShowDeletedMessagesNotice,
                 () -> NaConfig.INSTANCE.getShowDeletedMessages().Bool(), v -> NaConfig.INSTANCE.getShowDeletedMessages().setConfigBool(v));
+        check("deletedDim", R.string.DeletedDimTitle, R.string.DeletedDimInfo,
+                () -> NekoConfig.deletedDim, v -> {
+                    NekoConfig.deletedDim = v;
+                    NekoConfig.putBoolean("deletedDim", v);
+                });
+        choice("deletedDimAlpha", R.string.DeletedDimStrength, () -> LocaleController.getString(DIM_NAMES[indexOf(DIM_VALUES, NekoConfig.deletedDimAlpha)]),
+                () -> pick(R.string.DeletedDimStrength, DIM_NAMES, indexOf(DIM_VALUES, NekoConfig.deletedDimAlpha), i -> {
+                    NekoConfig.deletedDimAlpha = DIM_VALUES[i];
+                    NekoConfig.putInt("deletedDimAlpha", DIM_VALUES[i]);
+                }));
+        choice("deletedIconColor", R.string.DeletedIconColorTitle, () -> LocaleController.getString(ICON_COLOR_NAMES[indexOf(ICON_COLORS, NekoConfig.deletedIconColor)]),
+                () -> pick(R.string.DeletedIconColorTitle, ICON_COLOR_NAMES, indexOf(ICON_COLORS, NekoConfig.deletedIconColor), i -> {
+                    NekoConfig.deletedIconColor = ICON_COLORS[i];
+                    NekoConfig.putInt("deletedIconColor", ICON_COLORS[i]);
+                }));
         link("MessageHistory", R.string.MessageHistory, R.string.MessageHistoryInfo, () -> presentFragment(new xyz.nextalone.nagram.history.MessageHistoryActivity()));
         check("AllowMediaInChatPreview", R.string.AllowMediaInChatPreview, R.string.AllowMediaInChatPreviewNotice,
                 () -> NaConfig.INSTANCE.getAllowMediaInChatPreview().Bool(), v -> NaConfig.INSTANCE.getAllowMediaInChatPreview().setConfigBool(v));
         check("DontSendGreetingSticker", R.string.DontSendGreetingSticker, R.string.DontSendGreetingStickerInfo,
                 () -> NekoConfig.dontSendGreetingSticker.Bool(), v -> NekoConfig.dontSendGreetingSticker.setConfigBool(v));
+        link("hiddenStickers", R.string.HiddenStickersTitle, R.string.HiddenStickersInfo, () -> presentFragment(new HiddenStickersActivity()));
         shadow();
 
         header(R.string.ParvaChatListHeader);
@@ -89,6 +109,15 @@ public class ParvaChatsSettingsActivity extends ParvaPageActivity {
 
     private static int clamp(int i, int n) {
         return i < 0 || i >= n ? 0 : i;
+    }
+
+    private static int indexOf(int[] values, int value) {
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == value) {
+                return i;
+            }
+        }
+        return 1 < values.length && values[0] == 0 ? 0 : Math.min(1, values.length - 1);
     }
 
     private static int roundnessIndex() {

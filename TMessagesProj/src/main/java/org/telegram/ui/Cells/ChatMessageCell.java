@@ -18789,6 +18789,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             // the time; tapping the time opens the message's history.
             final boolean deleted = (historyFlags & xyz.nextalone.nagram.history.MessageHistoryController.FLAG_DELETED) != 0;
             final ColoredImageSpan span = new ColoredImageSpan(deleted ? R.drawable.msg_delete : R.drawable.msg_edit);
+            if (deleted && tw.nekomimi.nekogram.NekoConfig.deletedIconColor != 0) {
+                span.setOverrideColor(tw.nekomimi.nekogram.NekoConfig.deletedIconColor);
+            }
             final int iconSize = (int) (Theme.chat_timePaint.getTextSize() * 1.1f);
             span.setSize(iconSize);
             span.setTranslateY(dp(1));
@@ -20476,7 +20479,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             return;
         }
 
-        final int sponosoredAlpha = (int) (255 * (1f - isSponsoredMessageHidden.getFloatValue()));
+        final int sponosoredAlpha = (int) (255 * (1f - isSponsoredMessageHidden.getFloatValue()) * parvaDimAlpha());
         if (sponosoredAlpha == 0) {
             return;
         }
@@ -20700,6 +20703,21 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         }
 
         canvas.restoreToCount(restore);
+    }
+
+    /**
+     * Opacity for a message someone else deleted that is kept in the chat (setting "fade deleted
+     * messages"), 1 otherwise. Applied on top of the cell's own alpha in every drawing pass.
+     */
+    public float parvaDimAlpha() {
+        if (!tw.nekomimi.nekogram.NekoConfig.deletedDim || currentMessageObject == null) {
+            return 1f;
+        }
+        if ((xyz.nextalone.nagram.history.MessageHistoryController.getFlags(currentAccount, currentMessageObject)
+                & xyz.nextalone.nagram.history.MessageHistoryController.FLAG_DELETED) == 0) {
+            return 1f;
+        }
+        return Math.max(15, Math.min(100, tw.nekomimi.nekogram.NekoConfig.deletedDimAlpha)) / 100f;
     }
 
     public void drawBackgroundInternal(Canvas canvas, boolean fromParent) {
@@ -21064,7 +21082,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         if ((drawBackground || transitionParams.animateDrawBackground) && currentBackgroundDrawable != null && (currentPosition == null || isDrawSelectionBackground() && (currentMessageObject.isMusic() || currentMessageObject.isDocument())) && !(enterTransitionInProgress && !currentMessageObject.isVoice())) {
             float alphaInternal = this.alphaInternal;
             if (fromParent) {
-                alphaInternal *= getAlpha();
+                alphaInternal *= getAlpha() * parvaDimAlpha();
             }
             if (hasSelectionOverlay()) {
 //                if ((isPressed() && isCheckPressed || !isCheckPressed && isPressed) && !textIsSelectionMode()) {

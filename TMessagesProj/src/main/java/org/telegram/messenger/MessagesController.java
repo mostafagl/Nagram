@@ -17956,6 +17956,16 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     protected void deleteMessagesByPush(long dialogId, ArrayList<Integer> ids, long channelId) {
+        if (xyz.nextalone.nagram.history.MessageHistoryController.isKeepingDeletedMessages()) {
+            // A deletion that arrives as a push notification (often while the app is in the
+            // background, e.g. when the sender uses Telegram for iOS) used to delete the message
+            // directly, skipping "keep deleted messages". Record it and keep the message instead,
+            // exactly like a deletion that arrives as an update.
+            final LongSparseArray<ArrayList<Integer>> deleted = new LongSparseArray<>();
+            deleted.put(channelId != 0 ? -channelId : dialogId, new ArrayList<>(ids));
+            xyz.nextalone.nagram.history.MessageHistoryController.onRemoteDeletion(currentAccount, deleted);
+            return;
+        }
         getMessagesStorage().getStorageQueue().postRunnable(() -> {
             AndroidUtilities.runOnUIThread(() -> {
                 getNotificationCenter().postNotificationName(NotificationCenter.messagesDeleted, ids, channelId, false);

@@ -56,6 +56,10 @@ public class NekoConfig {
     public static int avatarTapAction;
     /** Avatar corners in the chat list and chats: 50 = circle (Telegram's), 0 = square. */
     public static int avatarRoundness;
+    /** Deleted messages kept in the chat: drawn faded (percent opacity) and with a bin icon of this color (0 = theme). */
+    public static boolean deletedDim;
+    public static int deletedDimAlpha;
+    public static int deletedIconColor;
     public static final int AVATAR_TAP_CHAT = 1;
     public static final int AVATAR_TAP_PROFILE = 2;
     public static final int AVATAR_TAP_PHOTO = 3;
@@ -324,6 +328,9 @@ public class NekoConfig {
             showSaveButton = preferences.getBoolean("showSaveButton", false);
             avatarTapAction = preferences.getInt("avatarTapAction", 0);
             avatarRoundness = preferences.getInt("avatarRoundness", 50);
+            deletedDim = preferences.getBoolean("deletedDim", true);
+            deletedDimAlpha = preferences.getInt("deletedDimAlpha", 50);
+            deletedIconColor = preferences.getInt("deletedIconColor", 0);
             showFavoriteButton = preferences.getBoolean("showFavoriteButton", false);
 
             NkmrConfig.compact();
