@@ -7995,6 +7995,8 @@ public class Theme {
             dialogs_offlinePaint = new TextPaint(TextPaint.ANTI_ALIAS_FLAG);
             dialogs_tagTextPaint = new TextPaint(TextPaint.ANTI_ALIAS_FLAG);
             dialogs_tagTextPaint.setTypeface(AndroidUtilities.bold());
+            xyz.nextalone.nagram.font.CustomFonts.apply(dialogs_messagePaint[0], dialogs_messagePaint[1], dialogs_messagePrintingPaint[0], dialogs_messagePrintingPaint[1],
+                    dialogs_timePaint, dialogs_onlinePaint, dialogs_offlinePaint);
 
             dialogs_tabletSeletedPaint = new Paint();
             dialogs_pinnedPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -8185,6 +8187,8 @@ public class Theme {
                 chat_msgTextCode3Paint.setTypeface(Typeface.MONOSPACE);
                 chat_msgCodeBgPaint = new TextPaint(TextPaint.ANTI_ALIAS_FLAG);
                 chat_ephemeralPaint = new TextPaint(TextPaint.ANTI_ALIAS_FLAG);
+                xyz.nextalone.nagram.font.CustomFonts.apply(chat_msgTextPaint, chat_msgGameTextPaint, chat_replyTextPaint, chat_quoteTextPaint,
+                        chat_forwardNamePaint, chat_explanationTextPaint, chat_titleLabelTextPaint);
             }
 
             final float[] emojiSizePercents = new float[] {.68f, .46f, .34f, .28f, .22f, .19f};

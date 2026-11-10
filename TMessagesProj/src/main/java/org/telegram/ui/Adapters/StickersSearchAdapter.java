@@ -137,7 +137,7 @@ public class StickersSearchAdapter extends RecyclerListView.SelectionAdapter {
                         a--;
                     }
                 }
-                ArrayList<TLRPC.Document> newStickers = allStickers != null ? allStickers.get(emoji.toString()) : null;
+                ArrayList<TLRPC.Document> newStickers = parvaVisible(allStickers != null ? allStickers.get(emoji.toString()) : null);
                 if (newStickers != null && !newStickers.isEmpty()) {
                     clear();
                     emojiStickersArray.addAll(newStickers);
@@ -162,7 +162,7 @@ public class StickersSearchAdapter extends RecyclerListView.SelectionAdapter {
                     boolean added = false;
                     for (int a = 0, size = param.size(); a < size; a++) {
                         String emoji = param.get(a).emoji;
-                        ArrayList<TLRPC.Document> newStickers = allStickers != null ? allStickers.get(emoji) : null;
+                        ArrayList<TLRPC.Document> newStickers = parvaVisible(allStickers != null ? allStickers.get(emoji) : null);
                         if (newStickers != null && !newStickers.isEmpty()) {
                             clear();
                             if (!emojiStickers.containsKey(newStickers)) {
@@ -181,6 +181,9 @@ public class StickersSearchAdapter extends RecyclerListView.SelectionAdapter {
             int index;
             for (int a = 0, size = local.size(); a < size; a++) {
                 TLRPC.TL_messages_stickerSet set = local.get(a);
+                if (tw.nekomimi.nekogram.helpers.HiddenStickers.shouldHidePack(set.set)) {
+                    continue;
+                }
                 if ((index = AndroidUtilities.indexOfIgnoreCase(set.set.title, searchQuery)) >= 0) {
                     if (index == 0 || set.set.title.charAt(index - 1) == ' ') {
                         clear();
@@ -198,6 +201,9 @@ public class StickersSearchAdapter extends RecyclerListView.SelectionAdapter {
             local = MediaDataController.getInstance(currentAccount).getStickerSets(MediaDataController.TYPE_FEATURED);
             for (int a = 0, size = local.size(); a < size; a++) {
                 TLRPC.TL_messages_stickerSet set = local.get(a);
+                if (tw.nekomimi.nekogram.helpers.HiddenStickers.shouldHidePack(set.set)) {
+                    continue;
+                }
                 if ((index = AndroidUtilities.indexOfIgnoreCase(set.set.title, searchQuery)) >= 0) {
                     if (index == 0 || set.set.title.charAt(index - 1) == ' ') {
                         clear();
@@ -246,7 +252,7 @@ public class StickersSearchAdapter extends RecyclerListView.SelectionAdapter {
                         int oldCount = emojiStickersArray.size();
                         for (int a = 0, size = res.stickers.size(); a < size; a++) {
                             TLRPC.Document document = res.stickers.get(a);
-                            if (emojiStickersMap.indexOfKey(document.id) >= 0) {
+                            if (emojiStickersMap.indexOfKey(document.id) >= 0 || tw.nekomimi.nekogram.helpers.HiddenStickers.shouldHideSticker(document)) {
                                 continue;
                             }
                             emojiStickersArray.add(document);
@@ -678,4 +684,23 @@ public class StickersSearchAdapter extends RecyclerListView.SelectionAdapter {
     private int getThemedColor(int key) {
         return Theme.getColor(key, resourcesProvider);
     }
+
+    /** The stickers not from a pack the user hid; a copy when something is left out (the source list is shared). */
+    private static ArrayList<TLRPC.Document> parvaVisible(ArrayList<TLRPC.Document> documents) {
+        if (documents == null || documents.isEmpty()) {
+            return documents;
+        }
+        ArrayList<TLRPC.Document> result = null;
+        for (int i = 0; i < documents.size(); i++) {
+            if (tw.nekomimi.nekogram.helpers.HiddenStickers.shouldHideSticker(documents.get(i))) {
+                if (result == null) {
+                    result = new ArrayList<>(documents.subList(0, i));
+                }
+            } else if (result != null) {
+                result.add(documents.get(i));
+            }
+        }
+        return result != null ? result : documents;
+    }
+
 }

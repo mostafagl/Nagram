@@ -232,7 +232,7 @@
     <string name="PassQRNewPassword">Protéger ce code QR avec un mot de passe</string>
     <string name="ConfirmNewPassword">Confirmer le mot de passe</string>
     <string name="PassQRAbout">Enregistre votre mot de passe en tant que code QR chiffré. Vous pouvez le scanner pour vous connecter sur un autre appareil.</string>
-    <string name="PassQREncryption">Analyser avec Nagram pour vous connecter.</string>
+    <string name="PassQREncryption">Analyser avec Parvagram pour vous connecter.</string>
     <string name="InvalidPassQr">Invalid Passkey QR</string>
     <string name="PassQRPasswordTooShort">Le mot de passe doit comporter au moins 8 caractères</string>
     <string name="PassQRPasswordWarning">Avertissement de sécurité: ce mot de passe est la seule chose qui protège votre clé. Un mot de passe faible peut être piraté hors ligne, donc mélanger majuscules, minuscules, chiffres et symboles.</string>

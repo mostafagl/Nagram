@@ -1020,6 +1020,11 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     private static Runnable broadcastPhotosRunnable;
 
     public boolean isSilent = false;
+    private boolean skipMarkContentAsRead;
+
+    public void setSkipMarkContentAsRead(boolean skip) {
+        skipMarkContentAsRead = skip;
+    }
     private boolean isPaused = false;
     private boolean wasPlayingAudioBeforePause = false;
     private VideoPlayer audioPlayer = null;
@@ -2485,6 +2490,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
         if (stopService && restoreMusicPlaylistState()) {
             return;
         }
+        if (stopService) {
+            skipMarkContentAsRead = false;
+        }
 
         if (audioPlayer != null) {
             if (reporter != null) {
@@ -3666,7 +3674,7 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
             }
             return true;
         }
-        if (!messageObject.isOut() && (messageObject.isContentUnread())) {
+        if (!messageObject.isOut() && (messageObject.isContentUnread()) && !skipMarkContentAsRead) {
             MessagesController.getInstance(messageObject.currentAccount).markMessageContentAsRead(messageObject);
         }
         boolean saved = false;

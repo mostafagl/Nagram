@@ -758,7 +758,7 @@ public class StickersActivity extends BaseFragment implements NotificationCenter
 
             JsonObject exportObj = StickersUtil.exportStickers(currentAccount, exportSets, exportArchived);
 
-            File cacheFile = new File(EnvUtil.getShareCachePath(), new Date().toLocaleString() + xyz.nextalone.nagram.helper.BackupFileHelper.STICKERS_SUFFIX);
+            File cacheFile = new File(EnvUtil.getShareCachePath(), "Parvagram " + new Date().toLocaleString().replace('/', '-').replace(':', '-') + xyz.nextalone.nagram.helper.BackupFileHelper.STICKERS_SUFFIX);
 
             StringWriter stringWriter = new StringWriter();
             JsonWriter jsonWriter = new JsonWriter(stringWriter);
@@ -1138,7 +1138,7 @@ public class StickersActivity extends BaseFragment implements NotificationCenter
 
                         JsonObject exportObj = StickersUtil.exportStickers(stickerSetList);
 
-                        File cacheFile = new File(EnvUtil.getShareCachePath(), new Date().toLocaleString() + xyz.nextalone.nagram.helper.BackupFileHelper.STICKERS_SUFFIX);
+                        File cacheFile = new File(EnvUtil.getShareCachePath(), "Parvagram " + new Date().toLocaleString().replace('/', '-').replace(':', '-') + xyz.nextalone.nagram.helper.BackupFileHelper.STICKERS_SUFFIX);
 
                         StringWriter stringWriter = new StringWriter();
                         JsonWriter jsonWriter = new JsonWriter(stringWriter);

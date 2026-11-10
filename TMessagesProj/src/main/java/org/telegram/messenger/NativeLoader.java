@@ -59,6 +59,8 @@ public class NativeLoader {
             }
             return;
         } catch (Error e) {
+            // Release builds have file logging off; keep the reason visible in logcat.
+            android.util.Log.e("NativeLoader", "loadLibrary(" + LIB_NAME + ") failed", e);
             FileLog.e(e);
         }
 
@@ -67,6 +69,7 @@ public class NativeLoader {
             FileLog.d("loaded extracted lib");
             nativeLoaded = true;
         } catch (Error e) {
+            android.util.Log.e("NativeLoader", "loading extracted " + LIB_NAME + " failed", e);
             FileLog.e(e);
             log.append("184: ").append(e).append("\n");
         }

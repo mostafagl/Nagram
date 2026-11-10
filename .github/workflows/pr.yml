@@ -6,16 +6,47 @@ on:
     paths-ignore:
       - '**.md'
       - '**.xml'
+  # Manual start (Actions tab, or the API) when GitHub doesn't trigger the PR event.
+  # With publish_tag set, nothing is built: that build pre-release becomes the latest release,
+  # which the app offers as an update.
+  workflow_dispatch:
+    inputs:
+      publish_tag:
+        description: 'Only publish this build pre-release as the latest release (e.g. build-1793357419170)'
+        required: false
+        default: ''
+      diagnostic:
+        description: 'Build the separate diagnostic app (com.mostafagl.parvagram.diag, "Parvagram Diag") instead'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
+  publish:
+    name: Publish a build as the latest release
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.publish_tag }}
+        run: |
+          gh release edit "$TAG" -R "$GITHUB_REPOSITORY" --prerelease=false --latest
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json tagName,isPrerelease,url
   native:
     name: Native Build (Telegram)
+    if: github.event_name != 'workflow_dispatch' || inputs.publish_tag == ''
     runs-on: ubuntu-latest
     strategy:
       matrix:
         flavor:
           - armeabi-v7a
           - arm64-v8a
+          # Only for the emulator test: ARM translation on x86_64 can't run the Go V2Ray core.
+          - x86_64
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -61,6 +92,10 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - native
+    permissions:
+      contents: write
+    outputs:
+      stable_key: ${{ steps.signing.outputs.stable }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -79,6 +114,12 @@ jobs:
           path: |
             TMessagesProj/src/main/libs
           key: ${{ hashFiles('TMessagesProj/jni/**') }}-arm64-v8a
+      - name: Native Cache (x86_64)
+        uses: actions/cache@v6
+        with:
+          path: |
+            TMessagesProj/src/main/libs
+          key: ${{ hashFiles('TMessagesProj/jni/**') }}-x86_64
       - name: Checkout Library
         run: |
           git submodule update --init
@@ -96,23 +137,300 @@ jobs:
           echo "y" | sdkmanager --install "ndk;27.2.12479018" --sdk_root=${ANDROID_SDK_ROOT} &> /dev/null
           echo "sdk.dir=${ANDROID_HOME}" > local.properties
           echo "ndk.dir=${ANDROID_HOME}/ndk/27.2.12479018" >> local.properties
+      - name: V2Ray Library Cache
+        id: v2ray-cache
+        uses: actions/cache@v6
+        with:
+          path: TMessagesProj/libs/libv2ray.aar
+          key: libv2ray-${{ hashFiles('bin/libs/v2ray.sh') }}
+      - name: Set up Go
+        if: steps.v2ray-cache.outputs.cache-hit != 'true'
+        uses: actions/setup-go@v6
+        with:
+          go-version: 'stable'
+          cache: false
+      - name: V2Ray Library Build
+        if: steps.v2ray-cache.outputs.cache-hit != 'true'
+        run: |
+          ./run libs v2ray
       - name: Configure Gradle
         run: |
-          sed -i "s/2000000000000/$(date +%s%N | cut -c1-13)/g" gradle.properties
+          TS=$(date +%s%N | cut -c1-13)
+          sed -i "s/2000000000000/$TS/g" gradle.properties
+          echo "BUILD_TS=$TS" >> $GITHUB_ENV
           echo "sdk.dir=${ANDROID_HOME}" >> local.properties
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
+      # Android installs an update only when it is signed with the same key as the installed
+      # app. A fresh runner makes a new debug key every time, so the debug key is kept in the
+      # Actions cache and reused by every build. Set the RELEASE_KEYSTORE (base64 of the
+      # keystore), KEYSTORE_PASS, ALIAS_NAME and ALIAS_PASS secrets to sign with your own key.
+      - name: Signing Key Cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.android/debug.keystore
+          key: parvagram-debug-keystore-v1
+      # Every published build must be signed with the same key, or it can't update the installed
+      # app. The key is kept encrypted in the repository (TMessagesProj/parvagram-signing.keystore.enc,
+      # AES-256 with the SIGNING_PASSPHRASE secret); until that secret exists, the key from the
+      # Actions cache of manual runs on this branch is used, and only those runs publish.
+      - name: Signing Key
+        id: signing
+        env:
+          RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
+          SIGNING_PASSPHRASE: ${{ secrets.SIGNING_PASSPHRASE }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          mkdir -p ~/.android
+          ENC=TMessagesProj/parvagram-signing.keystore.enc
+          STABLE=false
+          if [ -n "$RELEASE_KEYSTORE" ]; then
+            echo "$RELEASE_KEYSTORE" | base64 -d > TMessagesProj/release.keystore
+            echo "Signing with the release keystore from secrets"
+            STABLE=true
+          elif [ -n "$SIGNING_PASSPHRASE" ] && [ -f "$ENC" ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:SIGNING_PASSPHRASE -in "$ENC" -out ~/.android/debug.keystore
+            STABLE=true
+          elif [ -f ~/.android/debug.keystore ] && [ "$EVENT" = "workflow_dispatch" ]; then
+            # The key of the published builds, restored from the cache.
+            STABLE=true
+            if [ -n "$SIGNING_PASSPHRASE" ]; then
+              openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -pass env:SIGNING_PASSPHRASE -in ~/.android/debug.keystore -out "$ENC"
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add "$ENC"
+              git commit -m "Keep the app signing key, encrypted, in the repository"
+              git push origin "HEAD:$REF_NAME" || echo "::warning::could not push the encrypted key"
+            fi
+          elif [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey \
+              -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Parvagram Debug,O=Parvagram,C=US"
+          fi
+          if [ "$STABLE" != true ]; then
+            echo "::warning::Not signed with the app's key: this build is not published"
+          fi
+          if [ -z "$RELEASE_KEYSTORE" ]; then
+            # Sign explicitly with this key: Gradle's default debug signing made a new key for
+            # every build, so no build could update another.
+            cp ~/.android/debug.keystore TMessagesProj/release.keystore
+          fi
+          echo "stable=$STABLE" >> "$GITHUB_OUTPUT"
+          keytool -list -v -keystore TMessagesProj/release.keystore -storepass "${KEYSTORE_PASS:-android}" 2>/dev/null | grep -E "SHA256" || true
+      # The diagnostic app installs next to Parvagram: its own package, account type, name and
+      # Firebase entry, so it shares nothing with the installed app.
+      - name: Diagnostic variant
+        if: github.event_name == 'workflow_dispatch' && inputs.diagnostic
+        run: |
+          set -e
+          sed -i 's/defaultConfig.applicationId = "com.mostafagl.parvagram"/defaultConfig.applicationId = "com.mostafagl.parvagram.diag"/' TMessagesProj/build.gradle
+          grep -q 'applicationId = "com.mostafagl.parvagram.diag"' TMessagesProj/build.gradle
+          for f in auth.xml sync_contacts.xml auth_menu.xml; do
+            sed -i 's/"com.mostafagl.parvagram"/"com.mostafagl.parvagram.diag"/g' "TMessagesProj/src/main/res/xml/$f"
+          done
+          sed -i 's|<string name="NekoX" translatable="false">Parvagram</string>|<string name="NekoX" translatable="false">Parvagram Diag</string>|' TMessagesProj/src/main/res/values/strings_nekox.xml
+          python3 - <<'PY'
+          import json
+          p = 'TMessagesProj/google-services.json'
+          d = json.load(open(p))
+          src = next(c for c in d['client'] if c['client_info']['android_client_info']['package_name'] == 'com.mostafagl.parvagram')
+          copy = json.loads(json.dumps(src))
+          copy['client_info']['android_client_info']['package_name'] = 'com.mostafagl.parvagram.diag'
+          d['client'].append(copy)
+          json.dump(d, open(p, 'w'), indent=2)
+          PY
       - name: Debug Build
+        env:
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS || 'android' }}
+          ALIAS_NAME: ${{ secrets.ALIAS_NAME || 'androiddebugkey' }}
+          ALIAS_PASS: ${{ secrets.ALIAS_PASS || 'android' }}
         run: |
           export LOCAL_PROPERTIES="${{ secrets.LOCAL_PROPERTIES }}"
           export DEBUG_BUILD=true
+          export EXTRA_ABI_X86_64=true
           sed -i 's/signingConfig signingConfigs.release//g' TMessagesProj/build.gradle
           ./gradlew TMessagesProj:assembleRelease --build-cache --no-configuration-cache
 
           APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk')
           APK=$(dirname $APK)
           echo "APK=$APK" >> $GITHUB_ENV
+          # The in-app updater compares this with the installed build (BuildConfig.BUILD_TIMESTAMP).
+          echo "$BUILD_TS" > "$APK/build_timestamp.txt"
+      # Fails the build unless every APK is signed with the app's key, so a build that couldn't
+      # update the installed app is never published.
+      - name: Verify APK signatures
+        env:
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS || 'android' }}
+          ALIAS_NAME: ${{ secrets.ALIAS_NAME || 'androiddebugkey' }}
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          EXPECTED=$(keytool -exportcert -keystore TMessagesProj/release.keystore -storepass "$KEYSTORE_PASS" -alias "$ALIAS_NAME" | sha256sum | cut -d' ' -f1)
+          echo "App key certificate SHA-256: $EXPECTED"
+          for f in $(find TMessagesProj/build/outputs/apk -name '*.apk'); do
+            echo "== $f"
+            OUT=$("$BT/apksigner" verify --verbose --print-certs "$f")
+            echo "$OUT" | grep -v '^WARNING'
+            # e.g. "V3.0 Signer: certificate SHA-256 digest: <hex>"; every signer must be the app's key.
+            ACTUAL=$(echo "$OUT" | sed -n 's/^.*[Ss]igner.* certificate SHA-256 digest: //p' | sort -u | tr '\n' ' ' | sed 's/ $//')
+            if [ "$ACTUAL" != "$EXPECTED" ]; then
+              echo "::error::$f is signed with $ACTUAL, not the app's key $EXPECTED"
+              exit 1
+            fi
+          done
       - uses: actions/upload-artifact@v7
         with:
           name: Debug
           path: ${{ env.APK }}
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Launch smoke test on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash bin/scripts/smoke_test.sh
+  uitest:
+    name: Emulator UI test
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: Debug
+          path: apk
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install Telethon
+        run: pip install telethon==1.45.0
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run UI test
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          UITEST_OUT: ${{ github.workspace }}/uitest-out
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash bin/scripts/uitest/run.sh apk
+      - name: Publish screenshots
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash bin/scripts/uitest/publish.sh
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ui-test
+          path: uitest-out
+  release:
+    name: Publish latest build to Releases
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    # Only builds signed with the app's key: anything else couldn't update the installed app.
+    if: needs.build.outputs.stable_key == 'true'
+    permissions:
+      contents: write
+    steps:
+      # Only for .github/parvagram-changes.md, the "what's new" text the app shows.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          sparse-checkout: .github
+          submodules: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: Debug
+          path: apk
+      - name: Publish the build as a pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          DIAG: ${{ github.event_name == 'workflow_dispatch' && inputs.diagnostic }}
+        run: |
+          set -e
+          if [ "$DIAG" = "true" ]; then
+            # The diagnostic app: its own pre-release, never offered as an update and never cleaned up.
+            TS=$(cat apk/build_timestamp.txt)
+            TAG="diag-$TS"
+            mkdir out
+            cp apk/*arm64-v8a*.apk out/Parvagram-Diag-arm64-v8a.apk
+            cp apk/*armeabi-v7a*.apk out/Parvagram-Diag-armeabi-v7a.apk
+            gh release create "$TAG" -R "$REPO" --prerelease --target "$SHA" \
+              --title "Parvagram Diagnostics (separate app)" \
+              --notes "Separate diagnostic app (com.mostafagl.parvagram.diag). Installs next to Parvagram and does not touch it. Settings > Parvagram > Diagnostics." \
+              out/Parvagram-Diag-arm64-v8a.apk out/Parvagram-Diag-armeabi-v7a.apk
+            exit 0
+          fi
+          # A newer commit on the branch gets its own build; publishing this one would be a stale duplicate.
+          HEAD_SHA=$(gh api "repos/$REPO/commits/$BRANCH" --jq .sha)
+          if [ "$HEAD_SHA" != "$SHA" ]; then
+            echo "::notice::$BRANCH has moved on to ${HEAD_SHA:0:8}; not publishing ${SHA:0:8}."
+            exit 0
+          fi
+          TS=$(cat apk/build_timestamp.txt)
+          TAG="build-$TS"
+          mkdir out
+          cp apk/*arm64-v8a*.apk out/Parvagram-arm64-v8a.apk
+          cp apk/*armeabi-v7a*.apk out/Parvagram-armeabi-v7a.apk
+          VERSION=$(basename "$(ls apk/*arm64-v8a*.apk | head -1)" | sed -E 's/^Parvagram-(.*)-arm64-v8a\.apk$/\1/')
+          DATE=$(date -u -d "@$((TS / 1000))" '+%Y-%m-%d %H:%M UTC')
+          # The app shows only the part between the "changes" markers in its update dialog.
+          {
+            echo "<!-- changes -->"
+            cat .github/parvagram-changes.md 2>/dev/null || true
+            echo "<!-- /changes -->"
+            echo
+          } > notes.md
+          cat >> notes.md <<NOTES
+          Parvagram $VERSION, built $DATE from commit ${SHA:0:8}.
+
+          | Download | For |
+          | --- | --- |
+          | [Parvagram-arm64-v8a.apk](https://github.com/$REPO/releases/download/$TAG/Parvagram-arm64-v8a.apk) | Almost all phones from 2017 on (64-bit) |
+          | [Parvagram-armeabi-v7a.apk](https://github.com/$REPO/releases/download/$TAG/Parvagram-armeabi-v7a.apk) | Older 32-bit phones |
+
+          **To send this build to users as an update:** edit this release, untick *Set as a pre-release*
+          (and tick *Set as the latest release*), and save. Parvagram checks GitHub every few hours and
+          shows "New version" at the top of the chat list; tapping it downloads and installs the update
+          in the app. Pre-releases are never offered as updates.
+
+          برای فرستادن این نسخه به‌عنوان به‌روزرسانی: این ریلیز را ویرایش کنید، تیک «Set as a pre-release»
+          را بردارید و ذخیره کنید. پرواگرام هر چند ساعت گیت‌هاب را بررسی می‌کند و بالای فهرست چت‌ها
+          «نسخهٔ جدید» را نشان می‌دهد؛ با زدن آن به‌روزرسانی داخل خود برنامه دریافت و نصب می‌شود.
+          NOTES
+          gh release create "$TAG" -R "$REPO" --prerelease --target "$SHA" \
+            --title "Parvagram $VERSION · $DATE" --notes-file notes.md \
+            out/Parvagram-arm64-v8a.apk out/Parvagram-armeabi-v7a.apk
+          # The old fixed "parvagram-latest" pre-release is replaced by per-build releases.
+          gh release delete parvagram-latest -R "$REPO" --cleanup-tag -y || true
+          # Keep the 5 newest build pre-releases; published releases are never touched.
+          gh release list -R "$REPO" --limit 100 --json tagName,isPrerelease,createdAt \
+            --jq '[.[] | select(.isPrerelease and (.tagName | startswith("build-")))] | sort_by(.createdAt) | reverse | .[5:] | .[].tagName' |
+          while read -r old; do
+            gh release delete "$old" -R "$REPO" --cleanup-tag -y || true
+          done

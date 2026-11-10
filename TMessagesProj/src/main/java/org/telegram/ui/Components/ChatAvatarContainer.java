@@ -300,6 +300,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
             animatedSubtitleTextView.setGravity(Gravity.LEFT);
             animatedSubtitleTextView.setPadding(0, 0, dp(10), 0);
             animatedSubtitleTextView.setTranslationY(-dp(1));
+            xyz.nextalone.nagram.font.CustomFonts.apply(animatedSubtitleTextView);
             addView(animatedSubtitleTextView);
         } else {
             subtitleTextView = new SimpleTextConnectedView(context, subtitleTextLargerCopyView);
@@ -309,6 +310,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
             subtitleTextView.setTextSize(14);
             subtitleTextView.setGravity(Gravity.LEFT);
             subtitleTextView.setPadding(0, 0, dp(10), 0);
+            xyz.nextalone.nagram.font.CustomFonts.apply(subtitleTextView);
             addView(subtitleTextView);
         }
 
@@ -736,6 +738,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
             removeView(subtitleTextLargerCopyView);
         }
         subtitleTextLargerCopyView = new SimpleTextView(getContext());
+        xyz.nextalone.nagram.font.CustomFonts.apply(subtitleTextLargerCopyView);
         this.subtitleTextLargerCopyView.set(subtitleTextLargerCopyView);
         subtitleTextLargerCopyView.setTextColor(getThemedColor(Theme.key_actionBarDefaultSubtitle));
         subtitleTextLargerCopyView.setTag(Theme.key_actionBarDefaultSubtitle);

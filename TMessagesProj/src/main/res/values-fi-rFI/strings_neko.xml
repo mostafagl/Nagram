@@ -232,7 +232,7 @@
     <string name="PassQRNewPassword">Suojaa tämä QR-koodi salasanalla</string>
     <string name="ConfirmNewPassword">Vahvista Salasana</string>
     <string name="PassQRAbout">Tallentaa salasanasi salatuksi QR-koodiksi. Voit skannata sen kirjautuaksesi sisään toisella laitteella.</string>
-    <string name="PassQREncryption">Skannaa Nagrammilla kirjautuaksesi sisään.</string>
+    <string name="PassQREncryption">Skannaa Parvagramilla kirjautuaksesi sisään.</string>
     <string name="InvalidPassQr">Invalid Passkey QR</string>
     <string name="PassQRPasswordTooShort">Salasanan tulee olla vähintään 8 merkkiä pitkä</string>
     <string name="PassQRPasswordWarning">Turvallisuusvaroitus: tämä salasana on ainoa avainta suojaava asia. Heikko salasana voidaan säröillä offline-tilassa, joten sekoita isoja kirjaimia, numeroita ja symboleja.</string>

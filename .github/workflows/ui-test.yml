@@ -1,0 +1,65 @@
+name: UI test
+
+# Re-runs the emulator UI test against the newest successful build of this branch when only the
+# test scripts change. The full build workflow runs the same test after building.
+on:
+  push:
+    branches:
+      - ccr-682d1499-q9xkbe
+    paths:
+      - 'bin/scripts/uitest/**'
+      - '.github/workflows/ui-test.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  ui:
+    name: Emulator UI test
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Download latest APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN=$(gh run list -R "${{ github.repository }}" -b "${{ github.ref_name }}" -w "Pull request" -s success -L 1 --json databaseId -q '.[0].databaseId')
+          echo "Using build run $RUN"
+          gh run download "$RUN" -R "${{ github.repository }}" -n Debug -D apk
+          ls -la apk
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install Telethon
+        run: pip install telethon==1.45.0
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run UI test
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          UITEST_OUT: ${{ github.workspace }}/uitest-out
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash bin/scripts/uitest/run.sh apk
+      - name: Publish screenshots
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash bin/scripts/uitest/publish.sh
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ui-test
+          path: uitest-out

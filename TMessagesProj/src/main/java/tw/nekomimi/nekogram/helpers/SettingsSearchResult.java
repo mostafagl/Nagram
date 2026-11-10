@@ -8,6 +8,8 @@ public class SettingsSearchResult {
     public String path2;
     public int iconResId;
     public int guid;
+    /** Explanation of the setting, also searched; may be null. */
+    public String description;
 
     public SettingsSearchResult(int guid, String searchTitle,String path1, String path2, int iconResId, Runnable open) {
         this.guid = guid;

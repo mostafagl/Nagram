@@ -1,6 +1,7 @@
 name: Debug build
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - dev
@@ -98,6 +99,22 @@ jobs:
           echo "y" | sdkmanager --install "ndk;27.2.12479018" --sdk_root=${ANDROID_SDK_ROOT} &> /dev/null
           echo "sdk.dir=${ANDROID_HOME}" > local.properties
           echo "ndk.dir=${ANDROID_HOME}/ndk/27.2.12479018" >> local.properties
+      - name: V2Ray Library Cache
+        id: v2ray-cache
+        uses: actions/cache@v6
+        with:
+          path: TMessagesProj/libs/libv2ray.aar
+          key: libv2ray-${{ hashFiles('bin/libs/v2ray.sh') }}
+      - name: Set up Go
+        if: steps.v2ray-cache.outputs.cache-hit != 'true'
+        uses: actions/setup-go@v6
+        with:
+          go-version: 'stable'
+          cache: false
+      - name: V2Ray Library Build
+        if: steps.v2ray-cache.outputs.cache-hit != 'true'
+        run: |
+          ./run libs v2ray
       - name: Configure Gradle
         run: |
           sed -i "s/2000000000000/$(date +%s%N | cut -c1-13)/g" gradle.properties

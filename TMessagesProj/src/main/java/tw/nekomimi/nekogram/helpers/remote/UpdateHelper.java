@@ -177,8 +177,10 @@ public class UpdateHelper extends BaseRemoteHelper {
     }
 
     public void checkNewVersionAvailable(Delegate delegate, boolean updateAlways_) {
-        updateAlways = updateAlways_;
-        load(delegate);
+        // The metadata channel publishes upstream Nagram builds, which can't be installed over
+        // Parvagram (different package and key) and would even be forced when marked
+        // can_not_skip. Parvagram releases are published on GitHub instead.
+        delegate.onTLResponse(null, null);
     }
 
     public static class Update {

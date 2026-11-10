@@ -22,7 +22,7 @@
     <string name="SendReactions">リアクションを送信</string>
     <string name="ShowReactions">リアクションの表示</string>
     <string name="CustomTitle">カスタムタイトル</string>
-    <string name="CustomTitleHint">Nagramを使用するには空白のままにしてください</string>
+    <string name="CustomTitleHint">Parvagramを使用するには空白のままにしてください</string>
     <string name="CodeSyntaxHighlight">コードの構文ハイライト</string>
     <string name="CreateMono">Monospaceを作成</string>
     <string name="CreateMonoLanguage">コード言語</string>
@@ -362,7 +362,7 @@
     <string name="ForceVideoNewRewindMethod">ビデオで新しいシークメソッドを使用する</string>
     <string name="TabStyleStroke">タブの外形</string>
     <string name="AddCommaAfterMention">メンションの後にカンマを追加</string>
-    <string name="NagramMessages">メッセージ</string>
+    <string name="ParvagramMessages">メッセージ</string>
     <string name="MessagePreviewText">コードをひどくしたいので、私は ||vibe-coding||</string>
     <string name="MessagePreviewPollQuestion">コードはどうですか？</string>
     <string name="MessagePreviewPollAnswerTerrible">ひどいです</string>

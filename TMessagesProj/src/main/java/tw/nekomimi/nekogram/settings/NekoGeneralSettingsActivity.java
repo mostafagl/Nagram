@@ -143,7 +143,6 @@ public class NekoGeneralSettingsActivity extends BaseNekoXSettingsActivity {
                     LocaleController.getString(R.string.CustomIpStrategyAuto),
             }, null));
     private final AbstractConfigCell useSystemDNSRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.useSystemDNS));
-    private final AbstractConfigCell disableProxyWhenVpnEnabledRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getDisableProxyWhenVpnEnabled()));
     private final AbstractConfigCell customDoHRow = cellGroup.appendCell(new ConfigCellTextInput(null, NekoConfig.customDoH, "https://1.0.0.1/dns-query", null));
 //    private final AbstractConfigCell customPublicProxyIPRow = cellGroup.appendCell(new ConfigCellTextDetail(NekoConfig.customPublicProxyIP, (view, position) -> {
 //        customDialog_BottomInputString(position, NekoConfig.customPublicProxyIP, LocaleController.getString("customPublicProxyIPNotice"), "IP");
@@ -482,6 +481,12 @@ private final AbstractConfigCell defaultHlsVideoQualityRow = cellGroup.appendCel
                 }
             } else if (key.equals(NaConfig.INSTANCE.getSwitchStyle().getKey())) {
                 Switch.invalidateAll();
+            } else if (key.equals(NekoConfig.openArchiveOnPull.getKey())) {
+                // Pulling opens the archive only while it is hidden above the list.
+                if ((boolean) newValue && !SharedConfig.archiveHidden) {
+                    SharedConfig.toggleArchiveHidden();
+                    getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
+                }
             } else if (key.equals(NekoConfig.inappCamera.getKey())) {
                 SharedConfig.setInappCamera((boolean) newValue);
                 tooltip.showWithAction(0, UndoView.ACTION_NEED_RESATRT, null, null);

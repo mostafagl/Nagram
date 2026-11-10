@@ -785,6 +785,13 @@ public class ContentPreviewViewer {
                         actions.add(1);
                     }
                 }
+                final long parvaSetId = currentDocument != null ? MediaDataController.getStickerSetId(currentDocument) : 0;
+                if (delegate != null && parvaSetId != 0 && parvaSetId != -1) {
+                    final boolean packHidden = tw.nekomimi.nekogram.helpers.HiddenStickers.isPackHidden(parvaSetId);
+                    items.add(LocaleController.getString(packHidden ? R.string.HiddenStickersUnhidePack : R.string.HiddenStickersHidePack));
+                    icons.add(packHidden ? R.drawable.msg_message : R.drawable.msg_archive_hide);
+                    actions.add(9020);
+                }
                 if (isRecentSticker) {
                     items.add(LocaleController.getString(R.string.DeleteFromRecent));
                     icons.add(R.drawable.msg_delete);
@@ -863,6 +870,12 @@ public class ContentPreviewViewer {
                             delegate.editSticker(currentDocument);
                         } else if (actions.get(which) == 8) {
                             delegate.deleteSticker(currentDocument);
+                        } else if (actions.get(which) == 9020) {
+                            final long setId = MediaDataController.getStickerSetId(currentDocument);
+                            final boolean hide = !tw.nekomimi.nekogram.helpers.HiddenStickers.isPackHidden(setId);
+                            tw.nekomimi.nekogram.helpers.HiddenStickers.setPackHidden(setId, hide);
+                            BulletinFactory.global().createSimpleBulletin(R.raw.contact_check,
+                                    LocaleController.getString(hide ? R.string.HiddenStickersPackHidden : R.string.HiddenStickersPackShown)).show();
                         }
                         dismissPopupWindow();
                     }
@@ -1095,6 +1108,12 @@ public class ContentPreviewViewer {
                     actions.add(11);
                 }
 
+                if (currentDocument != null) {
+                    final boolean gifHidden = tw.nekomimi.nekogram.helpers.HiddenStickers.isGifHidden(currentDocument);
+                    items.add(LocaleController.getString(gifHidden ? R.string.HiddenStickersUnhideGif : R.string.HiddenStickersHideGif));
+                    icons.add(gifHidden ? R.drawable.msg_message : R.drawable.msg_archive_hide);
+                    actions.add(9021);
+                }
                 boolean canDelete;
                 if (currentDocument != null) {
                     if (canDelete = MediaDataController.getInstance(currentAccount).hasRecentGif(currentDocument)) {
@@ -1142,6 +1161,11 @@ public class ContentPreviewViewer {
                         Object parent = parentObject;
                         ContentPreviewViewerDelegate stickerPreviewViewerDelegate = delegate;
                         AlertsCreator.createScheduleDatePickerDialog(parentActivity, stickerPreviewViewerDelegate.getDialogId(), (notify, scheduleDate, scheduleRepeatPeriod) -> stickerPreviewViewerDelegate.sendGif(document != null ? document : result, parent, notify, scheduleDate, scheduleRepeatPeriod), resourcesProvider);
+                    } else if (actions.get(which) == 9021) {
+                        final boolean hide = !tw.nekomimi.nekogram.helpers.HiddenStickers.isGifHidden(currentDocument);
+                        tw.nekomimi.nekogram.helpers.HiddenStickers.setGifHidden(currentDocument, hide);
+                        BulletinFactory.global().createSimpleBulletin(R.raw.contact_check,
+                                LocaleController.getString(hide ? R.string.HiddenStickersGifHidden : R.string.HiddenStickersGifShown)).show();
                     } else if (actions.get(which) == 11) {
                         delegate.addCaptionToGif(currentDocument != null ? currentDocument : inlineResult, parentObject, true, 0, 0);
                     }

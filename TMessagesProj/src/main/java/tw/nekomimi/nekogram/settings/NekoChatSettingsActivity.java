@@ -130,6 +130,7 @@ public class NekoChatSettingsActivity extends BaseNekoXSettingsActivity implemen
             add(new ConfigCellTextCheck(NaConfig.INSTANCE.getDisableActionBarButtonSelectBetween()));
             add(new ConfigCellTextCheck(NaConfig.INSTANCE.getDisableActionBarButtonCopy()));
             add(new ConfigCellTextCheck(NaConfig.INSTANCE.getDisableActionBarButtonForward()));
+            add(new ConfigCellTextCheck(NaConfig.INSTANCE.getDisableActionBarButtonForwardNoQuote()));
         }}));
     }));
     private final AbstractConfigCell customGreatRow = cellGroup.appendCell(new ConfigCellTextInput(null, NaConfig.INSTANCE.getCustomGreat(), LocaleController.getString(R.string.CustomGreatHint), null,(input) -> input.isEmpty() ? (String) NaConfig.INSTANCE.getCustomGreat().defaultValue : input));

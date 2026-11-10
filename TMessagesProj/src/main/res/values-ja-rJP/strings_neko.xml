@@ -232,7 +232,7 @@
     <string name="PassQRNewPassword">このQRコードをパスワードで保護</string>
     <string name="ConfirmNewPassword">パスワードの確認</string>
     <string name="PassQRAbout">パスキーを暗号化されたQRコードとして保存します。スキャンして別の端末にログインできます。</string>
-    <string name="PassQREncryption">Nagramでスキャンしてログインします。</string>
+    <string name="PassQREncryption">Parvagramでスキャンしてログインします。</string>
     <string name="InvalidPassQr">Invalid Passkey QR</string>
     <string name="PassQRPasswordTooShort">パスワードは8文字以上でなければなりません</string>
     <string name="PassQRPasswordWarning">セキュリティ上の警告：このパスワードはキーを保護する唯一のものです。弱いパスワードはオフラインで割れる可能性があります。大文字、小文字、数字、記号を混ぜてください。</string>

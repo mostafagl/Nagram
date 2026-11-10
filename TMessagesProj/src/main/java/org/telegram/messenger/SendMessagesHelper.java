@@ -2222,10 +2222,38 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
     }
 
     public int sendMessage(ArrayList<MessageObject> messages, final long peer, boolean forwardFromMyName, boolean hideCaption, boolean notify, int scheduleDate, MessageObject replyToTopMsg, int video_timestamp, long payStars) {
+        scheduleDate = tw.nekomimi.nekogram.utils.AyuGhostUtils.applyScheduledSend(currentAccount, peer, scheduleDate, false);
         return sendMessage(messages, peer, forwardFromMyName, hideCaption, notify, scheduleDate, 0, replyToTopMsg, video_timestamp, payStars, 0, null);
     }
 
     public int sendMessage(
+        ArrayList<MessageObject> messages,
+        final long peer,
+        boolean forwardFromMyName,
+        boolean hideCaption,
+        boolean notify,
+        int scheduleDate,
+        int scheduleRepeatPeriod,
+        MessageObject replyToTopMsg,
+        int video_timestamp,
+        long payStars,
+        long monoForumPeerId,
+        MessageSuggestionParams suggestionParams
+    ) {
+        if (messages == null || messages.isEmpty()) {
+            return 0;
+        }
+        if (!DialogObject.isEncryptedDialog(peer)) {
+            // Self-destructing media can't be forwarded: the kept copies are sent again as new media.
+            messages = tw.nekomimi.nekogram.helpers.TimedMediaForward.sendKeptTimed(currentAccount, messages, peer, hideCaption, notify, scheduleDate, replyToTopMsg);
+            if (messages.isEmpty()) {
+                return 0;
+            }
+        }
+        return sendMessageForward(messages, peer, forwardFromMyName, hideCaption, notify, scheduleDate, scheduleRepeatPeriod, replyToTopMsg, video_timestamp, payStars, monoForumPeerId, suggestionParams);
+    }
+
+    private int sendMessageForward(
         ArrayList<MessageObject> messages,
         final long peer,
         boolean forwardFromMyName,
@@ -4441,6 +4469,14 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
     }
 
     public void sendMessage(SendMessageParams sendMessageParams) {
+        if (sendMessageParams.retryMessageObject == null && sendMessageParams.quick_reply_shortcut == null && sendMessageParams.quick_reply_shortcut_id == 0
+                && (sendMessageParams.sendMessageChatArguments == null || sendMessageParams.sendMessageChatArguments.welcomeMessageChatId == 0
+                    && sendMessageParams.sendMessageChatArguments.quickReplyShortcut == null && sendMessageParams.sendMessageChatArguments.quickReplyShortcutId == 0)
+                && sendMessageParams.sendingStory == null && sendMessageParams.stars == 0 && sendMessageParams.payStars == 0) {
+            // Ghost mode's "send as scheduled"; not for quick replies, paid or business messages.
+            sendMessageParams.scheduleDate = tw.nekomimi.nekogram.utils.AyuGhostUtils.applyScheduledSend(currentAccount, sendMessageParams.peer,
+                    sendMessageParams.scheduleDate, sendMessageParams.photo != null || sendMessageParams.document != null);
+        }
         final SendMessageChatArguments sendMessageChatArguments = sendMessageParams.sendMessageChatArguments != null ?
                 sendMessageParams.sendMessageChatArguments : SendMessageChatArguments.EMPTY;
         String message = sendMessageParams.message;

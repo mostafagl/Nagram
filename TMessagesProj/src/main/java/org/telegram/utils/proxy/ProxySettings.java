@@ -27,7 +27,8 @@ public final class ProxySettings {
     public enum Type {
         SOCKS5,
         MTPROTO,
-        WEB
+        WEB,
+        V2RAY
     }
 
     private final @NonNull Type type;
@@ -50,6 +51,12 @@ public final class ProxySettings {
             secret = builder.secret;
             port = builder.port;
             user = "";
+            password = "";
+        } else if (type == Type.V2RAY) {
+            // secret holds the share link, user holds the remark; address and port are for display.
+            secret = builder.secret;
+            port = builder.port;
+            user = builder.user;
             password = "";
         } else if (type == Type.SOCKS5) {
             secret = "";
@@ -94,12 +101,18 @@ public final class ProxySettings {
         if (TextUtils.isEmpty(address)) {
             return false;
         }
+        if (type == Type.V2RAY) {
+            return V2RayConfig.parse(secret) != null;
+        }
         return type == Type.WEB
                 ? isValidWebAddress(address) && isValidWebProxySecret(secret)
                 : port > 0;
     }
 
     public String getLink() {
+        if (type == Type.V2RAY) {
+            return secret;
+        }
         StringBuilder url;
         switch (type) {
             case MTPROTO:
@@ -212,7 +225,27 @@ public final class ProxySettings {
                 editor.remove("proxy_pass");
                 editor.remove("proxy_user");
                 break;
+            case V2RAY:
+                editor.putString("proxy_secret", secret);
+                editor.putInt("proxy_port", port);
+                editor.putString("proxy_user", user);
+                editor.remove("proxy_pass");
+                break;
         }
+    }
+
+    public static ProxySettings fromV2RayLink(String link) {
+        final V2RayConfig config = V2RayConfig.parse(link);
+        if (config == null) {
+            return null;
+        }
+        return builder()
+                .setType(Type.V2RAY)
+                .setAddress(config.address)
+                .setPort(config.port)
+                .setUser(config.remark)
+                .setSecret(config.link)
+                .build();
     }
 
     public static ProxySettings fromUri(Uri uri) {
@@ -523,6 +556,8 @@ public final class ProxySettings {
                 return 1;
             case WEB:
                 return 2;
+            case V2RAY:
+                return 3;
         }
         return 0;
     }
@@ -535,6 +570,8 @@ public final class ProxySettings {
                 return Type.MTPROTO;
             case 2:
                 return Type.WEB;
+            case 3:
+                return Type.V2RAY;
         }
         return Type.SOCKS5;
     }

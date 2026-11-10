@@ -44,6 +44,7 @@ import org.telegram.messenger.R
 import org.telegram.messenger.SharedConfig
 import org.telegram.messenger.TelegramQRCodeWriter
 import org.telegram.messenger.browser.Browser
+import org.telegram.utils.proxy.V2RayConfig
 import tw.nekomimi.nekogram.ui.BottomBuilder
 import tw.nekomimi.nekogram.utils.AlertUtil.showToast
 import java.io.File
@@ -63,45 +64,6 @@ object ProxyUtil {
             return networkCapabilities!!.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
         }
         return false
-    }
-
-    @JvmStatic
-    fun registerNetworkCallback() {
-        val connectivityManager = ApplicationLoader.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val networkCallback: ConnectivityManager.NetworkCallback =
-            object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) {
-                    val networkCapabilities =
-                        connectivityManager.getNetworkCapabilities(network) ?: return
-                    val vpn = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
-                    if (!vpn) {
-                        if (SharedConfig.currentProxy == null) {
-                            if (!SharedConfig.proxyList.isEmpty()) {
-                                SharedConfig.setCurrentProxy(SharedConfig.proxyList[0])
-                            } else {
-                                return
-                            }
-                        }
-                    }
-                    if ((SharedConfig.isProxyEnabled() && vpn) || (!SharedConfig.isProxyEnabled() && !vpn)) {
-                        SharedConfig.setProxyEnable(!vpn)
-                        UIUtil.runOnUIThread(Runnable {
-                            NotificationCenter.getGlobalInstance()
-                                .postNotificationName(NotificationCenter.proxySettingsChanged)
-                        })
-                    }
-                }
-            }
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                connectivityManager.registerDefaultNetworkCallback(networkCallback)
-            } else {
-                val request: NetworkRequest = NetworkRequest.Builder()
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
-                connectivityManager.registerNetworkCallback(request, networkCallback)
-            }
-        } catch (ignored: Exception) {}
     }
 
     @JvmStatic
@@ -325,7 +287,8 @@ object ProxyUtil {
                 if (line.startsWith("tg://proxy") ||
                     line.startsWith("tg://socks") ||
                     line.startsWith("https://t.me/proxy") ||
-                    line.startsWith("https://t.me/socks")) {
+                    line.startsWith("https://t.me/socks") ||
+                    V2RayConfig.isV2RayLink(line)) {
 
                     runCatching { proxies.add(SharedConfig.ProxyInfo.fromUrl(line)) }.onFailure {
 
@@ -352,7 +315,8 @@ object ProxyUtil {
                         if (line.startsWith("tg://proxy") ||
                             line.startsWith("tg://socks") ||
                             line.startsWith("https://t.me/proxy") ||
-                            line.startsWith("https://t.me/socks")) {
+                            line.startsWith("https://t.me/socks") ||
+                            V2RayConfig.isV2RayLink(line)) {
 
                             runCatching { proxies.add(SharedConfig.ProxyInfo.fromUrl(line)) }.onFailure {
 

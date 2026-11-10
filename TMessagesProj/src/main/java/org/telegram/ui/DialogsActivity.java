@@ -528,6 +528,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     private ActionBarMenuItem doneItem;
     private ProxyDrawable proxyDrawable;
     private ActionBarMenuSubItem proxyMenuSubItem;
+    private ActionBarMenuItem proxyItem;
+    private ProxyDrawable proxyItemDrawable;
+    private ActionBarMenuItem ghostItem;
     private HintView2 storyHint;
     private HintView2 storyPremiumHint;
     private boolean canShowStoryHint;
@@ -2877,6 +2880,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @Override
     public boolean onFragmentCreate() {
         super.onFragmentCreate();
+        tw.nekomimi.nekogram.helpers.ContactChanges.start(currentAccount);
 
         getConnectionsManager().updateDcSettings();
         getMessagesController().getBlockedPeers(true);
@@ -2943,6 +2947,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             if (!onlySelect) {
                 observersGroup.addGlobal(NotificationCenter.closeSearchByActiveAction);
                 observersGroup.addGlobal(NotificationCenter.proxySettingsChanged);
+                observersGroup.addGlobal(NotificationCenter.parvaUpdateAvailable);
+                observersGroup.addGlobal(NotificationCenter.ghostModeChanged);
                 observersGroup.add(NotificationCenter.filterSettingsUpdated);
                 observersGroup.add(NotificationCenter.dialogsUnreadCounterChanged);
             }
@@ -3319,6 +3325,29 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             passcodeItem = menu.addItem(1, R.drawable.outline_header_lock_24);
             passcodeItem.setContentDescription(getString(R.string.AccDescrPasscodeLock));
 
+            // Always-visible proxy button: shows the connection state and opens the proxy list.
+            proxyItemDrawable = new ProxyDrawable(context);
+            proxyItem = menu.addItem(2, proxyItemDrawable);
+            proxyItem.setContentDescription(getString(R.string.ProxySettings));
+            proxyItem.setOnClickListener(v -> presentFragment(new ProxyListActivity()));
+
+            // Ghost mode: tap toggles it, long press opens its settings.
+            ghostItem = menu.addItem(107, R.drawable.icon_ghost);
+            ghostItem.setContentDescription(getString(R.string.GhostMode));
+            ghostItem.setOnClickListener(v -> {
+                NekoConfig.toggleGhostMode();
+                tw.nekomimi.nekogram.utils.AyuGhostUtils.setAllowReadPacket(false, -1);
+                updateGhostItem();
+                getNotificationCenter().postNotificationName(NotificationCenter.mainUserInfoChanged);
+                BulletinFactory.of(this).createSimpleBulletin(androidx.core.content.ContextCompat.getDrawable(getContext(), R.drawable.icon_ghost),
+                        getString(NekoConfig.isGhostModeActive() ? R.string.GhostModeTurnedOn : R.string.GhostModeTurnedOff)).show();
+            });
+            ghostItem.setOnLongClickListener(v -> {
+                presentFragment(new NekoGhostModeActivity());
+                return true;
+            });
+            updateGhostItem();
+
             downloadsItem = menu.addItem(3, new ColorDrawable(Color.TRANSPARENT));
             downloadsItem.addView(downloadProgressIcon = new DownloadProgressIcon(currentAccount, context));
             downloadsItem.setContentDescription(getString(R.string.DownloadsTabs));
@@ -3473,6 +3502,14 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             @Override
             public void onTextChanged(EditText editText) {
                 String text = editText.getText().toString();
+                // Parvagram: the secret code typed in the search opens the hidden chats.
+                if (!onlySelect && tw.nekomimi.nekogram.helpers.HiddenChats.isSearchCode(text)) {
+                    editText.setText("");
+                    AndroidUtilities.hideKeyboard(editText);
+                    actionBar.closeSearchField();
+                    tw.nekomimi.nekogram.helpers.HiddenChats.open(DialogsActivity.this);
+                    return;
+                }
                 if (!text.isEmpty() || (searchViewPager != null && searchViewPager.dialogsSearchAdapter != null && searchViewPager.dialogsSearchAdapter.hasRecentSearch()) || searchFiltersWasShowed || hasStories) {
                     searchWas = true;
                     if (!searchIsShowed) {
@@ -3521,6 +3558,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 showItemOptions();
             });
             optionsItem.setOnLongClickListener(v -> {
+                // Parvagram: long-pressing ⋮ can open the hidden chats.
+                if (folderId == 0 && tw.nekomimi.nekogram.helpers.HiddenChats.isEntryEnabled(tw.nekomimi.nekogram.helpers.HiddenChats.ENTRY_MENU_BUTTON)) {
+                    tw.nekomimi.nekogram.helpers.HiddenChats.open(this);
+                    return true;
+                }
                 getContactsController().loadGlobalPrivacySetting();
                 showItemOptions();
                 return true;
@@ -3629,6 +3671,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     actionBar.setTitle(title, statusDrawable);
                 }
                 actionBar.setOnLongClickListener(v -> {
+                    // Parvagram: long-pressing the title can open the hidden chats.
+                    if (folderId == 0 && communityId == 0 && tw.nekomimi.nekogram.helpers.HiddenChats.isEntryEnabled(tw.nekomimi.nekogram.helpers.HiddenChats.ENTRY_TITLE)) {
+                        tw.nekomimi.nekogram.helpers.HiddenChats.open(this);
+                        return true;
+                    }
                     if (NekoConfig.hideAllTab.Bool() && filterTabsView != null && filterTabsView.getCurrentTabId() != Integer.MAX_VALUE) {
                         filterTabsView.toggleAllTabs(true);
                         filterTabsView.selectDefaultTab();
@@ -3944,6 +3991,24 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                             })
                             .addIf(!defaultTab, R.drawable.msg_delete, LocaleController.getString(R.string.FilterDeleteItem), true, () -> {
                                 showDeleteAlert(dialogFilter);
+                            })
+                            // Hide the "All chats" tab from its own menu; any other tab's menu brings it back.
+                            .addIf(getMessagesController().getDialogFilters().size() > 1, R.drawable.msg_archive_hide,
+                                    LocaleController.getString(NekoConfig.hideAllTab.Bool() ? R.string.ShowAllChatsTab : R.string.HideAllChatsTab), () -> {
+                                final boolean hide = !NekoConfig.hideAllTab.Bool();
+                                if (hide && !defaultTab) {
+                                    return;
+                                }
+                                NekoConfig.hideAllTab.setConfigBool(hide);
+                                if (filterTabsView != null) {
+                                    filterTabsView.toggleAllTabs(!hide);
+                                    if (hide) {
+                                        filterTabsView.selectFirstTab();
+                                    }
+                                }
+                                getNotificationCenter().postNotificationName(NotificationCenter.dialogFiltersUpdated);
+                                BulletinFactory.of(DialogsActivity.this).createSimpleBulletin(R.raw.contact_check,
+                                        LocaleController.getString(hide ? R.string.AllChatsTabHidden : R.string.AllChatsTabShown)).show();
                             })
                             .setDimAlpha(0x60)
                             .setGravity(Gravity.LEFT)
@@ -5752,12 +5817,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
 
+        // No "join our channel" prompts: upstream Nagram's channels aren't this app's.
         if (new Random().nextInt(100) < 50)
             PrivacyUtil.postCheckAll(getParentActivity(), currentAccount);
-        else if (new Random().nextInt(100) < 20) {
-            UpdateUtil.postCheckFollowChannel(getParentActivity(), currentAccount);
-            UpdateUtil.postCheckFollowTipsChannel(getParentActivity(), currentAccount);
-        }
 
         updateStoriesVisibility(false);
 
@@ -6126,6 +6188,27 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
         if (isInPreviewMode()) {
             dialogsHintCellVisible = false;
+        } else if (folderId == 0 && communityId == 0 && tw.nekomimi.nekogram.helpers.ParvaUpdater.getAvailable() != null) {
+            // A new Parvagram release on GitHub: tap to download and install it in the app.
+            final tw.nekomimi.nekogram.helpers.ParvaUpdater.Release release = tw.nekomimi.nekogram.helpers.ParvaUpdater.getAvailable();
+            dialogsHintCellVisible = true;
+            final boolean downloading = tw.nekomimi.nekogram.helpers.ParvaUpdater.isDownloading();
+            dialogsHintCell.setOnClickListener(v -> tw.nekomimi.nekogram.helpers.ParvaUpdater.startUpdate(getParentActivity(), release));
+            dialogsHintCell.setText(
+                    LocaleController.getString(R.string.ParvaUpdateNewTitle),
+                    downloading ? LocaleController.formatString(R.string.ParvaUpdateDownloadingProgress, tw.nekomimi.nekogram.helpers.ParvaUpdater.getProgressText())
+                            : tw.nekomimi.nekogram.helpers.ParvaUpdater.isDownloaded(release) ? getString(R.string.ParvaUpdateTapToInstall)
+                            : getString(R.string.ParvaUpdateHintText)
+            );
+            // While downloading, the close button cancels the download; otherwise it hides this release's card.
+            dialogsHintCell.setOnCloseListener(v -> {
+                if (tw.nekomimi.nekogram.helpers.ParvaUpdater.isDownloading()) {
+                    tw.nekomimi.nekogram.helpers.ParvaUpdater.cancelDownload();
+                } else {
+                    tw.nekomimi.nekogram.helpers.ParvaUpdater.dismiss(release);
+                    updateDialogsHint();
+                }
+            });
         } else if (getMessagesController().isFrozen()) {
             dialogsHintCellVisible = true;
             dialogsHintCell.setOnClickListener(v -> {
@@ -7033,6 +7116,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     filterTabsView.resetTabId();
                     selectWithStableId = true;
                 }
+                filterTabsView.showAllChatsTab = !NekoConfig.hideAllTab.Bool();
                 filterTabsView.removeTabs();
                 for (Integer tabId : DialogsRecentForwardHelper.buildTabOrder(filters.size(), FORWARD_RECENT_TAB_ID, showForwardRecentTab)) {
                     if (tabId == FORWARD_RECENT_TAB_ID) {
@@ -7194,6 +7278,17 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @Override
     public void onResume() {
         super.onResume();
+        // Ghost mode may have been switched in its settings page meanwhile.
+        updateGhostItem();
+        checkUi_itemGhostVisibility();
+        if (initialDialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect && folderId == 0 && communityId == 0) {
+            // Once, a while after the chat list shows up: ask whether to join the developer's channel.
+            AndroidUtilities.runOnUIThread(() -> {
+                if (!isPaused && !isFinished) {
+                    tw.nekomimi.nekogram.helpers.ChannelInvite.maybeShow(this, currentAccount);
+                }
+            }, 4000);
+        }
         if (dialogStoriesCell != null) {
             dialogStoriesCell.onResume();
         }
@@ -10432,6 +10527,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         final boolean connected = currentConnectionState == ConnectionsManager.ConnectionStateConnected || currentConnectionState == ConnectionsManager.ConnectionStateUpdating;
         proxyMenuSubItem.setSubtext(getString(proxyEnabled ? (connected ? R.string.MenuProxyConnected : R.string.MenuProxyConnecting) : R.string.MenuProxyDisabled));
         proxyDrawable.setConnected(proxyEnabled, connected, animated);
+        if (proxyItemDrawable != null) {
+            proxyItemDrawable.setConnected(proxyEnabled, connected, animated);
+        }
     }
 
     private AnimatorSet doneItemAnimator;
@@ -10702,6 +10800,15 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @SuppressWarnings("unchecked")
     @Override
     public void didReceivedNotification(int id, int account, Object... args) {
+        if (id == NotificationCenter.parvaUpdateAvailable) {
+            updateDialogsHint();
+            return;
+        }
+        if (id == NotificationCenter.ghostModeChanged) {
+            updateGhostItem();
+            checkUi_itemGhostVisibility();
+            return;
+        }
         if (id == NotificationCenter.dialogsNeedReload) {
             if (viewPages == null || dialogsListFrozen) {
                 return;
@@ -11186,6 +11293,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     @NonNull
     public ArrayList<TLRPC.Dialog> getDialogsArray(int currentAccount, int dialogsType, int folderId, boolean frozen) {
+        // Parvagram: hidden chats stay out of every list (chats, folders, forward picker).
+        return tw.nekomimi.nekogram.helpers.HiddenChats.filter(currentAccount, getDialogsArrayInternal(currentAccount, dialogsType, folderId, frozen));
+    }
+
+    private ArrayList<TLRPC.Dialog> getDialogsArrayInternal(int currentAccount, int dialogsType, int folderId, boolean frozen) {
         if (frozen && frozenDialogsList != null) {
             return frozenDialogsList;
         }
@@ -13951,6 +14063,18 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         io.addIf(NekoConfig.showGhostToggleInDrawer, R.drawable.icon_ghost, getString(R.string.GhostMode), () -> {
             presentFragment(new NekoGhostModeActivity());
         });
+        io.addIf(NekoConfig.showKillButtonInDrawer, R.drawable.msg_cancel, getString(R.string.KillApp), () -> {
+            // Closes the app completely, including the background connection.
+            final Activity parent = getParentActivity();
+            try {
+                ApplicationLoader.applicationContext.stopService(new android.content.Intent(ApplicationLoader.applicationContext, org.telegram.messenger.NotificationsService.class));
+            } catch (Exception ignore) {
+            }
+            if (parent != null) {
+                parent.finishAffinity();
+            }
+            AndroidUtilities.runOnUIThread(() -> android.os.Process.killProcess(android.os.Process.myPid()), 300);
+        });
         if (ApplicationLoader.applicationLoaderInstance != null) {
             ApplicationLoader.applicationLoaderInstance.addItemOptions(io);
         }
@@ -14309,6 +14433,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         checkUi_itemDownloadsVisibility();
         checkUi_itemSpeedVisibility();
         checkUi_itemPasscodeVisibility();
+        checkUi_itemProxyVisibility();
+        checkUi_itemGhostVisibility();
         checkUi_itemSearchVisibility();
         checkUi_itemScanVisibility();
     }
@@ -14340,6 +14466,35 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         final float factor3 = 1f - animatorDoneButtonVisible.getFloatValue();
         final float factor = factor0 * factor1 * factor2 * factor3;
         FragmentFloatingButton.setAnimatedVisibility(passcodeItem, factor);
+    }
+
+    private void updateGhostItem() {
+        if (ghostItem == null) {
+            return;
+        }
+        final boolean active = NekoConfig.isGhostModeActive();
+        ghostItem.setIconColor(active ? getThemedColor(Theme.key_featuredStickers_addButton) : getThemedColor(Theme.key_actionBarDefaultIcon));
+    }
+
+    private void checkUi_itemGhostVisibility() {
+        if (ghostItem == null) {
+            return;
+        }
+        final float factor0 = NekoConfig.showGhostToggleInActionBar ? 1 : 0;
+        final float factor1 = 1f - animatorSearchVisible.getFloatValue();
+        final float factor2 = 1f - getRightSlidingProgress();
+        final float factor3 = 1f - animatorDoneButtonVisible.getFloatValue();
+        FragmentFloatingButton.setAnimatedVisibility(ghostItem, factor0 * factor1 * factor2 * factor3);
+    }
+
+    private void checkUi_itemProxyVisibility() {
+        if (proxyItem == null) {
+            return;
+        }
+        final float factor1 = 1f - animatorSearchVisible.getFloatValue();
+        final float factor2 = 1f - getRightSlidingProgress();
+        final float factor3 = 1f - animatorDoneButtonVisible.getFloatValue();
+        FragmentFloatingButton.setAnimatedVisibility(proxyItem, factor1 * factor2 * factor3);
     }
 
     private void checkUi_itemDownloadsVisibility() {
