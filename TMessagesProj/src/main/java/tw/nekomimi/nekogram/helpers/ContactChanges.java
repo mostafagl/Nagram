@@ -352,6 +352,21 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
         events.add(0, e);
     }
 
+    /** Timeline for one contact, sorted newest first regardless of the global unseen-first setting. */
+    public ArrayList<Event> getEventsForContact(long userId) {
+        if (events == null) {
+            load();
+        }
+        final ArrayList<Event> result = new ArrayList<>();
+        for (Event event : events) {
+            if (event.userId == userId) {
+                result.add(event);
+            }
+        }
+        result.sort((left, right) -> Long.compare(right.time, left.time));
+        return result;
+    }
+
     /** The logged changes, newest first (unseen first when that option is on). */
     public ArrayList<Event> getEvents() {
         if (events == null) {
