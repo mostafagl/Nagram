@@ -3674,7 +3674,13 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
             }
             return true;
         }
-        if (!messageObject.isOut() && (messageObject.isContentUnread()) && !skipMarkContentAsRead) {
+        // Parvagram: listening to an incoming voice/round message in ghost mode must not
+        // send a content-read receipt. The normal preview path already skips this call;
+        // keep regular playback consistent with the user's ghost-mode preference.
+        final boolean ghostBlocksMediaReceipt = (messageObject.isVoice() || messageObject.isRoundVideo())
+                && !tw.nekomimi.nekogram.utils.AyuGhostUtils.getAllowReadPacket();
+        if (!messageObject.isOut() && messageObject.isContentUnread() && !skipMarkContentAsRead
+                && !ghostBlocksMediaReceipt) {
             MessagesController.getInstance(messageObject.currentAccount).markMessageContentAsRead(messageObject);
         }
         boolean saved = false;
