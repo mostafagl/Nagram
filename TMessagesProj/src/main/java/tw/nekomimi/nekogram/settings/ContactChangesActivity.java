@@ -38,6 +38,7 @@ public class ContactChangesActivity extends BaseFragment {
     private ArrayList<ContactChanges.Event> events = new ArrayList<>();
     private RecyclerListView listView;
     private TextView emptyView;
+    private long timelineUserId;
 
     public static int typeName(int type) {
         switch (type) {
@@ -64,11 +65,15 @@ public class ContactChangesActivity extends BaseFragment {
         actionBar.setAllowOverlayTitle(true);
         actionBar.setTitle(LocaleController.getString(R.string.ContactChangesTitle));
         actionBar.createMenu().addItem(1, R.drawable.msg_delete);
+        actionBar.createMenu().addItem(2, R.drawable.ic_ab_back);
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
                     finishFragment();
+                } else if (id == 2) {
+                    timelineUserId = 0;
+                    reload();
                 } else if (id == 1 && getParentActivity() != null) {
                     showDialog(new AlertDialog.Builder(getParentActivity())
                             .setTitle(LocaleController.getString(R.string.ContactChangesTitle))
@@ -92,9 +97,16 @@ public class ContactChangesActivity extends BaseFragment {
         listView.setAdapter(new Adapter(context));
         listView.setOnItemClickListener((view, position) -> {
             if (position >= 0 && position < events.size()) {
-                final Bundle args = new Bundle();
-                args.putLong("user_id", events.get(position).userId);
-                presentFragment(new ProfileActivity(args));
+                final long userId = events.get(position).userId;
+                if (timelineUserId == 0) {
+                    // Reuse the existing change events instead of introducing a parallel timeline store.
+                    timelineUserId = userId;
+                    reload();
+                } else {
+                    final Bundle args = new Bundle();
+                    args.putLong("user_id", userId);
+                    presentFragment(new ProfileActivity(args));
+                }
             }
         });
         listView.setOnItemLongClickListener((view, position) -> {
@@ -127,7 +139,17 @@ public class ContactChangesActivity extends BaseFragment {
     }
 
     private void reload() {
-        events = ContactChanges.getInstance(currentAccount).getEvents();
+        events = timelineUserId == 0
+                ? ContactChanges.getInstance(currentAccount).getEvents()
+                : ContactChanges.getInstance(currentAccount).getEventsForContact(timelineUserId);
+        if (actionBar != null) {
+            if (timelineUserId == 0) {
+                actionBar.setTitle(LocaleController.getString(R.string.ContactChangesTitle));
+            } else {
+                final TLRPC.User user = getMessagesController().getUser(timelineUserId);
+                actionBar.setTitle(user == null ? String.valueOf(timelineUserId) : UserObject.getUserName(user));
+            }
+        }
         if (listView != null && listView.getAdapter() != null) {
             listView.getAdapter().notifyDataSetChanged();
         }
