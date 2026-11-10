@@ -251,7 +251,7 @@ jobs:
           export EXTRA_ABI_X86_64=true
           sed -i 's/signingConfig signingConfigs.release//g' TMessagesProj/build.gradle
           ./gradlew TMessagesProj:assembleRelease --build-cache --no-configuration-cache
-          ./gradlew TMessagesProj:testReleaseUnitTest --tests '*AyuGhostUtilsTest' --build-cache --no-configuration-cache
+          ./gradlew TMessagesProj:testReleaseUnitTest --tests '*AyuGhostUtilsTest' --tests '*ContactChangesTest' --build-cache --no-configuration-cache
 
           APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk')
           APK=$(dirname $APK)

@@ -10,6 +10,9 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.ContactsController;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.FileLoader;
+import org.telegram.messenger.ImageLocation;
+import org.telegram.messenger.Utilities;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.UserConfig;
@@ -35,8 +38,9 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
     public static final int TYPE_USERNAME = 16;
     public static final int TYPE_BLOCKED = 32;
     public static final int TYPE_UNBLOCKED = 64;
-    public static final int TYPES_ALL = 127;
-    public static final int[] TYPES = {TYPE_PHOTO, TYPE_PHOTO_REMOVED, TYPE_PHONE, TYPE_NAME, TYPE_USERNAME, TYPE_BLOCKED, TYPE_UNBLOCKED};
+    public static final int TYPE_BIO = 128;
+    public static final int TYPES_ALL = 255;
+    public static final int[] TYPES = {TYPE_PHOTO, TYPE_PHOTO_REMOVED, TYPE_PHONE, TYPE_NAME, TYPE_USERNAME, TYPE_BLOCKED, TYPE_UNBLOCKED, TYPE_BIO};
 
     private static final int MAX_EVENTS = 1000;
 
@@ -56,12 +60,35 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
         String name;
         boolean hidden; // photo and last seen hidden: probably blocked
         boolean statusKnown;
+        String bio;
 
         String encode() {
-            return photoId + "\u0001" + nz(phone) + "\u0001" + nz(username) + "\u0001" + nz(name) + "\u0001" + (hidden ? 1 : 0) + "\u0001" + (statusKnown ? 1 : 0);
+            try {
+                return new JSONObject().put("p", photoId).put("t", nz(phone)).put("u", nz(username))
+                        .put("n", nz(name)).put("h", hidden).put("s", statusKnown).put("b", bio).toString();
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
         }
 
         static Snapshot decode(String s) {
+            if (s.startsWith("{")) {
+                try {
+                    JSONObject o = new JSONObject(s);
+                    Snapshot snap = new Snapshot();
+                    snap.photoId = o.optLong("p");
+                    snap.phone = o.optString("t");
+                    snap.username = o.optString("u");
+                    snap.name = o.optString("n");
+                    snap.hidden = o.optBoolean("h");
+                    snap.statusKnown = o.optBoolean("s");
+                    snap.bio = o.has("b") ? o.optString("b") : null;
+                    return snap;
+                } catch (Exception e) {
+                    return null;
+                }
+            }
+            // Migrate the original six-field snapshots on the next save.
             final String[] p = s.split("\u0001", -1);
             if (p.length < 6) {
                 return null;
@@ -87,6 +114,14 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
     private HashMap<Long, Snapshot> snapshots;
     private ArrayList<Event> events;
     private boolean scanQueued;
+    private final java.util.ArrayDeque<TLRPC.User> photoQueue = new java.util.ArrayDeque<>();
+    private final java.util.HashSet<Long> queuedPhotos = new java.util.HashSet<>();
+    private TLRPC.User photoUser;
+    private String photoName;
+    private java.io.File photoSource;
+    private Runnable photoTimeout;
+    private boolean started;
+    private boolean photoBusy;
 
     private ContactChanges(int account) {
         this.account = account;
@@ -102,12 +137,16 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
     /** Starts watching {@code account}'s contacts (safe to call repeatedly). */
     public static void start(int account) {
         final ContactChanges c = getInstance(account);
-        if (c.snapshots != null) {
+        if (c.started) {
             return;
         }
-        c.load();
+        c.started = true;
+        if (c.snapshots == null) c.load();
         NotificationCenter.getInstance(account).addObserver(c, NotificationCenter.updateInterfaces);
         NotificationCenter.getInstance(account).addObserver(c, NotificationCenter.contactsDidLoad);
+        NotificationCenter.getInstance(account).addObserver(c, NotificationCenter.userInfoDidLoad);
+        NotificationCenter.getInstance(account).addObserver(c, NotificationCenter.fileLoaded);
+        NotificationCenter.getInstance(account).addObserver(c, NotificationCenter.fileLoadFailed);
         c.queueScan();
     }
 
@@ -241,6 +280,12 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
 
     @Override
     public void didReceivedNotification(int id, int acc, Object... args) {
+        if (id == NotificationCenter.fileLoaded || id == NotificationCenter.fileLoadFailed) {
+            if (photoUser != null && args.length > 0 && photoName.equals(args[0])) {
+                finishPhoto(id == NotificationCenter.fileLoaded);
+            }
+            return;
+        }
         queueScan();
     }
 
@@ -261,6 +306,7 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
         s.phone = user.phone;
         s.username = UserObject.getPublicUsername(user);
         s.name = ContactsController.formatName(user.first_name, user.last_name);
+        s.bio = previous == null ? null : previous.bio;
         if (user.status != null) {
             s.statusKnown = true;
             s.hidden = user.status instanceof TLRPC.TL_userStatusEmpty && s.photoId == 0;
@@ -293,8 +339,11 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
                 snapshots.remove(user.id);
                 continue;
             }
+            queuePhoto(user);
             final Snapshot old = snapshots.get(user.id);
             final Snapshot now_ = snapshotOf(user, old);
+            TLRPC.UserFull full = mc.getUserFull(user.id);
+            if (full != null) now_.bio = nz(full.about);
             if (old == null) {
                 snapshots.put(user.id, now_);
                 changed = true;
@@ -306,12 +355,16 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
             changed = true;
             if (old.statusKnown && now_.statusKnown && old.hidden != now_.hidden) {
                 add(user.id, now_.hidden ? TYPE_BLOCKED : TYPE_UNBLOCKED, null, null, now, types);
-            } else if (old.photoId != now_.photoId) {
+            }
+            if (old.photoId != now_.photoId) {
                 if (now_.photoId == 0) {
-                    add(user.id, TYPE_PHOTO_REMOVED, null, null, now, types);
+                    add(user.id, TYPE_PHOTO_REMOVED, String.valueOf(old.photoId), "0", now, types);
                 } else {
-                    add(user.id, TYPE_PHOTO, null, null, now, types);
+                    add(user.id, TYPE_PHOTO, String.valueOf(old.photoId), String.valueOf(now_.photoId), now, types);
                 }
+            }
+            if (old.bio != null && now_.bio != null && !TextUtils.equals(old.bio, now_.bio)) {
+                add(user.id, TYPE_BIO, old.bio, now_.bio, now, types);
             }
             if (!TextUtils.isEmpty(now_.phone) && !TextUtils.equals(old.phone, now_.phone)) {
                 add(user.id, TYPE_PHONE, old.phone, now_.phone, now, types);
@@ -337,6 +390,110 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
             }
             save();
         }
+        nextPhoto();
+    }
+
+    /** Visible avatar versions only: never requests hidden or previously unseen deleted photos. */
+    private void queuePhoto(TLRPC.User user) {
+        if (user.photo == null || user.photo.photo_id == 0 || photoQueue.size() >= 256
+                || queuedPhotos.contains(user.id)
+                || data().getLong("archived_" + user.id, 0) == user.photo.photo_id
+                || System.currentTimeMillis() - data().getLong("photo_attempt_" + user.id, 0) < 600_000) return;
+        // Freeze the received version; Telegram may replace user.photo while a download is queued.
+        TLRPC.TL_user copy = new TLRPC.TL_user();
+        copy.id = user.id;
+        copy.access_hash = user.access_hash;
+        copy.photo = user.photo;
+        queuedPhotos.add(user.id);
+        photoQueue.add(copy);
+    }
+
+    public java.io.File archiveDirectory() {
+        return new java.io.File(ApplicationLoader.applicationContext.getFilesDir(), "contact_photos_" + account);
+    }
+
+    public java.io.File[] getArchivedPhotos(long userId) {
+        java.io.File[] files = archiveDirectory().listFiles((dir, name) -> name.startsWith(userId + "_") && name.endsWith(".jpg"));
+        if (files == null) return new java.io.File[0];
+        java.util.Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+        return files;
+    }
+
+    private void nextPhoto() {
+        if (photoBusy) return;
+        if (!isEnabled()) {
+            photoQueue.clear();
+            queuedPhotos.clear();
+            return;
+        }
+        photoUser = photoQueue.poll();
+        if (photoUser == null) return;
+        photoBusy = true;
+        data().edit().putLong("photo_attempt_" + photoUser.id, System.currentTimeMillis()).apply();
+        ImageLocation location = ImageLocation.getForUser(account, photoUser, ImageLocation.TYPE_BIG);
+        if (location == null) {
+            finishPhoto(false);
+            return;
+        }
+        photoName = FileLoader.getAttachFileName(location.location, "jpg");
+        photoSource = FileLoader.getInstance(account).getPathToAttach(location.location, "jpg", true);
+        if (photoSource.isFile() && photoSource.length() > 0) {
+            finishPhoto(true);
+        } else {
+            photoTimeout = () -> finishPhoto(false);
+            AndroidUtilities.runOnUIThread(photoTimeout, 60_000);
+            FileLoader.getInstance(account).loadFile(location, photoUser, "jpg", FileLoader.PRIORITY_LOW, 1);
+        }
+    }
+
+    private void finishPhoto(boolean success) {
+        if (photoUser == null) return;
+        if (photoTimeout != null) AndroidUtilities.cancelRunOnUIThread(photoTimeout);
+        final TLRPC.User user = photoUser;
+        final java.io.File source = photoSource;
+        photoUser = null;
+        photoName = null;
+        photoSource = null;
+        photoTimeout = null;
+        Utilities.globalQueue.postRunnable(() -> {
+            boolean copied = false;
+            if (success && isEnabled() && (!onlySelected() || selectedRaw(account).contains(String.valueOf(user.id)))) {
+                java.io.File dir = archiveDirectory();
+                java.io.File target = new java.io.File(dir, user.id + "_" + user.photo.photo_id + ".jpg");
+                java.io.File temp = new java.io.File(dir, target.getName() + ".tmp");
+                try {
+                    if ((dir.isDirectory() || dir.mkdirs()) && source != null && source.length() > 0 && source.length() <= 10 * 1024 * 1024) {
+                        if (!target.isFile()) {
+                            java.nio.file.Files.copy(source.toPath(), temp.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                            if (!temp.renameTo(target)) throw new java.io.IOException("Avatar archive rename failed");
+                        }
+                        copied = true;
+                        java.io.File[] files = dir.listFiles((d, n) -> n.endsWith(".jpg"));
+                        if (files != null) {
+                            java.util.Arrays.sort(files, java.util.Comparator.comparingLong(java.io.File::lastModified));
+                            long total = 0;
+                            for (java.io.File f : files) total += f.length();
+                            for (int i = 0; i < files.length && (total > 128L * 1024 * 1024 || files.length - i > 500); i++) {
+                                long bytes = files[i].length();
+                                if (files[i].delete()) total -= bytes;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    FileLog.e(e);
+                } finally {
+                    temp.delete();
+                }
+            }
+            final boolean archived = copied;
+            AndroidUtilities.runOnUIThread(() -> {
+                if (archived) data().edit().putLong("archived_" + user.id, user.photo.photo_id).apply();
+                queuedPhotos.remove(user.id);
+                photoBusy = false;
+                nextPhoto();
+                if (!photoBusy) queueScan(); // Continue a large address book in bounded batches.
+            });
+        });
     }
 
     private void add(long userId, int type, String oldValue, String newValue, long time, int types) {

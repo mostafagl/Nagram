@@ -52,6 +52,8 @@ public class ContactChangesActivity extends BaseFragment {
                 return R.string.ContactChangeName;
             case ContactChanges.TYPE_USERNAME:
                 return R.string.ContactChangeUsername;
+            case ContactChanges.TYPE_BIO:
+                return R.string.ContactChangeBio;
             case ContactChanges.TYPE_BLOCKED:
                 return R.string.ContactChangeBlocked;
             default:
@@ -66,6 +68,7 @@ public class ContactChangesActivity extends BaseFragment {
         actionBar.setTitle(LocaleController.getString(R.string.ContactChangesTitle));
         actionBar.createMenu().addItem(1, R.drawable.msg_delete);
         actionBar.createMenu().addItem(2, R.drawable.ic_ab_back);
+        actionBar.createMenu().addItem(3, R.drawable.msg_photos);
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
@@ -74,6 +77,8 @@ public class ContactChangesActivity extends BaseFragment {
                 } else if (id == 2) {
                     timelineUserId = 0;
                     reload();
+                } else if (id == 3) {
+                    showArchive();
                 } else if (id == 1 && getParentActivity() != null) {
                     showDialog(new AlertDialog.Builder(getParentActivity())
                             .setTitle(LocaleController.getString(R.string.ContactChangesTitle))
@@ -156,6 +161,31 @@ public class ContactChangesActivity extends BaseFragment {
         if (emptyView != null) {
             emptyView.setVisibility(events.isEmpty() ? View.VISIBLE : View.GONE);
         }
+    }
+
+    private void showArchive() {
+        final ContactChanges changes = ContactChanges.getInstance(currentAccount);
+        final java.io.File[] files = timelineUserId == 0
+                ? changes.archiveDirectory().listFiles((dir, name) -> name.endsWith(".jpg"))
+                : changes.getArchivedPhotos(timelineUserId);
+        if (files != null) java.util.Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.ContactPhotoArchive));
+        if (files == null || files.length == 0) {
+            builder.setMessage(LocaleController.getString(R.string.ContactPhotoArchiveEmpty));
+        } else {
+            CharSequence[] labels = new CharSequence[files.length];
+            for (int i = 0; i < files.length; i++) {
+                String id = files[i].getName().split("_")[0];
+                TLRPC.User user = getMessagesController().getUser(Long.parseLong(id));
+                labels[i] = (user == null ? id : UserObject.getUserName(user)) + " · "
+                        + LocaleController.formatDateAudio(files[i].lastModified() / 1000, false);
+            }
+            builder.setItems(labels, (dialog, which) -> AndroidUtilities.openForView(
+                    files[which], files[which].getName(), "image/jpeg", getParentActivity(), getResourceProvider(), false));
+        }
+        builder.setNegativeButton(LocaleController.getString(R.string.Close), null);
+        showDialog(builder.create());
     }
 
     private class Adapter extends RecyclerListView.SelectionAdapter {

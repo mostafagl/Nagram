@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="ContactChangeBio">changed bio</string>
+    <string name="ContactPhotoArchive">Visible profile photo archive</string>
+    <string name="ContactPhotoArchiveEmpty">Photos received while contact changes are enabled are kept here. Hidden and unseen deleted photos cannot be recovered. Retention: up to 500 photos or 128 MB per account.</string>
     <string name="N_Config">N-Config</string>
     <string name="ForceCopy">Force Copy</string>
     <string name="disableSecondAddress">Disable Second Address Request</string>
