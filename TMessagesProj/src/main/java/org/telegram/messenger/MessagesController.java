@@ -14668,6 +14668,9 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void markMessageContentAsRead(MessageObject messageObject) {
+        if (!tw.nekomimi.nekogram.utils.AyuGhostUtils.canSendReadPacket()) {
+            return;
+        }
         if (messageObject.scheduled) {
             return;
         }
@@ -14758,6 +14761,13 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void markMessageAsRead2(long dialogId, int mid, TLRPC.InputChannel inputChannel, int ttl, long taskId, boolean createDeleteTask) {
+        if (!tw.nekomimi.nekogram.utils.AyuGhostUtils.canSendReadPacket()) {
+            // Do not leave a durable receipt queued for transmission after ghost mode ends.
+            if (taskId != 0) {
+                getMessagesStorage().removePendingTask(taskId);
+            }
+            return;
+        }
         if (mid == 0 || ttl < 0) {
             return;
         }
@@ -14815,6 +14825,9 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void markMessageAsRead(long dialogId, long randomId, int ttl) {
+        if (!tw.nekomimi.nekogram.utils.AyuGhostUtils.canSendReadPacket()) {
+            return;
+        }
         if (randomId == 0 || dialogId == 0 || ttl <= 0 && ttl != Integer.MIN_VALUE) {
             return;
         }

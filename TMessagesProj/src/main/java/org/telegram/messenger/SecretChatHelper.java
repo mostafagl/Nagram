@@ -168,6 +168,9 @@ public class SecretChatHelper extends BaseController {
         if (!(encryptedChat instanceof TLRPC.TL_encryptedChat)) {
             return;
         }
+        if (!tw.nekomimi.nekogram.utils.AyuGhostUtils.getAllowReadPacket()) {
+            return;
+        }
         TLRPC.TL_decryptedMessageService reqSend = new TLRPC.TL_decryptedMessageService();
         TLRPC.Message message;
 

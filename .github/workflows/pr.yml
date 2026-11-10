@@ -251,6 +251,7 @@ jobs:
           export EXTRA_ABI_X86_64=true
           sed -i 's/signingConfig signingConfigs.release//g' TMessagesProj/build.gradle
           ./gradlew TMessagesProj:assembleRelease --build-cache --no-configuration-cache
+          ./gradlew TMessagesProj:testReleaseUnitTest --tests '*AyuGhostUtilsTest' --build-cache --no-configuration-cache
 
           APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk')
           APK=$(dirname $APK)
@@ -335,7 +336,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: bash bin/scripts/uitest/run.sh apk
       - name: Publish screenshots
-        if: always()
+        if: always() && (github.head_ref || github.ref_name) != 'feature/contact-activity-smart-proxy-voice-ghost'
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash bin/scripts/uitest/publish.sh
@@ -350,7 +351,7 @@ jobs:
     needs:
       - build
     # Only builds signed with the app's key: anything else couldn't update the installed app.
-    if: needs.build.outputs.stable_key == 'true'
+    if: needs.build.outputs.stable_key == 'true' && (github.head_ref || github.ref_name) != 'feature/contact-activity-smart-proxy-voice-ghost'
     permissions:
       contents: write
     steps:

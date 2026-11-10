@@ -353,11 +353,12 @@ public class ConnectionsManager extends BaseController {
             return false;
         }
         // --- 不发送已读消息 ---
-        if (!NekoConfig.sendReadMessagePackets && !AyuGhostUtils.getAllowReadPacket() &&
-                (object instanceof TLRPC.TL_messages_readHistory ||
+        if ((object instanceof TLRPC.TL_messages_readHistory ||
                         object instanceof TLRPC.TL_messages_readMessageContents ||
                         object instanceof TLRPC.TL_channels_readHistory ||
-                        object instanceof TLRPC.TL_channels_readMessageContents)) {
+                        object instanceof TLRPC.TL_channels_readMessageContents ||
+                        object instanceof TLRPC.TL_messages_readEncryptedHistory) &&
+                !AyuGhostUtils.getAllowReadPacket()) {
             return false;
         }
         return true;
