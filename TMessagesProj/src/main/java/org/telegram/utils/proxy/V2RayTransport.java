@@ -48,22 +48,33 @@ public final class V2RayTransport {
             if (controller != null && controller.getIsRunning() && link.equals(runningLink)) {
                 return runningPort;
             }
-            stopInternal();
             if (!CrashGuard.allowStart()) {
                 return 0;
             }
+            CoreController candidate = null;
             try {
                 ensureInitialized();
                 final int port = findFreePort();
                 CrashGuard.starting();
-                controller = Libv2ray.newCoreController(new Callback());
-                controller.startLoop(config.buildConfig(port), 0);
+                candidate = Libv2ray.newCoreController(new Callback());
+                candidate.startLoop(config.buildConfig(port), 0);
+                if (!candidate.getIsRunning()) {
+                    throw new IllegalStateException("Candidate core is not running");
+                }
+                // Keep the old core alive until the replacement has actually started.
+                final CoreController previous = controller;
+                controller = candidate;
                 runningLink = link;
                 runningPort = port;
+                if (previous != null) {
+                    try { previous.stopLoop(); } catch (Throwable ignored) { }
+                }
                 return port;
             } catch (Throwable e) {
-                FileLog.e(e);
-                stopInternal();
+                if (candidate != null) {
+                    try { candidate.stopLoop(); } catch (Throwable ignored) { }
+                }
+                FileLog.e("V2Ray candidate failed to start; previous transport retained");
                 return 0;
             }
         }
@@ -234,7 +245,8 @@ public final class V2RayTransport {
     private static final class Callback implements CoreCallbackHandler {
         @Override
         public long onEmitStatus(long code, String message) {
-            FileLog.d("v2ray: " + message);
+            // Native status text may contain server details; never log proxy credentials.
+            FileLog.d("v2ray status code: " + code);
             return 0;
         }
 

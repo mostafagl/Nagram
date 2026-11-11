@@ -1213,6 +1213,9 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
     @Override
     public void didReceivedNotification(int id, int account, Object... args) {
         if (id == NotificationCenter.proxyChangedByRotation) {
+            if (getParentActivity() != null && args.length > 0 && args[0] instanceof String) {
+                android.widget.Toast.makeText(getParentActivity(), (String) args[0], android.widget.Toast.LENGTH_LONG).show();
+            }
             listView.forAllChild(view -> {
                 RecyclerView.ViewHolder holder = listView.getChildViewHolder(view);
                 if (holder.itemView instanceof TextDetailProxyCell) {
@@ -1389,7 +1392,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
                 case VIEW_TYPE_INFO: {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
                     if (position == rotationTimeoutInfoRow) {
-                        cell.setText(getString(R.string.ProxyRotationTimeoutInfo));
+                        cell.setText(getString(R.string.SmartProxyRotationInfo));
                     } else if (position == connectionInfoRow) {
                         cell.setText(getString(R.string.ProxyConnectionInfo));
                     }

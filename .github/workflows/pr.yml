@@ -250,7 +250,7 @@ jobs:
           export DEBUG_BUILD=true
           export EXTRA_ABI_X86_64=true
           sed -i 's/signingConfig signingConfigs.release//g' TMessagesProj/build.gradle
-          ./gradlew TMessagesProj:testReleaseUnitTest --tests '*AyuGhostUtilsTest' --tests '*ContactChangesTest' --tests '*LocalLastSeenTest' --build-cache --no-configuration-cache -PparvaDevelopmentBuild=${{ (github.head_ref || github.ref_name) == 'feature/contact-activity-smart-proxy-voice-ghost' }}
+          ./gradlew TMessagesProj:testReleaseUnitTest --tests '*AyuGhostUtilsTest' --tests '*ContactChangesTest' --tests '*LocalLastSeenTest' --tests '*ProxyRotationHealthTest' --build-cache --no-configuration-cache -PparvaDevelopmentBuild=${{ (github.head_ref || github.ref_name) == 'feature/contact-activity-smart-proxy-voice-ghost' }}
           ./gradlew TMessagesProj:assembleRelease --build-cache --no-configuration-cache -PparvaDevelopmentBuild=${{ (github.head_ref || github.ref_name) == 'feature/contact-activity-smart-proxy-voice-ghost' }}
 
           APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk')

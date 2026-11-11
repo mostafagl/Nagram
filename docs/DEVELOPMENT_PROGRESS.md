@@ -55,3 +55,13 @@ Commit: `9f359b0df004877473aede1b41aac6fbc80afed6`; CI: https://github.com/mosta
 - Regression tests cover account separation, late events, disabled collection, read-range boundaries, regressive/duplicate watermarks and bounded retention.
 - Local build/test remains blocked before project configuration by the unavailable direct Gradle download. CI build/test queued on commit; sender/account activity and sync replay still require an authenticated device test.
 - Activity and read-receipt history have separate views and scoped deletion. Account removal clears both persisted history and cached timestamps. Regression selection includes the existing three targeted test classes; no repeated broad test expansion.
+
+## Stage 4: smart rotation and safe V2Ray handover
+
+- Extend `ProxyRotationController`, keeping its existing switch setting/timeout and existing transport test executor (four V2Ray tests concurrently). No second rotation loop or health worker.
+- Session score (lower is better): latency EWMA + 10,000 ms per consecutive failure + bounded recovery-time penalty + missing successful-check/Telegram-connection penalties. A healthy active connection is never replaced for a marginally better ping.
+- Fresh successful checks expire after two minutes. Failed candidates receive 30–120 second cooldown; switches are limited to one per 30 seconds. Each round checks at most 25 candidates and has a 60-second coordination deadline; shared in-flight transport tests are not duplicated/cancelled.
+- Observe actual Telegram connection recovery and invalidate batches on manual selection, account changes, proxy disable/VPN suspension or connection recovery. All account slots reuse the same controller.
+- Start a replacement V2Ray core before retiring the previous core. Rotation validates core startup before changing persisted selection; failed startup leaves the prior transport/selection intact. A later Telegram connectivity failure returns to bounded candidate selection rather than assuming a successful core start proves connectivity.
+- Explain automatic switch reason in the existing proxy screen; native status text is no longer logged because it may contain server details. Existing subscription handling is unchanged.
+- Essential regression tests cover stability versus a single fast ping, latency smoothing, failure cooldown and actual connection recovery. Android/Xray/VPN/background handover requires device integration testing; no claim of zero packet loss during a successful switch.

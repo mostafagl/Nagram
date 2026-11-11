@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="SmartProxyRotationInfo">Automatic failover waits for the configured connection timeout, ranks recently tested proxies by stability and latency, and switches at most once per 30 seconds. A healthy connection is kept. Disabling rotation preserves manual selection.</string>
+    <string name="SmartProxySwitchReason">Connection failed beyond the configured timeout. Switched to a recently tested proxy ranked by stability, connection history and latency. Automatic switches are limited to once per 30 seconds.</string>
     <string name="ContactPhotoArchiveInfo">Enabled for all contacts by default. The contact selector below also applies to the archive. Photos are saved only while accessible to this account. Defaults: 30 days, 128 MB and at most 500 images.</string>
     <string name="ContactPhotoRetention">Photo retention</string>
     <string name="ContactPhotoQuota">Photo storage quota</string>
