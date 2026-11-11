@@ -22,7 +22,7 @@ Implementation is available for device review. CI-verifiable checks below passed
 | Proxy health regression tests | 2 passed |
 | Total targeted unit tests | 10 passed; 0 failed, 0 errors, 0 skipped |
 | Emulator launch/process/crash smoke check | Passed |
-| Broader inherited authenticated emulator UI suite | Separate workflow job; not claimed as verified here |
+| Broader inherited emulator UI suite | Finished; workflow job is green, but its own summary reports login-dependent failures (see below) |
 | Real-device/two-account feature acceptance | Pending; checklist below |
 
 The final test XML was retrieved from artifact `13818185152` and inspected. The final smoke step and signature steps completed successfully. CI release and screenshot-publication steps are disabled for this branch. Later documentation-only commits do not alter the APK source.
@@ -153,3 +153,9 @@ The concurrently added repository instructions/specification were preserved and 
 - Confirm activity provenance against actual received updates, hidden status producing no invented presence, cumulative private-dialog read ranges, repeated/sync-replayed receipts and separate deletion scopes. Receipt observation time is not exact reading time.
 - With actual V2Ray configs, test stable connection, failing core startup, Telegram connectivity failure after core startup, cooldown and recovery, manual rotation off, VPN up/down, subscriptions refreshing, backgrounding and account switching. The previous core is preserved on startup failure; successful switching can still briefly interrupt transport.
 - No reliable profile-view or silent-chat-entry tracking is implemented or claimed.
+
+## Completed emulator UI run: important distinction
+
+The workflow job completed successfully, but its script summary contains failed scenarios. Test-server login was rejected with `Wrong code`, so peer messaging, chat history, chat preview, Persian settings and font checks were not verified. A green job is not proof those scenarios passed.
+
+The script reports passing app launch, opening/parsing VLESS, Telegram connection through VLESS, proxy-list/ping controls, subscription import with a five-config limit and duplicate skipping, connection notification and process survival after 60 seconds in the background. The single ping check completed with `No response`; this is not evidence of a successful ping. Smart failover and sender-side ghost privacy still require the device/two-account acceptance checklist above. No new APK is needed for this documentation update.
