@@ -25,34 +25,25 @@ public class LocalLastSeenTest {
     }
 
     @Test public void lateEventsDoNotMoveLatestTimeBackwardsAndAccountsStaySeparate() {
-        LocalLastSeen.record(0, 123456, 200, LocalLastSeen.MESSAGE);
-        LocalLastSeen.record(0, 123456, 100, LocalLastSeen.OFFLINE);
-        LocalLastSeen.record(1, 123456, 50, LocalLastSeen.MESSAGE);
+        LocalLastSeen.record(0, 123456, 200);
+        LocalLastSeen.record(0, 123456, 100);
+        LocalLastSeen.record(1, 123456, 50);
         assertEquals(200, LocalLastSeen.getTime(0, 123456));
         assertEquals(50, LocalLastSeen.getTime(1, 123456));
-        assertEquals(2, LocalLastSeen.getHistory(0, 123456).size());
+        LocalLastSeen.clearAccount(0);
+        assertEquals(0, LocalLastSeen.getTime(0, 123456));
+        assertEquals(50, LocalLastSeen.getTime(1, 123456));
     }
 
-    @Test public void readWatermarksPreserveRangeAndIgnoreDuplicateOrRegressiveUpdates() {
-        LocalLastSeen.recordRead(0, 123456, 10, 20, 100);
-        LocalLastSeen.recordRead(0, 123456, 20, 20, 101);
-        LocalLastSeen.recordRead(0, 123456, 20, 19, 102);
-        assertEquals(1, LocalLastSeen.getHistory(0, 123456).size());
-        LocalLastSeen.Event e = LocalLastSeen.getHistory(0, 123456).get(0);
-        assertEquals(11, e.fromMessageId);
-        assertEquals(20, e.maxMessageId);
-        assertTrue(e.observedAt > 0);
-    }
-
-    @Test public void disabledHistoryDoesNotCollectAndRetentionIsBounded() {
+    @Test public void removesOldActivityHistoryWithoutLosingLatestTimestamp() {
+        Context context = ApplicationProvider.getApplicationContext();
+        android.content.SharedPreferences prefs = context.getSharedPreferences("parva_last_seen", Context.MODE_PRIVATE);
+        prefs.edit().putString("history_0", "old activity and receipt events").putInt("0:123456", 200).commit();
+        LocalLastSeen.isEnabled();
+        assertFalse(prefs.contains("history_0"));
+        assertEquals(200, LocalLastSeen.getTime(0, 123456));
         LocalLastSeen.setEnabled(false);
-        LocalLastSeen.record(0, 123456, 1, LocalLastSeen.MESSAGE);
-        LocalLastSeen.recordRead(0, 123456, 0, 1, 1);
-        assertTrue(LocalLastSeen.getHistory(0, 0).isEmpty());
-        LocalLastSeen.setEnabled(true);
-        for (int i = 1; i <= 502; i++) LocalLastSeen.record(0, 123456, i, LocalLastSeen.MESSAGE);
-        assertEquals(500, LocalLastSeen.getHistory(0, 0).size());
-        LocalLastSeen.clearHistory(0, 123456);
-        assertTrue(LocalLastSeen.getHistory(0, 0).isEmpty());
+        LocalLastSeen.record(0, 123456, 300);
+        assertEquals(200, LocalLastSeen.getTime(0, 123456));
     }
 }

@@ -59,10 +59,6 @@ public class ParvaSecuritySettingsActivity extends ParvaPageActivity {
         shadow();
 
         header(R.string.ContactChangesTitle);
-        link("observedActivity", R.string.ObservedActivityTitle, 0,
-                () -> presentFragment(ContactChangesActivity.forActivity(false)));
-        link("outgoingReadHistory", R.string.OutgoingReadHistory, 0,
-                () -> presentFragment(ContactChangesActivity.forActivity(true)));
         check("contactPhotoArchive", R.string.ContactPhotoArchive, R.string.ContactPhotoArchiveInfo,
                 ContactChanges::isArchiveEnabled, ContactChanges::setArchiveEnabled);
         choice("contactPhotoRetention", R.string.ContactPhotoRetention,

@@ -240,7 +240,7 @@ jobs:
           d['client'].append(copy)
           json.dump(d, open(p, 'w'), indent=2)
           PY
-      - name: Debug Build
+      - name: Release build and focused regression tests
         env:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS || 'android' }}
           ALIAS_NAME: ${{ secrets.ALIAS_NAME || 'androiddebugkey' }}
@@ -249,9 +249,8 @@ jobs:
           export LOCAL_PROPERTIES="${{ secrets.LOCAL_PROPERTIES }}"
           export DEBUG_BUILD=true
           export EXTRA_ABI_X86_64=true
-          sed -i 's/signingConfig signingConfigs.release//g' TMessagesProj/build.gradle
-          ./gradlew TMessagesProj:testReleaseUnitTest --tests '*AyuGhostUtilsTest' --tests '*ContactChangesTest' --tests '*LocalLastSeenTest' --tests '*ProxyRotationHealthTest' --build-cache --no-configuration-cache -PparvaDevelopmentBuild=${{ (github.head_ref || github.ref_name) == 'feature/contact-activity-smart-proxy-voice-ghost' }}
-          ./gradlew TMessagesProj:assembleRelease --build-cache --no-configuration-cache -PparvaDevelopmentBuild=${{ (github.head_ref || github.ref_name) == 'feature/contact-activity-smart-proxy-voice-ghost' }}
+          ./gradlew TMessagesProj:testReleaseUnitTest --tests '*AyuGhostUtilsTest' --tests '*ContactChangesTest' --tests '*LocalLastSeenTest' --tests '*ProxyRotationHealthTest' --tests '*V2RaySubscriptionNamesTest' --build-cache --no-configuration-cache -PparvaDevelopmentBuild=false
+          ./gradlew TMessagesProj:assembleRelease --build-cache --no-configuration-cache -PparvaDevelopmentBuild=false
 
           APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk')
           APK=$(dirname $APK)

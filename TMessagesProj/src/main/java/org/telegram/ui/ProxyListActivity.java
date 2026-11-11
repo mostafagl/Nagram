@@ -126,6 +126,9 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
     private int testAllRow;
     private int deleteNoPingRow;
     private int sortMode;
+    private final Runnable resortAfterPing = () -> {
+        if (listAdapter != null && sortMode != SORT_DEFAULT) updateRows(true);
+    };
     private AlertDialog testProgressDialog;
 
     private ItemTouchHelper itemTouchHelper;
@@ -232,7 +235,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
         public void setProxy(SharedConfig.ProxyInfo proxyInfo) {
             if (proxyInfo.settings.getType() == ProxySettings.Type.V2RAY) {
                 final String remark = proxyInfo.settings.getUser();
-                textView.setText((TextUtils.isEmpty(remark) ? proxyInfo.settings.getAddress() + ":" + proxyInfo.settings.getPort() : remark) + " (V2Ray)");
+                textView.setText(TextUtils.isEmpty(remark) ? proxyInfo.settings.getAddress() + ":" + proxyInfo.settings.getPort() : remark);
             } else {
                 textView.setText(proxyInfo.settings.getType() == ProxySettings.Type.WEB
                         ? proxyInfo.settings.getAddress() + " (WEB)"
@@ -426,7 +429,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
 
         final SharedPreferences preferences = MessagesController.getGlobalMainSettings();
         useProxySettings = preferences.getBoolean("proxy_enabled", false) && !SharedConfig.proxyList.isEmpty();
-        sortMode = preferences.getInt(PREF_SORT, SORT_DEFAULT);
+        sortMode = preferences.getInt(PREF_SORT, SORT_PING_ASC);
 
         updateRows(true);
 
@@ -436,6 +439,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
     @Override
     public void onFragmentDestroy() {
         super.onFragmentDestroy();
+        AndroidUtilities.cancelRunOnUIThread(resortAfterPing);
         dismissTestProgress();
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.proxyChangedByRotation);
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.proxySettingsChanged);
@@ -548,12 +552,18 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
             public void onItemClick(int id) {
                 if (id == -1) {
                     finishFragment();
+                } else if (id == 10001) {
+                    V2RaySubscriptionsActivity.updateAll(ProxyListActivity.this);
+                } else if (id == 10002) {
+                    testProxies(new ArrayList<>(proxyList), null);
                 }
             }
         });
 
         // na: action bar menu
         ActionBarMenu menu = actionBar.createMenu();
+        menu.addItem(10001, R.drawable.msg_retry).setContentDescription(getString(R.string.V2RaySubscriptionUpdateAll));
+        menu.addItem(10002, R.drawable.msg_speed).setContentDescription(getString(R.string.ProxyTestAll));
         otherItem = menu.addItem(na_menu_other, R.drawable.ic_ab_other);
         otherItem.setContentDescription(LocaleController.getString("AccDescrMoreOptions", R.string.AccDescrMoreOptions));
         otherItem.addSubItem(na_menu_add_input_telegram, LocaleController.getString("AddProxyTelegram", R.string.AddProxyTelegram)).setOnClickListener((v) -> presentFragment(new ProxySettingsActivity()));
@@ -838,6 +848,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
      * connection in use is not touched.
      */
     private void testProxies(List<SharedConfig.ProxyInfo> list, Runnable onDone) {
+        list.removeIf(info -> info.checking);
         if (list.isEmpty()) {
             if (onDone != null) {
                 onDone.run();
@@ -1267,8 +1278,12 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
                     }
                 }
                 if (!checking) {
+                    AndroidUtilities.cancelRunOnUIThread(resortAfterPing);
                     wasCheckedAllList = true;
                     updateRows(true);
+                } else if (sortMode != SORT_DEFAULT) {
+                    AndroidUtilities.cancelRunOnUIThread(resortAfterPing);
+                    AndroidUtilities.runOnUIThread(resortAfterPing, 200);
                 }
             }
         }

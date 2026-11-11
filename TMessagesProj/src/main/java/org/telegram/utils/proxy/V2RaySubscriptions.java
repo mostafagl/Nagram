@@ -754,9 +754,19 @@ public final class V2RaySubscriptions {
     }
 
     private static void collect(String text, LinkedHashSet<String> links) {
-        final java.util.regex.Matcher matcher = V2RayConfig.LINK_PATTERN.matcher(text);
-        while (matcher.find()) {
-            links.add(V2RayConfig.trimLink(matcher.group()));
+        for (String line : text.split("\\r?\\n")) {
+            line = line.trim();
+            final java.util.regex.Matcher matcher = V2RayConfig.LINK_PATTERN.matcher(line);
+            while (matcher.find()) {
+                String link = matcher.group();
+                // A subscription has one link per line. Unescaped spaces after # are its name.
+                if (matcher.start() == 0 && link.indexOf('#') >= 0
+                        && !V2RayConfig.LINK_PATTERN.matcher(line.substring(matcher.end())).find()) {
+                    int fragment = line.indexOf('#');
+                    link = line.substring(0, fragment + 1) + android.net.Uri.encode(android.net.Uri.decode(line.substring(fragment + 1)));
+                }
+                links.add(V2RayConfig.trimLink(link));
+            }
         }
     }
 

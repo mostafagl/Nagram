@@ -159,3 +159,20 @@ The concurrently added repository instructions/specification were preserved and 
 The workflow job completed successfully, but its script summary contains failed scenarios. Test-server login was rejected with `Wrong code`, so peer messaging, chat history, chat preview, Persian settings and font checks were not verified. A green job is not proof those scenarios passed.
 
 The script reports passing app launch, opening/parsing VLESS, Telegram connection through VLESS, proxy-list/ping controls, subscription import with a five-config limit and duplicate skipping, connection notification and process survival after 60 seconds in the background. The single ping check completed with `No response`; this is not evidence of a successful ping. Smart failover and sender-side ghost privacy still require the device/two-account acceptance checklist above. No new APK is needed for this documentation update.
+
+
+## Requested usability corrections — November 2026
+
+Audit: the existing Telegram pull drawable/scroll handler was limited to the All tab, while the screenshot used a generated Users filter. Subscription parsing stopped at whitespace and cut raw fragment names to a flag. Proxy testing, subscription update progress/cancellation, sorting, and launcher aliases already existed and are reused.
+
+Changes:
+- Archive row is copied into eligible main filter views without mutating MessagesController collections; the same gesture/parallax and release animation handles these views. Quick pulls honor the configured distance, cancelled gestures snap back.
+- Proxy toolbar exposes subscription refresh and ping-all, ascending ping is the unset preference default, and measured results are coalesced for live sorting. In-flight proxy checks are not duplicated.
+- Subscription line fragments preserve full spaced names; proxy titles no longer append a generic V2Ray label. Plain/base64 subscription regression coverage added.
+- Removed activity/typing/message/read-watermark history collection and all its UI. Existing history preferences are discarded on access; the original latest observed timestamp and actual profile/photo change archive remain.
+- Nagram-branded launcher variants are hidden; enabled legacy aliases migrate to the Parvagram default. Aliases remain declared for safe app updates.
+- CI now assembles the optimized, non-debuggable release variant with R8/resource shrinking enabled, using the existing signing identity.
+
+Local validation: Java syntax parse and git diff --check passed. Gradle unit-test attempt could not download Gradle 8.13 (Network is unreachable); no local test pass is claimed. CI results and final stable Release link will be appended after completion.
+
+Real-device checks required: authenticated filtered-tab archive pull (short/long lists, RTL, cancel, tab switches), proxy toolbar actions on a real subscription/VPN, launcher migration on OEM launchers, and existing ghost playback with a second account. No fabricated presence/profile-view detection is included. User explicitly authorized an ordinary Release, not a pre-release; no merge is authorized.

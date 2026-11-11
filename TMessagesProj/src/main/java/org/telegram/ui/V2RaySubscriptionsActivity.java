@@ -39,7 +39,6 @@ import java.util.List;
 public class V2RaySubscriptionsActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate {
 
     private LinearLayout listLayout;
-    private volatile boolean cancelUpdate;
 
     @Override
     public boolean onFragmentCreate() {
@@ -297,15 +296,28 @@ public class V2RaySubscriptionsActivity extends BaseFragment implements Notifica
 
     /** Updates subscriptions one after another in the background, with a cancellable progress dialog. */
     private void runUpdates(List<V2RaySubscriptions.Subscription> subscriptions) {
-        if (getParentActivity() == null || subscriptions.isEmpty()) {
+        runUpdates(this, subscriptions);
+    }
+
+    public static void updateAll(BaseFragment owner) {
+        List<V2RaySubscriptions.Subscription> subscriptions = V2RaySubscriptions.getAll();
+        if (subscriptions.isEmpty()) {
+            owner.presentFragment(new V2RaySubscriptionsActivity());
+        } else {
+            runUpdates(owner, subscriptions);
+        }
+    }
+
+    private static void runUpdates(BaseFragment owner, List<V2RaySubscriptions.Subscription> subscriptions) {
+        if (owner.getParentActivity() == null || subscriptions.isEmpty()) {
             return;
         }
         if (V2RaySubscriptions.isRunning()) {
             tw.nekomimi.nekogram.utils.AlertUtil.showToast(getString(R.string.V2RaySubscriptionBusy));
             return;
         }
-        cancelUpdate = false;
-        final Context context = getParentActivity();
+        final java.util.concurrent.atomic.AtomicBoolean cancelled = new java.util.concurrent.atomic.AtomicBoolean();
+        final Context context = owner.getParentActivity();
         final LinearLayout progressLayout = new LinearLayout(context);
         progressLayout.setOrientation(LinearLayout.VERTICAL);
         progressLayout.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(4), AndroidUtilities.dp(24), AndroidUtilities.dp(8));
@@ -328,15 +340,15 @@ public class V2RaySubscriptionsActivity extends BaseFragment implements Notifica
         final AlertDialog progressDialog = new AlertDialog.Builder(context)
                 .setTitle(getString(R.string.V2RaySubscriptionUpdating))
                 .setView(progressLayout)
-                .setNegativeButton(getString(R.string.Cancel), (d, w) -> cancelUpdate = true)
+                .setNegativeButton(getString(R.string.Cancel), (d, w) -> cancelled.set(true))
                 .create();
         progressDialog.setCanCancel(false);
-        showDialog(progressDialog);
+        owner.showDialog(progressDialog);
 
         new Thread(() -> {
             final StringBuilder summary = new StringBuilder();
             for (V2RaySubscriptions.Subscription s : subscriptions) {
-                if (cancelUpdate) {
+                if (cancelled.get()) {
                     break;
                 }
                 AndroidUtilities.runOnUIThread(() -> {
@@ -362,7 +374,7 @@ public class V2RaySubscriptionsActivity extends BaseFragment implements Notifica
 
                     @Override
                     public boolean isCancelled() {
-                        return cancelUpdate;
+                        return cancelled.get();
                     }
                 }, 30 * 60_000L);
                 if (summary.length() > 0) {
@@ -375,13 +387,13 @@ public class V2RaySubscriptionsActivity extends BaseFragment implements Notifica
                     progressDialog.dismiss();
                 } catch (Exception ignore) {
                 }
-                rebuild();
-                if (getParentActivity() != null) {
-                    final AlertDialog.Builder done = new AlertDialog.Builder(getParentActivity());
+                if (owner instanceof V2RaySubscriptionsActivity) ((V2RaySubscriptionsActivity) owner).rebuild();
+                if (owner.getParentActivity() != null) {
+                    final AlertDialog.Builder done = new AlertDialog.Builder(owner.getParentActivity());
                     done.setTitle(getString(R.string.V2RaySubscriptionResultTitle));
                     done.setMessage(summary.toString());
                     done.setPositiveButton(getString(R.string.OK), null);
-                    showDialog(done.create());
+                    owner.showDialog(done.create());
                 }
             });
         }, "v2ray-subscription-ui").start();
