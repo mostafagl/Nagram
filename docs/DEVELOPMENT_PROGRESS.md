@@ -1,5 +1,33 @@
 # Development validation record
 
+## Final validated development artifact
+
+Implementation is available for device review. CI-verifiable checks below passed; full real-device/two-account acceptance is still pending. This is a development artifact, not a stable release.
+
+- Validated source commit: `18cf10a431a8586246086fe7757309a5ca35e209`.
+- Final CI: https://github.com/mostafagl/Nagram/actions/runs/42932183104.
+- APK bundle (arm64-v8a, armeabi-v7a, x86_64): https://github.com/mostafagl/Nagram/actions/runs/42932183104/artifacts/13816863034.
+- Exact arm64 file: `Parvagram-dev-arm64-18cf10a4.apk`; 80,650,135 bytes.
+- Arm64 APK SHA-256: `dd2045160677f51fa8e8cce7cd48b4d97dc7794fae514b55c0ce6bb29c67231a`.
+- Draft PR: https://github.com/mostafagl/Nagram/pull/2. No merge or release performed.
+
+| Validation | Result |
+| --- | --- |
+| Java/Kotlin compilation and development APK assembly | Passed |
+| Native artifacts for three ABIs | Existing cache restored successfully |
+| All APK signatures against expected application certificate | Passed |
+| Ghost receipt policy regression tests | 3 passed |
+| Contact migration/archive cleanup regression tests | 2 passed |
+| Observed activity/read-watermark regression tests | 3 passed |
+| Proxy health regression tests | 2 passed |
+| Total targeted unit tests | 10 passed; 0 failed, 0 errors, 0 skipped |
+| Emulator launch/process/crash smoke check | Passed |
+| Broader inherited authenticated emulator UI suite | Separate workflow job; not claimed as verified here |
+| Real-device/two-account feature acceptance | Pending; checklist below |
+
+The final test XML was retrieved from artifact `13818185152` and inspected. The final smoke step and signature steps completed successfully. CI release and screenshot-publication steps are disabled for this branch. Later documentation-only commits do not alter the APK source.
+
+
 Target: `feature/contact-activity-smart-proxy-voice-ghost`; initial head `0a9d757647abc67b5543964f8051ac74369a7032`.
 
 ## Initial audit
@@ -78,8 +106,11 @@ Commit: `9f359b0df004877473aede1b41aac6fbc80afed6`; CI: https://github.com/mosta
 | Complete archive controls/provenance | `82a5176c9281ce9cb775247c09de767abe5989b1` |
 | Activity and separate receipt view | `9b2cd82027bf3ed1deb13948d67b32ca3c579b62` |
 | Smart rotation and transport handover | `7fe5b11e6962cc622861fcdea682cbfdd7e843f7` |
+| Synchronous check handling and scan efficiency | `67e24d280dac447ec43fefbe07ba1e45106a12cc` |
+| Timeline navigation and supported test SDK | `81ef78dbdacfb9a39b357181eaec9ba4de7468e0` |
+| Bounded avatar file copying / final code | `18cf10a431a8586246086fe7757309a5ca35e209` |
 
-Activity CI: https://github.com/mostafagl/Nagram/actions/runs/42930322551. Smart-proxy CI: https://github.com/mostafagl/Nagram/actions/runs/42930916018. Final results and APK artifact will be recorded after the current validation completes.
+Activity CI: https://github.com/mostafagl/Nagram/actions/runs/42930322551. Smart-proxy CI: https://github.com/mostafagl/Nagram/actions/runs/42930916018. Final results and the APK artifact are recorded at the top of this report.
 
 - Activity build compiled successfully and passed the three ghost policy tests; Robolectric rejected the default target SDK before executing the two Android-context test classes. Those preference/file tests now explicitly use SDK 28 (within the existing supported application range). App compile/target/min SDKs are unchanged.
 - Final UI review moved timeline actions into a labelled overflow menu, added direct activity/receipt settings entries, and replaced raw photo-ID display with archived/current image comparison.
