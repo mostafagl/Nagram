@@ -24,6 +24,7 @@ Commit: `5c7801abb743cc437089f09bbc538f069eada7b5`.
 - Extended audit found popup playback directly clearing the local unread flag; guarded that path too. Deferred timed-media callbacks recheck policy when executed, so enabling ghost mode after opening a viewer is respected.
 - Local isolated Java check PASSED against the actual `AyuGhostUtils` source (Android/Telegram dependencies stubbed): blocked/default policy, non-consuming UI checks, one-shot consumption, zero/unlimited counts, normal mode, and concurrent one-shot consumption from 20 threads. This is policy verification, not an Android integration or sender-side test.
 - While CI was running, remote commits `631f6e34` and `55d9949e` added `AGENTS.md` and `docs/FEATURE_SPEC.md`. Both were read and preserved. The unvalidated activity implementation was set aside locally until preceding phases are validated.
+- CI now runs the targeted unit tests before APK packaging for faster feedback. Only this development branch explicitly disables R8/resource shrinking; ordinary release defaults stay optimized. Development APKs retain the existing variant and signing verification and are uploaded as private workflow artifacts, not published as releases.
 
 ## Stage 2: profile timeline and received-photo archive
 

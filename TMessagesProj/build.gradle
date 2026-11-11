@@ -269,8 +269,10 @@ android {
         release {
             debuggable false
             jniDebuggable false
-            minifyEnabled true
-            shrinkResources true
+            // Explicit development artifacts retain the release signing/variant but skip R8.
+            // Ordinary release builds keep the upstream optimization behavior.
+            minifyEnabled !providers.gradleProperty("parvaDevelopmentBuild").orElse("false").get().toBoolean()
+            shrinkResources !providers.gradleProperty("parvaDevelopmentBuild").orElse("false").get().toBoolean()
             multiDexEnabled true
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             matchingFallbacks = ["release", "debug"]

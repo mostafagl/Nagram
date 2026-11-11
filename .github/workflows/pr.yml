@@ -250,8 +250,8 @@ jobs:
           export DEBUG_BUILD=true
           export EXTRA_ABI_X86_64=true
           sed -i 's/signingConfig signingConfigs.release//g' TMessagesProj/build.gradle
-          ./gradlew TMessagesProj:assembleRelease --build-cache --no-configuration-cache
-          ./gradlew TMessagesProj:testReleaseUnitTest --tests '*AyuGhostUtilsTest' --tests '*ContactChangesTest' --build-cache --no-configuration-cache
+          ./gradlew TMessagesProj:testReleaseUnitTest --tests '*AyuGhostUtilsTest' --tests '*ContactChangesTest' --build-cache --no-configuration-cache -PparvaDevelopmentBuild=${{ (github.head_ref || github.ref_name) == 'feature/contact-activity-smart-proxy-voice-ghost' }}
+          ./gradlew TMessagesProj:assembleRelease --build-cache --no-configuration-cache -PparvaDevelopmentBuild=${{ (github.head_ref || github.ref_name) == 'feature/contact-activity-smart-proxy-voice-ghost' }}
 
           APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk')
           APK=$(dirname $APK)
@@ -260,6 +260,14 @@ jobs:
           echo "$BUILD_TS" > "$APK/build_timestamp.txt"
       # Fails the build unless every APK is signed with the app's key, so a build that couldn't
       # update the installed app is never published.
+      - name: Upload regression test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: regression-tests
+          path: |
+            TMessagesProj/build/reports/tests
+            TMessagesProj/build/test-results
       - name: Verify APK signatures
         env:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS || 'android' }}
