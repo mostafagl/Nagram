@@ -1,6 +1,6 @@
 # Development validation record
 
-## Final validated development artifact
+## Historical validation: previous preview (superseded by the corrections below)
 
 Implementation is available for device review. CI-verifiable checks below passed; full real-device/two-account acceptance is still pending. This is a development artifact, not a stable release.
 

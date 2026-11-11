@@ -1,4 +1,4 @@
-name: Publish validated preview
+name: Publish validated release
 on:
   push:
     branches:
@@ -8,28 +8,54 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
-  actions: read
+  actions: write
 concurrency:
-  group: publish-validated-preview-18cf10a4
+  group: publish-validated-release
   cancel-in-progress: false
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 40
     env:
       GH_TOKEN: ${{ github.token }}
-      SOURCE_SHA: 18cf10a431a8586246086fe7757309a5ca35e209
-      TAG: parvagram-preview-18cf10a4
+      SOURCE_SHA: ab56fa7dec37bccb1a2e16452cf665aed483df8f
+      RUN_ID: 43121968455
     steps:
-      - name: Validate source and download existing artifact
+      # This commit only publishes an already validated artifact; do not rebuild it on the PR.
+      - name: Stop redundant PR build for this publishing-only commit
+        shell: bash
+        run: |
+          # Superseded by ab56fa7d; its APKs must never be published.
+          gh run cancel 43121700780 -R "$GITHUB_REPOSITORY" || true
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&event=pull_request" --jq '.workflow_runs[] | select(.status != "completed") | .id' |
+          while read -r run; do
+            gh run cancel "$run" -R "$GITHUB_REPOSITORY" || true
+          done
+      - name: Validate completed build and download its immutable artifact
         shell: bash
         run: |
           set -euo pipefail
-          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/42932183104" --jq .head_sha)" = "$SOURCE_SHA"
-          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/42932183104" --jq .conclusion)" = success
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/13816863034/zip" > artifact.zip
-          echo '603e80fd155e9e3c23ff27aa1fe50167a9163a56b15d5bdd1436166f68aad342  artifact.zip' | sha256sum -c -
-      - name: Prepare separate APK assets
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" --jq .head_sha)" = "$SOURCE_SHA"
+          for attempt in $(seq 1 60); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/jobs?per_page=100" > jobs.json
+            jq '[.jobs[] | select(.name == "Gradle Build" or (.name | startswith("Native Build")))]' jobs.json > build-jobs.json
+            if jq -e 'any(.[]; .conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out" or .conclusion == "action_required")' build-jobs.json >/dev/null; then
+              echo "::error::Required build/validation failed; refusing publication"
+              exit 1
+            fi
+            if jq -e 'length == 4 and all(.[]; .conclusion == "success")' build-jobs.json >/dev/null; then
+              break
+            fi
+            sleep 30
+          done
+          jq -e 'length == 4 and all(.[]; .conclusion == "success")' build-jobs.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts" > artifacts.json
+          ID=$(jq -r '[.artifacts[] | select(.name == "Debug" and .expired == false)] | if length == 1 then .[0].id else error("Expected one validated APK artifact") end' artifacts.json)
+          DIGEST=$(jq -r --argjson id "$ID" '.artifacts[] | select(.id == $id) | .digest' artifacts.json)
+          test "${DIGEST#sha256:}" != "$DIGEST"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ID/zip" > artifact.zip
+          echo "${DIGEST#sha256:}  artifact.zip" | sha256sum -c -
+      - name: Prepare individual release APKs and updater timestamp
         shell: bash
         run: |
           set -euo pipefail
@@ -44,40 +70,53 @@ jobs:
                       raise RuntimeError("Expected exactly one APK for " + abi)
                   with archive.open(names[0]) as source, (out / ("Parvagram-" + abi + ".apk")).open("wb") as target:
                       shutil.copyfileobj(source, target, 1024 * 1024)
+              names = [name for name in archive.namelist() if pathlib.PurePosixPath(name).name == "build_timestamp.txt"]
+              if len(names) != 1:
+                  raise RuntimeError("Missing build timestamp")
+              stamp = archive.read(names[0]).decode().strip()
+              if not stamp.isdigit() or len(stamp) != 13:
+                  raise RuntimeError("Invalid build timestamp")
+              (out / "build_timestamp.txt").write_text(stamp + "\n")
           PY
-          echo 'dd2045160677f51fa8e8cce7cd48b4d97dc7794fae514b55c0ce6bb29c67231a  assets/Parvagram-arm64-v8a.apk' | sha256sum -c -
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          for apk in assets/*.apk; do
+            "$BT/apksigner" verify --verbose --print-certs "$apk"
+            "$BT/aapt" dump badging "$apk" > badging.txt
+            if grep -q '^application-debuggable' badging.txt; then
+              echo "::error::Refusing a debuggable APK"
+              exit 1
+            fi
+          done
           (cd assets && sha256sum *.apk > SHA256SUMS.txt)
-      - name: Publish user-authorized pre-release
+          cat assets/SHA256SUMS.txt
+          echo "TAG=build-$(cat assets/build_timestamp.txt)" >> "$GITHUB_ENV"
+      - name: Publish user-authorized ordinary latest release
         shell: bash
         run: |
           set -euo pipefail
           cat > notes.md <<'NOTES'
-          نسخه آزمایشی پَرواگرام — 18cf10a4
+          <!-- changes -->
+          - اصلاح نمایش آرشیو با پایین کشیدن در تب های کاربران، گروه ها و سایر فیلترها، همراه با حرکت و انیمیشن موجود تلگرام
+          - اضافه شدن دکمه بروزرسانی ساب و تست پینگ به نوار بالای صفحه پروکسی
+          - مرتب سازی پیش فرض بر اساس کمترین پینگ و بروزرسانی ترتیب هنگام دریافت نتیجه
+          - حفظ اسم کامل کانفیگ های ساب و حذف برچسب عمومی V2Ray از عنوان
+          - حذف تاریخچه تایپ، پیام و رسید خواندن؛ حفظ تغییرات واقعی پروفایل و آرشیو عکس مخاطبین
+          - حذف آیکن های قدیمی Nagram از انتخابگر و انتقال آیکن انتخاب شده قدیمی به آیکن پَرواگرام
+          <!-- /changes -->
 
-          تغییرات:
-          - اصلاح مسیرهای رسید شنیده شدن ویس و ویدیو مسیج در حالت روح
-          - تایم لاین پروفایل و آرشیو عکس های قابل مشاهده مخاطبین با کنترل سهمیه و مدت نگهداری
-          - تاریخچه فعالیت مشاهده شده و نمای جداگانه رسید خواندن پیام های ارسالی
-          - انتخاب پروکسی بر اساس پایداری، کنترل فاصله تعویض و حفظ هسته قبلی هنگام شکست راه اندازی هسته جدید
-
-          فایل مناسب گوشی های جدید: Parvagram-arm64-v8a.apk
+          خروجی assembleRelease با debuggable=false و R8/resource shrinking فعال است؛ فایل ها همان APK های Build تایید شده هستند و دوباره ساخته نشده اند.
+          نسخه مناسب بیشتر گوشی های جدید: Parvagram-arm64-v8a.apk
           گوشی های قدیمی ۳۲ بیتی: Parvagram-armeabi-v7a.apk
-          شبیه ساز x86_64: Parvagram-x86_64.apk
+          شبیه ساز: Parvagram-x86_64.apk
 
-          اینها همان فایل های Build تایید شده 42932183104 از Commit 18cf10a431a8586246086fe7757309a5ca35e209 هستند؛ دوباره ساخته نشده اند.
-          نوع ساخت assembleRelease با debuggable=false است، اما بهینه سازی R8 برای این خروجی توسعه خاموش بوده است.
-
-          Build، بررسی امضا، ۱۰ تست ضروری و اجرای اولیه شبیه ساز پاس شده اند.
-          ورود به حساب سرور تست تلگرام با خطای Wrong code مواجه شد؛ تایید نهایی ویس از سمت فرستنده، قابلیت های وابسته به حساب و تعویض واقعی V2Ray/VPN روی گوشی هنوز لازم است.
-
-          این انتشار Pre-release است و به عنوان نسخه پایدار یا به روزرسانی خودکار معرفی نمیشود. هیچ شاخه ای Merge نشده است.
-          گزارش فنی: https://github.com/mostafagl/Nagram/blob/7f3b1132c6f63ca4bcf7a040d62b1d9cfb431eb7/docs/DEVELOPMENT_PROGRESS.md
+          Build، تست های رگرسیون، بررسی امضا و اجرای اولیه شبیه ساز بررسی شده اند. آزمون آرشیو با حساب واقعی و تاچ گوشی، بروزرسانی ساب روی شبکه واقعی، مهاجرت آیکن در لانچر گوشی و حالت روح با حساب دوم هنوز باید روی گوشی انجام شوند؛ ورود خودکار به سرور تست تلگرام قبلا با خطای Wrong code مواجه بوده است.
+          این انتشار عادی و Latest است، نه Pre-release. هیچ شاخه ای Merge نشده است.
           NOTES
+          printf '\nSource: `%s`\nBuild: https://github.com/%s/actions/runs/%s\n' "$SOURCE_SHA" "$GITHUB_REPOSITORY" "$RUN_ID" >> notes.md
           if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release already exists; refusing to replace assets."
-            gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json url,isDraft,isPrerelease,assets
-            exit 0
+            echo "::error::Release already exists; refusing to replace published assets."
+            exit 1
           fi
-          gh release create "$TAG" assets/*.apk assets/SHA256SUMS.txt -R "$GITHUB_REPOSITORY" --draft --prerelease --latest=false --target "$SOURCE_SHA" --title "Parvagram preview · 18cf10a4" --notes-file notes.md
-          gh release edit "$TAG" -R "$GITHUB_REPOSITORY" --draft=false --prerelease --latest=false
+          gh release create "$TAG" assets/*.apk assets/SHA256SUMS.txt assets/build_timestamp.txt -R "$GITHUB_REPOSITORY" --draft --latest=false --target "$SOURCE_SHA" --title "Parvagram · اصلاح آرشیو و پروکسی" --notes-file notes.md
+          gh release edit "$TAG" -R "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest=true
           gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json url,isDraft,isPrerelease,assets
