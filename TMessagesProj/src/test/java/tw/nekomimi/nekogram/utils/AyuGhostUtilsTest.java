@@ -36,4 +36,26 @@ public class AyuGhostUtilsTest {
         call(s, "set", new Class[]{boolean.class, int.class}, false, -1);
         assertEquals(false, call(s, "process", new Class[]{}));
     }
+
+    @Test public void concurrentTransportsCannotReuseOneShotPermission() throws Exception {
+        Object s = state();
+        call(s, "set", new Class[]{boolean.class, int.class}, true, 1);
+        java.util.concurrent.atomic.AtomicInteger allowed = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.ArrayList<Thread> threads = new java.util.ArrayList<>();
+        java.util.concurrent.atomic.AtomicReference<Throwable> failure = new java.util.concurrent.atomic.AtomicReference<>();
+        for (int i = 0; i < 20; i++) {
+            Thread thread = new Thread(() -> {
+                try {
+                    if ((Boolean) call(s, "process", new Class[]{})) allowed.incrementAndGet();
+                } catch (Throwable e) {
+                    failure.set(e);
+                }
+            });
+            threads.add(thread);
+            thread.start();
+        }
+        for (Thread thread : threads) thread.join();
+        assertNull(failure.get());
+        assertEquals(1, allowed.get());
+    }
 }

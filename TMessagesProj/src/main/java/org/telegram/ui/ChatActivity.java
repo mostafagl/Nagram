@@ -16557,6 +16557,9 @@ public class ChatActivity extends BaseFragment implements
             return null;
         } else {
             return () -> {
+                if (!tw.nekomimi.nekogram.utils.AyuGhostUtils.canSendReadPacket()) {
+                    return;
+                }
                 final boolean delete = messageObject.messageOwner.ttl != 0x7FFFFFFF;
                 final int ttl = messageObject.messageOwner.ttl == 0x7FFFFFFF ? 0 : messageObject.messageOwner.ttl;
                 messageObject.messageOwner.destroyTime = ttl + getConnectionsManager().getCurrentTime();
