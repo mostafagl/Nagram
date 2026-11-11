@@ -176,3 +176,5 @@ Changes:
 Local validation: Java syntax parse and git diff --check passed. Gradle unit-test attempt could not download Gradle 8.13 (Network is unreachable); no local test pass is claimed. CI results and final stable Release link will be appended after completion.
 
 Real-device checks required: authenticated filtered-tab archive pull (short/long lists, RTL, cancel, tab switches), proxy toolbar actions on a real subscription/VPN, launcher migration on OEM launchers, and existing ghost playback with a second account. No fabricated presence/profile-view detection is included. User explicitly authorized an ordinary Release, not a pre-release; no merge is authorized.
+
+CI orchestration correction: a publishing-only commit initially retriggered the PR build and cancelled its predecessor under the new concurrency policy. No APK was published from that cancelled run. The publishing workflow is now excluded from ordinary PR path triggers, and this combined CI-policy commit explicitly waits for its own complete PR build.

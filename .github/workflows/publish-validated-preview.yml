@@ -18,23 +18,20 @@ jobs:
     timeout-minutes: 40
     env:
       GH_TOKEN: ${{ github.token }}
-      SOURCE_SHA: ab56fa7dec37bccb1a2e16452cf665aed483df8f
-      RUN_ID: 43121968455
+      SOURCE_SHA: ${{ github.sha }}
     steps:
-      # This commit only publishes an already validated artifact; do not rebuild it on the PR.
-      - name: Stop redundant PR build for this publishing-only commit
-        shell: bash
-        run: |
-          # Superseded by ab56fa7d; its APKs must never be published.
-          gh run cancel 43121700780 -R "$GITHUB_REPOSITORY" || true
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&event=pull_request" --jq '.workflow_runs[] | select(.status != "completed") | .id' |
-          while read -r run; do
-            gh run cancel "$run" -R "$GITHUB_REPOSITORY" || true
-          done
       - name: Validate completed build and download its immutable artifact
         shell: bash
         run: |
           set -euo pipefail
+          # This publishing commit changes CI policy as well, so validate its own PR build.
+          for attempt in $(seq 1 20); do
+            RUN_ID=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SOURCE_SHA&event=pull_request" --jq '.workflow_runs | sort_by(.id) | last | .id // empty')
+            if [ -n "$RUN_ID" ]; then break; fi
+            sleep 15
+          done
+          test -n "$RUN_ID"
+          echo "RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
           test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" --jq .head_sha)" = "$SOURCE_SHA"
           for attempt in $(seq 1 60); do
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/jobs?per_page=100" > jobs.json

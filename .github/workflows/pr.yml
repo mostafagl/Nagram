@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - '**.md'
       - '**.xml'
+      - '.github/workflows/publish-validated-preview.yml'
   # Manual start (Actions tab, or the API) when GitHub doesn't trigger the PR event.
   # With publish_tag set, nothing is built: that build pre-release becomes the latest release,
   # which the app offers as an update.
