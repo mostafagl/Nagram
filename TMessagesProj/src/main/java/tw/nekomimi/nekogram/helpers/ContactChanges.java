@@ -561,8 +561,20 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
                 java.io.File temp = new java.io.File(dir, target.getName() + ".tmp");
                 try {
                     if ((dir.isDirectory() || dir.mkdirs()) && source != null && source.length() > 0 && source.length() <= 10 * 1024 * 1024) {
-                        if (!target.isFile()) {
-                            java.nio.file.Files.copy(source.toPath(), temp.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        if (!target.isFile() || target.length() == 0) {
+                            // java.nio.file is unavailable on supported Android 23–25 devices.
+                            try (java.io.FileInputStream input = new java.io.FileInputStream(source);
+                                 java.io.FileOutputStream output = new java.io.FileOutputStream(temp)) {
+                                byte[] buffer = new byte[32 * 1024];
+                                int length;
+                                long copiedBytes = 0;
+                                while ((length = input.read(buffer)) != -1) {
+                                    copiedBytes += length;
+                                    if (copiedBytes > 10L * 1024 * 1024) throw new java.io.IOException("Avatar exceeds archive limit");
+                                    output.write(buffer, 0, length);
+                                }
+                                if (copiedBytes == 0) throw new java.io.IOException("Avatar download is empty");
+                            }
                             if (!temp.renameTo(target)) throw new java.io.IOException("Avatar archive rename failed");
                         }
                         copied = true;

@@ -83,3 +83,42 @@ Activity CI: https://github.com/mostafagl/Nagram/actions/runs/42930322551. Smart
 
 - Activity build compiled successfully and passed the three ghost policy tests; Robolectric rejected the default target SDK before executing the two Android-context test classes. Those preference/file tests now explicitly use SDK 28 (within the existing supported application range). App compile/target/min SDKs are unchanged.
 - Final UI review moved timeline actions into a labelled overflow menu, added direct activity/receipt settings entries, and replaced raw photo-ID display with archived/current image comparison.
+- Avatar copying uses bounded standard file streams (also suitable for Android 23–25), rejects empty data and keeps atomic temporary-file replacement.
+
+## Files changed by this development session
+
+The concurrently added repository instructions/specification were preserved and are not counted as implementation authored in this session.
+
+- `.github/workflows/pr.yml`
+- `TMessagesProj/build.gradle`
+- `TMessagesProj/src/main/java/org/telegram/messenger/MediaController.java`
+- `TMessagesProj/src/main/java/org/telegram/messenger/MessagesController.java`
+- `TMessagesProj/src/main/java/org/telegram/messenger/ProxyRotationController.java`
+- `TMessagesProj/src/main/java/org/telegram/messenger/SecretChatHelper.java`
+- `TMessagesProj/src/main/java/org/telegram/messenger/UserConfig.java`
+- `TMessagesProj/src/main/java/org/telegram/tgnet/ConnectionsManager.java`
+- `TMessagesProj/src/main/java/org/telegram/ui/ChatActivity.java`
+- `TMessagesProj/src/main/java/org/telegram/ui/Components/PopupAudioView.java`
+- `TMessagesProj/src/main/java/org/telegram/ui/ProxyListActivity.java`
+- `TMessagesProj/src/main/java/org/telegram/utils/proxy/V2RayTransport.java`
+- `TMessagesProj/src/main/java/tw/nekomimi/nekogram/helpers/ContactChanges.java`
+- `TMessagesProj/src/main/java/tw/nekomimi/nekogram/helpers/LocalLastSeen.java`
+- `TMessagesProj/src/main/java/tw/nekomimi/nekogram/settings/ContactChangesActivity.java`
+- `TMessagesProj/src/main/java/tw/nekomimi/nekogram/settings/ParvaSecuritySettingsActivity.java`
+- `TMessagesProj/src/main/java/tw/nekomimi/nekogram/utils/AyuGhostUtils.java`
+- `TMessagesProj/src/main/res/values-fa-rIR/strings_na.xml`
+- `TMessagesProj/src/main/res/values/strings_na.xml`
+- `TMessagesProj/src/test/AndroidManifest.xml`
+- `TMessagesProj/src/test/java/org/telegram/messenger/ProxyRotationHealthTest.java`
+- `TMessagesProj/src/test/java/tw/nekomimi/nekogram/helpers/ContactChangesTest.java`
+- `TMessagesProj/src/test/java/tw/nekomimi/nekogram/helpers/LocalLastSeenTest.java`
+- `TMessagesProj/src/test/java/tw/nekomimi/nekogram/utils/AyuGhostUtilsTest.java`
+- `docs/DEVELOPMENT_PROGRESS.md`
+
+## Device acceptance checklist
+
+- With two real accounts, verify voice/round-video listened receipts in normal playback, preview, popup, replay/autoplay, secret chats and background/foreground. Compare ghost on/off and explicit-read actions. Source/unit tests cannot establish the sender-side result.
+- Observe each contact profile field changing once, repeated updates, missing/private fields, account switching/removal, all/selected/excluded photo modes, rapid photo versions, offline/restart/storage-full cases, retention/quota cleanup and current/archived comparison. Only accessible received avatars can be retained.
+- Confirm activity provenance against actual received updates, hidden status producing no invented presence, cumulative private-dialog read ranges, repeated/sync-replayed receipts and separate deletion scopes. Receipt observation time is not exact reading time.
+- With actual V2Ray configs, test stable connection, failing core startup, Telegram connectivity failure after core startup, cooldown and recovery, manual rotation off, VPN up/down, subscriptions refreshing, backgrounding and account switching. The previous core is preserved on startup failure; successful switching can still briefly interrupt transport.
+- No reliable profile-view or silent-chat-entry tracking is implemented or claimed.
