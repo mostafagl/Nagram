@@ -59,6 +59,40 @@ public class ParvaSecuritySettingsActivity extends ParvaPageActivity {
         shadow();
 
         header(R.string.ContactChangesTitle);
+        check("contactPhotoArchive", R.string.ContactPhotoArchive, R.string.ContactPhotoArchiveInfo,
+                ContactChanges::isArchiveEnabled, ContactChanges::setArchiveEnabled);
+        choice("contactPhotoRetention", R.string.ContactPhotoRetention,
+                () -> LocaleController.formatPluralString("Days", ContactChanges.archiveRetentionDays()),
+                () -> {
+                    final int[] days = {7, 30, 90, 365};
+                    CharSequence[] labels = new CharSequence[days.length];
+                    for (int i = 0; i < days.length; i++) labels[i] = LocaleController.formatPluralString("Days", days[i]);
+                    showDialog(new AlertDialog.Builder(getParentActivity()).setTitle(LocaleController.getString(R.string.ContactPhotoRetention))
+                            .setItems(labels, (d, which) -> {
+                                ContactChanges.setArchiveLimits(days[which], ContactChanges.archiveQuotaMb());
+                                refresh();
+                            }).create());
+                });
+        choice("contactPhotoQuota", R.string.ContactPhotoQuota,
+                () -> ContactChanges.archiveQuotaMb() + " MB",
+                () -> {
+                    final int[] quotas = {32, 64, 128, 256, 512};
+                    CharSequence[] labels = new CharSequence[quotas.length];
+                    for (int i = 0; i < quotas.length; i++) labels[i] = quotas[i] + " MB";
+                    showDialog(new AlertDialog.Builder(getParentActivity()).setTitle(LocaleController.getString(R.string.ContactPhotoQuota))
+                            .setItems(labels, (d, which) -> {
+                                ContactChanges.setArchiveLimits(ContactChanges.archiveRetentionDays(), quotas[which]);
+                                refresh();
+                            }).create());
+                });
+        for (String id : ContactChanges.archiveExcluded(currentAccount)) {
+            final long userId;
+            try { userId = Long.parseLong(id); } catch (NumberFormatException e) { continue; }
+            link(null, R.string.ContactPhotoInclude, 0, () -> {
+                ContactChanges.setArchiveExcluded(currentAccount, userId, false);
+                refresh();
+            }).titleText = LocaleController.getString(R.string.ContactPhotoInclude) + " · " + dialogName(userId);
+        }
         link("contactChanges", R.string.ContactChangesOpen, 0, () -> presentFragment(new ContactChangesActivity()))
                 .titleText = unseenTitle();
         check("contactChangesEnabled", R.string.ContactChangesEnabled, R.string.ContactChangesEnabledInfo,

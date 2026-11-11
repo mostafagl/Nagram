@@ -517,6 +517,7 @@ public class UserConfig extends BaseController {
     }
 
     public void clearConfig() {
+        tw.nekomimi.nekogram.helpers.ContactChanges.clearAccount(currentAccount);
         getPreferences().edit().clear().apply();
 
         sharingMyLocationUntil = 0;

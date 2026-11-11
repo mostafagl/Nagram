@@ -39,6 +39,7 @@ public class ContactChangesActivity extends BaseFragment {
     private RecyclerListView listView;
     private TextView emptyView;
     private long timelineUserId;
+    private int displayTypes = ContactChanges.TYPES_ALL;
 
     public static int typeName(int type) {
         switch (type) {
@@ -69,6 +70,7 @@ public class ContactChangesActivity extends BaseFragment {
         actionBar.createMenu().addItem(1, R.drawable.msg_delete);
         actionBar.createMenu().addItem(2, R.drawable.ic_ab_back);
         actionBar.createMenu().addItem(3, R.drawable.msg_photos);
+        actionBar.createMenu().addItem(5, R.drawable.msg_search);
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
@@ -79,6 +81,15 @@ public class ContactChangesActivity extends BaseFragment {
                     reload();
                 } else if (id == 3) {
                     showArchive();
+                } else if (id == 5) {
+                    CharSequence[] labels = new CharSequence[ContactChanges.TYPES.length + 1];
+                    labels[0] = LocaleController.getString(R.string.ContactChangesTitle);
+                    for (int i = 0; i < ContactChanges.TYPES.length; i++) labels[i + 1] = LocaleController.getString(typeName(ContactChanges.TYPES[i]));
+                    showDialog(new AlertDialog.Builder(getParentActivity()).setTitle(LocaleController.getString(R.string.ContactChangesTitle))
+                            .setItems(labels, (d, which) -> {
+                                displayTypes = which == 0 ? ContactChanges.TYPES_ALL : ContactChanges.TYPES[which - 1];
+                                reload();
+                            }).create());
                 } else if (id == 1 && getParentActivity() != null) {
                     showDialog(new AlertDialog.Builder(getParentActivity())
                             .setTitle(LocaleController.getString(R.string.ContactChangesTitle))
@@ -147,6 +158,7 @@ public class ContactChangesActivity extends BaseFragment {
         events = timelineUserId == 0
                 ? ContactChanges.getInstance(currentAccount).getEvents()
                 : ContactChanges.getInstance(currentAccount).getEventsForContact(timelineUserId);
+        events.removeIf(event -> (event.type & displayTypes) == 0);
         if (actionBar != null) {
             if (timelineUserId == 0) {
                 actionBar.setTitle(LocaleController.getString(R.string.ContactChangesTitle));
@@ -165,9 +177,7 @@ public class ContactChangesActivity extends BaseFragment {
 
     private void showArchive() {
         final ContactChanges changes = ContactChanges.getInstance(currentAccount);
-        final java.io.File[] files = timelineUserId == 0
-                ? changes.archiveDirectory().listFiles((dir, name) -> name.endsWith(".jpg"))
-                : changes.getArchivedPhotos(timelineUserId);
+        final java.io.File[] files = changes.getArchivedPhotos(timelineUserId);
         if (files != null) java.util.Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
         AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity())
                 .setTitle(LocaleController.getString(R.string.ContactPhotoArchive));
@@ -181,11 +191,50 @@ public class ContactChangesActivity extends BaseFragment {
                 labels[i] = (user == null ? id : UserObject.getUserName(user)) + " · "
                         + LocaleController.formatDateAudio(files[i].lastModified() / 1000, false);
             }
-            builder.setItems(labels, (dialog, which) -> AndroidUtilities.openForView(
-                    files[which], files[which].getName(), "image/jpeg", getParentActivity(), getResourceProvider(), false));
+            builder.setItems(labels, (dialog, which) -> showPhotoComparison(files[which]));
         }
+        if (timelineUserId != 0) {
+            boolean excluded = ContactChanges.archiveExcluded(currentAccount).contains(String.valueOf(timelineUserId));
+            builder.setNeutralButton(LocaleController.getString(excluded ? R.string.ContactPhotoInclude : R.string.ContactPhotoExclude),
+                    (d, w) -> ContactChanges.setArchiveExcluded(currentAccount, timelineUserId, !excluded));
+        }
+        builder.setPositiveButton(LocaleController.getString(R.string.Delete), (d, w) -> showDialog(
+                new AlertDialog.Builder(getParentActivity()).setTitle(LocaleController.getString(R.string.ContactPhotoArchive))
+                        .setMessage(LocaleController.getString(R.string.ContactPhotoDeleteAsk))
+                        .setPositiveButton(LocaleController.getString(R.string.Delete), (confirm, button) -> changes.clearArchive(timelineUserId))
+                        .setNegativeButton(LocaleController.getString(R.string.Cancel), null).create()));
         builder.setNegativeButton(LocaleController.getString(R.string.Close), null);
         showDialog(builder.create());
+    }
+
+    private void showPhotoComparison(java.io.File archived) {
+        long userId = Long.parseLong(archived.getName().split("_")[0]);
+        TLRPC.User user = getMessagesController().getUser(userId);
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(getParentActivity());
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        for (int i = 0; i < 2; i++) {
+            TextView label = new TextView(getParentActivity());
+            label.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+            label.setGravity(Gravity.CENTER);
+            label.setText(LocaleController.getString(i == 0 ? R.string.ContactPhotoCurrent : R.string.ContactPhotoArchived));
+            layout.addView(label, new android.widget.LinearLayout.LayoutParams(-1, AndroidUtilities.dp(32)));
+            org.telegram.ui.Components.BackupImageView image = new org.telegram.ui.Components.BackupImageView(getParentActivity());
+            if (i == 0 && user != null && user.photo != null) {
+                image.setImage(org.telegram.messenger.ImageLocation.getForUser(currentAccount, user, org.telegram.messenger.ImageLocation.TYPE_BIG),
+                        "240_240", (android.graphics.drawable.Drawable) null, user);
+            } else if (i == 1) {
+                image.setImage(archived.getAbsolutePath(), "240_240", (android.graphics.drawable.Drawable) null);
+            }
+            layout.addView(image, new android.widget.LinearLayout.LayoutParams(-1, AndroidUtilities.dp(170)));
+        }
+        showDialog(new AlertDialog.Builder(getParentActivity()).setTitle(LocaleController.getString(R.string.ContactPhotoArchive))
+                .setView(layout).setPositiveButton(LocaleController.getString(R.string.Open), (d, w) -> AndroidUtilities.openForView(
+                        archived, archived.getName(), "image/jpeg", getParentActivity(), getResourceProvider(), false))
+                .setNeutralButton(LocaleController.getString(ContactChanges.archiveExcluded(currentAccount).contains(String.valueOf(userId))
+                                ? R.string.ContactPhotoInclude : R.string.ContactPhotoExclude),
+                        (d, w) -> ContactChanges.setArchiveExcluded(currentAccount, userId,
+                                !ContactChanges.archiveExcluded(currentAccount).contains(String.valueOf(userId))))
+                .setNegativeButton(LocaleController.getString(R.string.Close), null).create());
     }
 
     private class Adapter extends RecyclerListView.SelectionAdapter {
@@ -228,6 +277,7 @@ public class ContactChangesActivity extends BaseFragment {
                         .append('\n');
             }
             detail.append(LocaleController.formatDateAudio(e.time / 1000, false));
+            detail.append('\n').append(LocaleController.getString(R.string.ContactObservedLocally));
             ((TextDetailSettingsCell) holder.itemView).setTextAndValue(title, detail, position < events.size() - 1);
         }
 

@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="ContactPhotoArchiveInfo">Enabled for all contacts by default. The contact selector below also applies to the archive. Photos are saved only while accessible to this account. Defaults: 30 days, 128 MB and at most 500 images.</string>
+    <string name="ContactPhotoRetention">Photo retention</string>
+    <string name="ContactPhotoQuota">Photo storage quota</string>
+    <string name="ContactPhotoInclude">Include in photo archive</string>
+    <string name="ContactPhotoExclude">Exclude from photo archive</string>
+    <string name="ContactPhotoCurrent">Current photo, if visible</string>
+    <string name="ContactPhotoArchived">Archived version</string>
+    <string name="ContactObservedLocally">Observed locally from received Telegram profile data</string>
+    <string name="ContactPhotoDeleteAsk">Delete the archived photos shown in this scope? Telegram profile photos and other app files will remain available.</string>
     <string name="ContactChangeBio">changed bio</string>
     <string name="ContactPhotoArchive">Visible profile photo archive</string>
     <string name="ContactPhotoArchiveEmpty">Photos received while contact changes are enabled are kept here. Hidden and unseen deleted photos cannot be recovered. Retention: up to 500 photos or 128 MB per account.</string>

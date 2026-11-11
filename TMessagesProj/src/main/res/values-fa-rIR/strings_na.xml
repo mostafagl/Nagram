@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="ContactPhotoArchiveInfo">به صورت پیش فرض برای همه مخاطبین فعال است. انتخاب مخاطبین در پایین برای آرشیو هم اعمال میشود. فقط عکس های قابل دسترس برای همین حساب ذخیره میشوند. پیش فرض: ۳۰ روز، ۱۲۸ مگابایت و حداکثر ۵۰۰ عکس.</string>
+    <string name="ContactPhotoRetention">مدت نگهداری عکس</string>
+    <string name="ContactPhotoQuota">سهمیه فضای عکس ها</string>
+    <string name="ContactPhotoInclude">ثبت در آرشیو عکس</string>
+    <string name="ContactPhotoExclude">حذف از فهرست ثبت عکس</string>
+    <string name="ContactPhotoCurrent">عکس فعلی، در صورت قابل مشاهده بودن</string>
+    <string name="ContactPhotoArchived">نسخه آرشیو شده</string>
+    <string name="ContactObservedLocally">مشاهده محلی از اطلاعات پروفایل دریافت شده از تلگرام</string>
+    <string name="ContactPhotoDeleteAsk">عکس های آرشیو شده این بخش پاک شوند؟ عکس های پروفایل تلگرام و فایل های دیگر برنامه باقی میمانند.</string>
     <string name="ContactChangeBio">تغییر بیو</string>
     <string name="ContactPhotoArchive">آرشیو عکس های قابل مشاهده</string>
     <string name="ContactPhotoArchiveEmpty">عکس های دریافت شده هنگام فعال بودن گزارش مخاطبین اینجا ذخیره میشوند. عکس های مخفی یا حذف شده پیش از دریافت قابل بازیابی نیستند. سقف نگهداری هر حساب: ۵۰۰ عکس یا ۱۲۸ مگابایت.</string>

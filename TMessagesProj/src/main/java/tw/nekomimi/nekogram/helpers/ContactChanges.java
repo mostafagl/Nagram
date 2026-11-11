@@ -45,12 +45,14 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
     private static final int MAX_EVENTS = 1000;
 
     public static final class Event {
+        public int accountId;
         public long userId;
         public int type;
         public String oldValue;
         public String newValue;
         public long time;
         public boolean seen;
+        public String source = "received_contact_snapshot";
     }
 
     private static final class Snapshot {
@@ -115,13 +117,15 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
     private ArrayList<Event> events;
     private boolean scanQueued;
     private final java.util.ArrayDeque<TLRPC.User> photoQueue = new java.util.ArrayDeque<>();
-    private final java.util.HashSet<Long> queuedPhotos = new java.util.HashSet<>();
+    private final java.util.HashSet<String> queuedPhotos = new java.util.HashSet<>();
     private TLRPC.User photoUser;
     private String photoName;
     private java.io.File photoSource;
     private Runnable photoTimeout;
     private boolean started;
     private boolean photoBusy;
+    private volatile int archiveGeneration;
+    private final HashMap<String, Long> photoObserved = new HashMap<>();
 
     private ContactChanges(int account) {
         this.account = account;
@@ -147,6 +151,7 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
         NotificationCenter.getInstance(account).addObserver(c, NotificationCenter.userInfoDidLoad);
         NotificationCenter.getInstance(account).addObserver(c, NotificationCenter.fileLoaded);
         NotificationCenter.getInstance(account).addObserver(c, NotificationCenter.fileLoadFailed);
+        Utilities.globalQueue.postRunnable(c::cleanArchive);
         c.queueScan();
     }
 
@@ -175,6 +180,64 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
                 }
             }
         }
+    }
+
+    public static boolean isArchiveEnabled() {
+        return settings().getBoolean("archive_enabled", true);
+    }
+
+    public static void setArchiveEnabled(boolean enabled) {
+        settings().edit().putBoolean("archive_enabled", enabled).apply();
+        for (ContactChanges c : instances) if (c != null) {
+            c.cancelArchiveWork();
+            if (enabled) c.queueScan();
+        }
+    }
+
+    private synchronized void cancelArchiveWork() {
+        archiveGeneration++;
+        if (photoTimeout != null) AndroidUtilities.cancelRunOnUIThread(photoTimeout);
+        photoTimeout = null;
+        photoUser = null;
+        photoName = null;
+        photoSource = null;
+        photoBusy = false;
+        photoQueue.clear();
+        queuedPhotos.clear();
+        photoObserved.clear();
+    }
+
+    public static int archiveRetentionDays() { return settings().getInt("archive_days", 30); }
+    public static int archiveQuotaMb() { return settings().getInt("archive_mb", 128); }
+
+    public static java.util.Set<String> archiveExcluded(int account) {
+        return new java.util.HashSet<>(settings().getStringSet("archive_excluded_" + account, new java.util.HashSet<>()));
+    }
+
+    public static void setArchiveExcluded(int account, long userId, boolean excluded) {
+        java.util.Set<String> set = archiveExcluded(account);
+        if (excluded) set.add(String.valueOf(userId)); else set.remove(String.valueOf(userId));
+        settings().edit().putStringSet("archive_excluded_" + account, set).apply();
+        getInstance(account).queueScan();
+    }
+
+    public static void setArchiveLimits(int days, int quotaMb) {
+        settings().edit().putInt("archive_days", Math.max(1, Math.min(365, days)))
+                .putInt("archive_mb", Math.max(16, Math.min(1024, quotaMb))).apply();
+        for (ContactChanges c : instances) if (c != null) Utilities.globalQueue.postRunnable(c::cleanArchive);
+    }
+
+    public static void clearAccount(int account) {
+        ContactChanges c = getInstance(account);
+        c.cancelArchiveWork();
+        c.snapshots = new HashMap<>();
+        c.events = new ArrayList<>();
+        synchronized (c) { c.data().edit().clear().commit(); }
+        settings().edit().remove("selected_" + account).remove("archive_excluded_" + account).apply();
+        Utilities.globalQueue.postRunnable(() -> {
+            java.io.File[] files = c.archiveDirectory().listFiles();
+            if (files != null) for (java.io.File f : files) if (isArchiveFile(f)) f.delete();
+        });
     }
 
     /** Whether only the contacts picked in settings are watched (otherwise all contacts). */
@@ -220,7 +283,7 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
     }
 
     public static boolean unseenFirst() {
-        return settings().getBoolean("unseenFirst", true);
+        return settings().getBoolean("unseenFirst", false);
     }
 
     public static void setUnseenFirst(boolean value) {
@@ -249,12 +312,14 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
             for (int i = 0; i < list.length(); i++) {
                 final JSONObject o = list.getJSONObject(i);
                 final Event e = new Event();
+                e.accountId = account;
                 e.userId = o.optLong("u");
                 e.type = o.optInt("t");
                 e.oldValue = o.optString("o");
                 e.newValue = o.optString("n");
                 e.time = o.optLong("d");
                 e.seen = o.optBoolean("s");
+                e.source = o.optString("p", "received_contact_snapshot");
                 events.add(e);
             }
         } catch (Exception e) {
@@ -270,7 +335,7 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
             }
             final JSONArray list = new JSONArray();
             for (Event e : events) {
-                list.put(new JSONObject().put("u", e.userId).put("t", e.type).put("o", nz(e.oldValue)).put("n", nz(e.newValue)).put("d", e.time).put("s", e.seen));
+                list.put(new JSONObject().put("a", account).put("u", e.userId).put("t", e.type).put("o", nz(e.oldValue)).put("n", nz(e.newValue)).put("d", e.time).put("s", e.seen).put("p", e.source));
             }
             data().edit().putString("snapshots", snaps.toString()).putString("events", list.toString()).apply();
         } catch (Exception e) {
@@ -318,7 +383,7 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
     }
 
     private void scan() {
-        if (!isEnabled() || snapshots == null) {
+        if ((!isEnabled() && !isArchiveEnabled()) || snapshots == null || !UserConfig.getInstance(account).isClientActivated()) {
             return;
         }
         final MessagesController mc = MessagesController.getInstance(account);
@@ -395,16 +460,20 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
 
     /** Visible avatar versions only: never requests hidden or previously unseen deleted photos. */
     private void queuePhoto(TLRPC.User user) {
-        if (user.photo == null || user.photo.photo_id == 0 || photoQueue.size() >= 256
-                || queuedPhotos.contains(user.id)
+        final String version = user.id + "_" + (user.photo == null ? 0 : user.photo.photo_id);
+        if (!isArchiveEnabled() || user.photo == null || user.photo.photo_id == 0 || photoQueue.size() >= 256
+                || archiveExcluded(account).contains(String.valueOf(user.id))
+                || queuedPhotos.contains(version)
                 || data().getLong("archived_" + user.id, 0) == user.photo.photo_id
-                || System.currentTimeMillis() - data().getLong("photo_attempt_" + user.id, 0) < 600_000) return;
+                || (data().getLong("photo_attempt_id_" + user.id, 0) == user.photo.photo_id
+                    && System.currentTimeMillis() - data().getLong("photo_attempt_" + user.id, 0) < 600_000)) return;
         // Freeze the received version; Telegram may replace user.photo while a download is queued.
         TLRPC.TL_user copy = new TLRPC.TL_user();
         copy.id = user.id;
         copy.access_hash = user.access_hash;
         copy.photo = user.photo;
-        queuedPhotos.add(user.id);
+        queuedPhotos.add(version);
+        photoObserved.put(version, System.currentTimeMillis());
         photoQueue.add(copy);
     }
 
@@ -413,15 +482,30 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
     }
 
     public java.io.File[] getArchivedPhotos(long userId) {
-        java.io.File[] files = archiveDirectory().listFiles((dir, name) -> name.startsWith(userId + "_") && name.endsWith(".jpg"));
+        java.io.File[] files = archiveDirectory().listFiles(file -> isArchiveFile(file)
+                && file.getName().endsWith(".jpg") && (userId == 0 || file.getName().startsWith(userId + "_")));
         if (files == null) return new java.io.File[0];
         java.util.Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
         return files;
     }
 
+    public void clearArchive(long userId) {
+        cancelArchiveWork();
+        Utilities.globalQueue.postRunnable(() -> {
+            java.io.File[] files = archiveDirectory().listFiles();
+            SharedPreferences.Editor editor = data().edit();
+            if (files != null) for (java.io.File file : files) {
+                if (isArchiveFile(file) && (userId == 0 || file.getName().startsWith(userId + "_")) && file.delete()) {
+                    editor.remove("photo_meta_" + file.getName());
+                }
+            }
+            editor.apply();
+        });
+    }
+
     private void nextPhoto() {
         if (photoBusy) return;
-        if (!isEnabled()) {
+        if (!isArchiveEnabled() || !UserConfig.getInstance(account).isClientActivated()) {
             photoQueue.clear();
             queuedPhotos.clear();
             return;
@@ -429,7 +513,8 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
         photoUser = photoQueue.poll();
         if (photoUser == null) return;
         photoBusy = true;
-        data().edit().putLong("photo_attempt_" + photoUser.id, System.currentTimeMillis()).apply();
+        data().edit().putLong("photo_attempt_" + photoUser.id, System.currentTimeMillis())
+                .putLong("photo_attempt_id_" + photoUser.id, photoUser.photo.photo_id).apply();
         ImageLocation location = ImageLocation.getForUser(account, photoUser, ImageLocation.TYPE_BIG);
         if (location == null) {
             finishPhoto(false);
@@ -451,13 +536,19 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
         if (photoTimeout != null) AndroidUtilities.cancelRunOnUIThread(photoTimeout);
         final TLRPC.User user = photoUser;
         final java.io.File source = photoSource;
+        final int generation = archiveGeneration;
+        final String version = user.id + "_" + user.photo.photo_id;
+        final long observed = photoObserved.containsKey(version) ? photoObserved.get(version) : System.currentTimeMillis();
         photoUser = null;
         photoName = null;
         photoSource = null;
         photoTimeout = null;
         Utilities.globalQueue.postRunnable(() -> {
             boolean copied = false;
-            if (success && isEnabled() && (!onlySelected() || selectedRaw(account).contains(String.valueOf(user.id)))) {
+            if (success && generation == archiveGeneration && isArchiveEnabled()
+                    && UserConfig.getInstance(account).isClientActivated()
+                    && !archiveExcluded(account).contains(String.valueOf(user.id))
+                    && (!onlySelected() || selectedRaw(account).contains(String.valueOf(user.id)))) {
                 java.io.File dir = archiveDirectory();
                 java.io.File target = new java.io.File(dir, user.id + "_" + user.photo.photo_id + ".jpg");
                 java.io.File temp = new java.io.File(dir, target.getName() + ".tmp");
@@ -468,16 +559,17 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
                             if (!temp.renameTo(target)) throw new java.io.IOException("Avatar archive rename failed");
                         }
                         copied = true;
-                        java.io.File[] files = dir.listFiles((d, n) -> n.endsWith(".jpg"));
-                        if (files != null) {
-                            java.util.Arrays.sort(files, java.util.Comparator.comparingLong(java.io.File::lastModified));
-                            long total = 0;
-                            for (java.io.File f : files) total += f.length();
-                            for (int i = 0; i < files.length && (total > 128L * 1024 * 1024 || files.length - i > 500); i++) {
-                                long bytes = files[i].length();
-                                if (files[i].delete()) total -= bytes;
+                        JSONObject meta = new JSONObject().put("account", account).put("user", user.id)
+                                .put("photo", user.photo.photo_id).put("observed", observed)
+                                .put("downloaded", target.lastModified()).put("bytes", target.length());
+                        synchronized (this) {
+                            if (generation == archiveGeneration) {
+                                if (!data().contains("photo_meta_" + target.getName()))
+                                    data().edit().putString("photo_meta_" + target.getName(), meta.toString()).apply();
                             }
+                            else { target.delete(); copied = false; }
                         }
+                        cleanArchive();
                     }
                 } catch (Exception e) {
                     FileLog.e(e);
@@ -487,8 +579,10 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
             }
             final boolean archived = copied;
             AndroidUtilities.runOnUIThread(() -> {
+                if (generation != archiveGeneration) return;
                 if (archived) data().edit().putLong("archived_" + user.id, user.photo.photo_id).apply();
-                queuedPhotos.remove(user.id);
+                queuedPhotos.remove(version);
+                photoObserved.remove(version);
                 photoBusy = false;
                 nextPhoto();
                 if (!photoBusy) queueScan(); // Continue a large address book in bounded batches.
@@ -496,11 +590,48 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
         });
     }
 
+    private static boolean isArchiveFile(java.io.File file) {
+        return file.isFile() && file.getName().matches("[0-9]+_-?[0-9]+\\.jpg(\\.tmp)?");
+    }
+
+    /** Runs only on globalQueue; never touches FileLoader caches or other app media. */
+    private void cleanArchive() {
+        java.io.File dir = archiveDirectory();
+        java.io.File[] files = dir.listFiles(ContactChanges::isArchiveFile);
+        if (files == null) return;
+        java.util.Arrays.sort(files, java.util.Comparator.comparingLong(java.io.File::lastModified));
+        long total = 0;
+        int count = 0;
+        long oldest = System.currentTimeMillis() - archiveRetentionDays() * 86_400_000L;
+        for (java.io.File f : files) {
+            if (f.getName().endsWith(".tmp")) { f.delete(); continue; }
+            total += f.length();
+            count++;
+        }
+        SharedPreferences.Editor editor = data().edit();
+        for (java.io.File f : files) {
+            if (!f.getName().endsWith(".jpg")) continue;
+            long bytes = f.length();
+            if (f.lastModified() < oldest || total > archiveQuotaMb() * 1024L * 1024 || count > 500) {
+                if (f.delete()) {
+                    total -= bytes;
+                    count--;
+                    editor.remove("photo_meta_" + f.getName());
+                }
+            }
+        }
+        for (String key : data().getAll().keySet()) {
+            if (key.startsWith("photo_meta_") && !new java.io.File(dir, key.substring(11)).isFile()) editor.remove(key);
+        }
+        editor.apply();
+    }
+
     private void add(long userId, int type, String oldValue, String newValue, long time, int types) {
-        if ((types & type) == 0) {
+        if (!isEnabled() || (types & type) == 0) {
             return;
         }
         final Event e = new Event();
+        e.accountId = account;
         e.userId = userId;
         e.type = type;
         e.oldValue = oldValue;
