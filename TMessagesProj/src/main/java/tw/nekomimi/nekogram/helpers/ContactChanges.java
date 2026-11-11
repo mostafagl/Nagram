@@ -64,6 +64,12 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
         boolean statusKnown;
         String bio;
 
+        boolean sameAs(Snapshot other) {
+            return photoId == other.photoId && hidden == other.hidden && statusKnown == other.statusKnown
+                    && TextUtils.equals(nz(phone), nz(other.phone)) && TextUtils.equals(nz(username), nz(other.username))
+                    && TextUtils.equals(nz(name), nz(other.name)) && TextUtils.equals(bio, other.bio);
+        }
+
         String encode() {
             try {
                 return new JSONObject().put("p", photoId).put("t", nz(phone)).put("u", nz(username))
@@ -368,9 +374,9 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
     private static Snapshot snapshotOf(TLRPC.User user, Snapshot previous) {
         final Snapshot s = new Snapshot();
         s.photoId = user.photo != null && !(user.photo instanceof TLRPC.TL_userProfilePhotoEmpty) ? user.photo.photo_id : 0;
-        s.phone = user.phone;
-        s.username = UserObject.getPublicUsername(user);
-        s.name = ContactsController.formatName(user.first_name, user.last_name);
+        s.phone = nz(user.phone);
+        s.username = nz(UserObject.getPublicUsername(user));
+        s.name = nz(ContactsController.formatName(user.first_name, user.last_name));
         s.bio = previous == null ? null : previous.bio;
         if (user.status != null) {
             s.statusKnown = true;
@@ -393,6 +399,7 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
         }
         final int types = getTypes();
         final java.util.Set<String> only = onlySelected() ? selectedRaw(account) : null;
+        final java.util.Set<String> excludedPhotos = archiveExcluded(account);
         boolean changed = false;
         final long now = System.currentTimeMillis();
         for (TLRPC.TL_contact contact : contacts) {
@@ -404,7 +411,7 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
                 snapshots.remove(user.id);
                 continue;
             }
-            queuePhoto(user);
+            queuePhoto(user, excludedPhotos);
             final Snapshot old = snapshots.get(user.id);
             final Snapshot now_ = snapshotOf(user, old);
             TLRPC.UserFull full = mc.getUserFull(user.id);
@@ -414,7 +421,7 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
                 changed = true;
                 continue;
             }
-            if (old.encode().equals(now_.encode())) {
+            if (old.sameAs(now_)) {
                 continue;
             }
             changed = true;
@@ -459,10 +466,10 @@ public final class ContactChanges implements NotificationCenter.NotificationCent
     }
 
     /** Visible avatar versions only: never requests hidden or previously unseen deleted photos. */
-    private void queuePhoto(TLRPC.User user) {
+    private void queuePhoto(TLRPC.User user, java.util.Set<String> excluded) {
         final String version = user.id + "_" + (user.photo == null ? 0 : user.photo.photo_id);
         if (!isArchiveEnabled() || user.photo == null || user.photo.photo_id == 0 || photoQueue.size() >= 256
-                || archiveExcluded(account).contains(String.valueOf(user.id))
+                || excluded.contains(String.valueOf(user.id))
                 || queuedPhotos.contains(version)
                 || data().getLong("archived_" + user.id, 0) == user.photo.photo_id
                 || (data().getLong("photo_attempt_id_" + user.id, 0) == user.photo.photo_id

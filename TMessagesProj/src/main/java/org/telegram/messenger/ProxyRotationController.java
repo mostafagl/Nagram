@@ -27,6 +27,7 @@ public class ProxyRotationController implements NotificationCenter.NotificationC
     private SharedConfig.ProxyInfo failedProxy, observedProxy;
     private int observedAccount = -1;
     private boolean initialized;
+    private boolean launchingChecks;
     private final Runnable batchTimeout = () -> {
         if (!this.isCurrentlyChecking) return;
         invalidateBatch();
@@ -134,6 +135,7 @@ public class ProxyRotationController implements NotificationCenter.NotificationC
             return ra != rb ? Integer.compare(ra, rb) : Long.compare(healthOf(a).score(a.ping), healthOf(b).score(b.ping));
         });
         int started = 0;
+        launchingChecks = true;
         for (int i = 0; i < candidates.size() && started < MAX_CHECKS; i++) {
             SharedConfig.ProxyInfo proxyInfo = candidates.get(i);
             if (proxyInfo == SharedConfig.currentProxy || proxyInfo.checking || now < healthOf(proxyInfo).cooldownUntil
@@ -160,10 +162,14 @@ public class ProxyRotationController implements NotificationCenter.NotificationC
                 NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxyCheckDone, proxyInfo);
             }));
         }
+        launchingChecks = false;
 
         if (!startedCheck) {
             isCurrentlyChecking = false;
             switchToAvailable();
+        } else if (!batch.isEmpty()) {
+            // Some transports can complete synchronously while the batch is still being built.
+            didReceivedNotification(NotificationCenter.proxyCheckDone, currentAccount, batch.iterator().next());
         }
     };
 
@@ -277,6 +283,7 @@ public class ProxyRotationController implements NotificationCenter.NotificationC
     @Override
     public void didReceivedNotification(int id, int account, Object... args) {
         if (id == NotificationCenter.proxyCheckDone) {
+            if (launchingChecks) return;
             if (args.length == 0 || !batch.contains(args[0])) return;
             if (!SharedConfig.isProxyEnabled() || !SharedConfig.proxyRotationEnabled || SharedConfig.proxyList.size() <= 1 || !isCurrentlyChecking) {
                 return;

@@ -65,3 +65,18 @@ Commit: `9f359b0df004877473aede1b41aac6fbc80afed6`; CI: https://github.com/mosta
 - Start a replacement V2Ray core before retiring the previous core. Rotation validates core startup before changing persisted selection; failed startup leaves the prior transport/selection intact. A later Telegram connectivity failure returns to bounded candidate selection rather than assuming a successful core start proves connectivity.
 - Explain automatic switch reason in the existing proxy screen; native status text is no longer logged because it may contain server details. Existing subscription handling is unchanged.
 - Essential regression tests cover stability versus a single fast ping, latency smoothing, failure cooldown and actual connection recovery. Android/Xray/VPN/background handover requires device integration testing; no claim of zero packet loss during a successful switch.
+- Final review also guards synchronous proxy-test completions while a batch is being assembled. Contact scans compare snapshot fields directly and reuse the per-scan exclusion set instead of serializing JSON/copying settings for every unchanged contact.
+
+## Published development commits
+
+| Area | Commit |
+| --- | --- |
+| Ghost transport/storage guards | `5c7801abb743cc437089f09bbc538f069eada7b5` |
+| Initial photo retention and bio timeline | `9f359b0df004877473aede1b41aac6fbc80afed6` |
+| Popup/deferred ghost guard | `f167bc63a3da6e677ee58014cd474fbf92ea5b86` |
+| Development build/test pipeline | `90480f15baadb2edb53dc8eef749796995fd6bf3` |
+| Complete archive controls/provenance | `82a5176c9281ce9cb775247c09de767abe5989b1` |
+| Activity and separate receipt view | `9b2cd82027bf3ed1deb13948d67b32ca3c579b62` |
+| Smart rotation and transport handover | `7fe5b11e6962cc622861fcdea682cbfdd7e843f7` |
+
+Activity CI: https://github.com/mostafagl/Nagram/actions/runs/42930322551. Smart-proxy CI: https://github.com/mostafagl/Nagram/actions/runs/42930916018. Final results and APK artifact will be recorded after the current validation completes.
