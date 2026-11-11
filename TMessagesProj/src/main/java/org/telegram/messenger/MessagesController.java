@@ -202,7 +202,6 @@ public class MessagesController extends BaseController implements NotificationCe
     /** Telegram's short "online" for users who hide it, also kept as their approximate last seen (Parvagram). */
     private void parvaOnlinePrivacyPut(long userId, int date) {
         onlinePrivacy.put(userId, date);
-        tw.nekomimi.nekogram.helpers.LocalLastSeen.record(currentAccount, userId, date);
     }
     private LongSparseIntArray pendingUnreadCounter = new LongSparseIntArray();
     private int lastPrintingStringCount;
@@ -18369,6 +18368,10 @@ public class MessagesController extends BaseController implements NotificationCe
                 parvaOnlinePrivacyPut(user.id, updates.date);
                 updateStatus = true;
             }
+            if (!updates.out && user != null && Math.abs(getConnectionsManager().getCurrentTime() - updates.date) < 30) {
+                tw.nekomimi.nekogram.helpers.LocalLastSeen.record(currentAccount, user.id, updates.date,
+                        tw.nekomimi.nekogram.helpers.LocalLastSeen.MESSAGE);
+            }
 
             if (missingData) {
                 needGetDiff = true;
@@ -18988,6 +18991,10 @@ public class MessagesController extends BaseController implements NotificationCe
                                 parvaOnlinePrivacyPut(userId, message.date);
                                 interfaceUpdateMask |= UPDATE_MASK_STATUS;
                             }
+                            if (!message.out && a == 1 && Math.abs(getConnectionsManager().getCurrentTime() - message.date) < 30) {
+                                tw.nekomimi.nekogram.helpers.LocalLastSeen.record(currentAccount, userId, message.date,
+                                        tw.nekomimi.nekogram.helpers.LocalLastSeen.MESSAGE);
+                            }
                         }
                     }
                 }
@@ -19232,6 +19239,10 @@ public class MessagesController extends BaseController implements NotificationCe
                     value = getMessagesStorage().getDialogReadMax(true, dialogId);
                 }
                 dialogs_read_outbox_max.put(dialogId, Math.max(value, update.max_id));
+                if (dialogId > 0) {
+                    tw.nekomimi.nekogram.helpers.LocalLastSeen.recordRead(currentAccount, dialogId, value, update.max_id,
+                            getConnectionsManager().getCurrentTime());
+                }
             } else if (baseUpdate instanceof TL_update.TL_updateDeleteMessages) {
                 TL_update.TL_updateDeleteMessages update = (TL_update.TL_updateDeleteMessages) baseUpdate;
                 if (deletedMessages == null) {
@@ -19410,6 +19421,10 @@ public class MessagesController extends BaseController implements NotificationCe
                     }
                     if (Math.abs(getConnectionsManager().getCurrentTime() - date) < 30) {
                         parvaOnlinePrivacyPut(userId, date);
+                        if (!(action instanceof TLRPC.TL_sendMessageCancelAction)) {
+                            tw.nekomimi.nekogram.helpers.LocalLastSeen.record(currentAccount, userId, date,
+                                    tw.nekomimi.nekogram.helpers.LocalLastSeen.TYPING);
+                        }
                     }
                 }
             } else if (baseUpdate instanceof TL_update.TL_updateChatParticipants) {
@@ -19573,6 +19588,8 @@ public class MessagesController extends BaseController implements NotificationCe
                     }
                     if (Math.abs(getConnectionsManager().getCurrentTime() - date) < 30) {
                         parvaOnlinePrivacyPut(encryptedChat.user_id, date);
+                        tw.nekomimi.nekogram.helpers.LocalLastSeen.record(currentAccount, encryptedChat.user_id, date,
+                                tw.nekomimi.nekogram.helpers.LocalLastSeen.TYPING);
                     }
                 }
             } else if (baseUpdate instanceof TL_update.TL_updateEncryptedMessagesRead) {
@@ -20341,6 +20358,14 @@ public class MessagesController extends BaseController implements NotificationCe
                     } else if (baseUpdate instanceof TL_update.TL_updateUserStatus) {
                         TL_update.TL_updateUserStatus update = (TL_update.TL_updateUserStatus) baseUpdate;
                         TLRPC.User currentUser = getUser(update.user_id);
+
+                        if (update.status instanceof TLRPC.TL_userStatusOnline) {
+                            tw.nekomimi.nekogram.helpers.LocalLastSeen.record(currentAccount, update.user_id,
+                                    getConnectionsManager().getCurrentTime(), tw.nekomimi.nekogram.helpers.LocalLastSeen.ONLINE);
+                        } else if (update.status instanceof TLRPC.TL_userStatusOffline && update.status.expires > 0) {
+                            tw.nekomimi.nekogram.helpers.LocalLastSeen.record(currentAccount, update.user_id,
+                                    update.status.expires, tw.nekomimi.nekogram.helpers.LocalLastSeen.OFFLINE);
+                        }
 
                         if (update.status instanceof TLRPC.TL_userStatusRecently) {
                             update.status.expires = -100;

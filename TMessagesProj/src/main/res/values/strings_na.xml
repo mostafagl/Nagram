@@ -9,6 +9,16 @@
     <string name="ContactPhotoArchived">Archived version</string>
     <string name="ContactObservedLocally">Observed locally from received Telegram profile data</string>
     <string name="ContactPhotoDeleteAsk">Delete the archived photos shown in this scope? Telegram profile photos and other app files will remain available.</string>
+    <string name="ObservedActivityTitle">Observed activity</string>
+    <string name="OutgoingReadHistory">Outgoing read receipts</string>
+    <string name="ObservedActivityNotice">Only events received by this device are recorded while local last seen is enabled. Up to 500 events per account are retained. Read receipt times are observation times, not exact reading times. Profile visitors and silent chat entry cannot be detected.</string>
+    <string name="ActivityMessage">received message</string>
+    <string name="ActivityTyping">typing or sending activity</string>
+    <string name="ActivityRead">outgoing read watermark received</string>
+    <string name="ActivityOnline">online status received</string>
+    <string name="ActivityOffline">last online time received</string>
+    <string name="ActivityObservedAt">Observed on this device:</string>
+    <string name="ActivityReadRange">Outgoing messages in this dialog with IDs %1$d through %2$d are covered by this cumulative receipt. Exact reading times are unavailable.</string>
     <string name="ContactChangeBio">changed bio</string>
     <string name="ContactPhotoArchive">Visible profile photo archive</string>
     <string name="ContactPhotoArchiveEmpty">Photos received while contact changes are enabled are kept here. Hidden and unseen deleted photos cannot be recovered. Retention: up to 500 photos or 128 MB per account.</string>

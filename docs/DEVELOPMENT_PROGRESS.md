@@ -20,6 +20,7 @@ Commit: `5c7801abb743cc437089f09bbc538f069eada7b5`.
 - Added regression tests for permit exhaustion, non-consuming checks, invalid counts and unlimited permits.
 - Local Gradle attempt: blocked before configuration by `Network is unreachable` downloading Gradle 8.13. No local Android build claimed.
 - CI run: https://github.com/mostafagl/Nagram/actions/runs/42927220112 (pending at stage-2 implementation).
+- CI result: `assembleRelease` PASSED (14m 47s). The follow-on unit-test task failed before running tests because the test manifest lacked the main manifest override for MLKit minimum SDK 24. Added the same override to `src/test/AndroidManifest.xml`; app minimum SDK remains 23. Run 42928869271 confirmed that same test-infrastructure failure, not a source compilation failure.
 - Required device test: sender-side listened indicator for voice/round video, preview, autoplay, secret chats, timed media and explicit read actions, with ghost toggles before/during playback.
 - Extended audit found popup playback directly clearing the local unread flag; guarded that path too. Deferred timed-media callbacks recheck policy when executed, so enabling ghost mode after opening a viewer is respected.
 - Local isolated Java check PASSED against the actual `AyuGhostUtils` source (Android/Telegram dependencies stubbed): blocked/default policy, non-consuming UI checks, one-shot consumption, zero/unlimited counts, normal mode, and concurrent one-shot consumption from 20 threads. This is policy verification, not an Android integration or sender-side test.
@@ -27,6 +28,8 @@ Commit: `5c7801abb743cc437089f09bbc538f069eada7b5`.
 - CI now runs the targeted unit tests before APK packaging for faster feedback. Only this development branch explicitly disables R8/resource shrinking; ordinary release defaults stay optimized. Development APKs retain the existing variant and signing verification and are uploaded as private workflow artifacts, not published as releases.
 
 ## Stage 2: profile timeline and received-photo archive
+
+Commit: `9f359b0df004877473aede1b41aac6fbc80afed6`; CI: https://github.com/mostafagl/Nagram/actions/runs/42927716520.
 
 - Extend `ContactChanges`; no parallel observer, timeline store or download worker.
 - Preserve legacy snapshots while migrating to JSON (profile text can contain the old separator).
@@ -42,3 +45,13 @@ Commit: `5c7801abb743cc437089f09bbc538f069eada7b5`.
 - Local isolated test PASSED for the actual extracted Snapshot implementation: legacy/JSON migration, Persian/control-character/newline integrity, unknown/empty bio distinction and malformed input. English/Persian resource XML parsing and diff whitespace checks passed. Android integration remains subject to CI/device verification.
 - Local isolated archive-cleanup test PASSED using the actual extracted cleanup implementation: expired-photo deletion, oldest-first quota eviction, partial/orphan cleanup and unrelated-file preservation. Preferences were stubbed; this is not an Android/FileLoader integration test.
 - Retrying a failed photo version is bounded by cooldown; a genuinely new photo version bypasses that old-version cooldown. Concurrent queued versions are deduplicated by user/photo identity rather than user alone.
+
+## Stage 3: observed activity and outgoing read watermarks
+
+- Extend `LocalLastSeen` with one bounded 500-event history per account and explicit event provenance. Keep existing latest timestamps; late events cannot move them backwards.
+- Record received message, non-cancel typing and Telegram-provided online/offline events. Disabling local last seen stops new collection. No profile visit/chat-entry inference.
+- Store cumulative private-dialog read watermarks with the newly covered ID range and device observation time. These do not provide exact per-message reading times; groups and secret-chat per-message receipts are not invented.
+- Reuse the contact timeline screen for global/per-person activity history and deletion. Retention, timing limits and provenance are disclosed in English/Persian UI.
+- Regression tests cover account separation, late events, disabled collection, read-range boundaries, regressive/duplicate watermarks and bounded retention.
+- Local build/test remains blocked before project configuration by the unavailable direct Gradle download. CI build/test queued on commit; sender/account activity and sync replay still require an authenticated device test.
+- Activity and read-receipt history have separate views and scoped deletion. Account removal clears both persisted history and cached timestamps. Regression selection includes the existing three targeted test classes; no repeated broad test expansion.

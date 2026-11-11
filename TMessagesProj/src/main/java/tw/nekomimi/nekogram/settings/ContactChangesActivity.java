@@ -31,6 +31,7 @@ import org.telegram.ui.ProfileActivity;
 import java.util.ArrayList;
 
 import tw.nekomimi.nekogram.helpers.ContactChanges;
+import tw.nekomimi.nekogram.helpers.LocalLastSeen;
 
 /** The contact changes log; tap opens the contact, long press removes an entry. */
 public class ContactChangesActivity extends BaseFragment {
@@ -40,6 +41,9 @@ public class ContactChangesActivity extends BaseFragment {
     private TextView emptyView;
     private long timelineUserId;
     private int displayTypes = ContactChanges.TYPES_ALL;
+    private boolean activityMode;
+    private boolean receiptsMode;
+    private ArrayList<LocalLastSeen.Event> activityEvents = new ArrayList<>();
 
     public static int typeName(int type) {
         switch (type) {
@@ -71,6 +75,7 @@ public class ContactChangesActivity extends BaseFragment {
         actionBar.createMenu().addItem(2, R.drawable.ic_ab_back);
         actionBar.createMenu().addItem(3, R.drawable.msg_photos);
         actionBar.createMenu().addItem(5, R.drawable.msg_search);
+        actionBar.createMenu().addItem(4, R.drawable.msg_info);
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
@@ -82,6 +87,7 @@ public class ContactChangesActivity extends BaseFragment {
                 } else if (id == 3) {
                     showArchive();
                 } else if (id == 5) {
+                    if (activityMode) return;
                     CharSequence[] labels = new CharSequence[ContactChanges.TYPES.length + 1];
                     labels[0] = LocaleController.getString(R.string.ContactChangesTitle);
                     for (int i = 0; i < ContactChanges.TYPES.length; i++) labels[i + 1] = LocaleController.getString(typeName(ContactChanges.TYPES[i]));
@@ -90,12 +96,23 @@ public class ContactChangesActivity extends BaseFragment {
                                 displayTypes = which == 0 ? ContactChanges.TYPES_ALL : ContactChanges.TYPES[which - 1];
                                 reload();
                             }).create());
+                } else if (id == 4) {
+                    showDialog(new AlertDialog.Builder(getParentActivity())
+                            .setTitle(LocaleController.getString(R.string.ObservedActivityTitle))
+                            .setItems(new CharSequence[]{LocaleController.getString(R.string.ContactChangesTitle),
+                                    LocaleController.getString(R.string.ObservedActivityTitle),
+                                    LocaleController.getString(R.string.OutgoingReadHistory)}, (d, which) -> {
+                                activityMode = which != 0;
+                                receiptsMode = which == 2;
+                                reload();
+                            }).create());
                 } else if (id == 1 && getParentActivity() != null) {
                     showDialog(new AlertDialog.Builder(getParentActivity())
                             .setTitle(LocaleController.getString(R.string.ContactChangesTitle))
                             .setMessage(LocaleController.getString(R.string.ContactChangesClearAsk))
                             .setPositiveButton(LocaleController.getString(R.string.Delete), (d, w) -> {
-                                ContactChanges.getInstance(currentAccount).clear();
+                                if (activityMode) LocalLastSeen.clearHistory(currentAccount, timelineUserId, receiptsMode);
+                                else ContactChanges.getInstance(currentAccount).clear();
                                 reload();
                             })
                             .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
@@ -112,8 +129,8 @@ public class ContactChangesActivity extends BaseFragment {
         listView.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
         listView.setAdapter(new Adapter(context));
         listView.setOnItemClickListener((view, position) -> {
-            if (position >= 0 && position < events.size()) {
-                final long userId = events.get(position).userId;
+            if (position >= 0 && position < (activityMode ? activityEvents.size() : events.size())) {
+                final long userId = activityMode ? activityEvents.get(position).userId : events.get(position).userId;
                 if (timelineUserId == 0) {
                     // Reuse the existing change events instead of introducing a parallel timeline store.
                     timelineUserId = userId;
@@ -126,6 +143,7 @@ public class ContactChangesActivity extends BaseFragment {
             }
         });
         listView.setOnItemLongClickListener((view, position) -> {
+            if (activityMode) return false;
             if (position < 0 || position >= events.size()) {
                 return false;
             }
@@ -155,13 +173,16 @@ public class ContactChangesActivity extends BaseFragment {
     }
 
     private void reload() {
+        activityEvents = LocalLastSeen.getHistory(currentAccount, timelineUserId);
+        activityEvents.removeIf(event -> (event.source == LocalLastSeen.READ) != receiptsMode);
         events = timelineUserId == 0
                 ? ContactChanges.getInstance(currentAccount).getEvents()
                 : ContactChanges.getInstance(currentAccount).getEventsForContact(timelineUserId);
         events.removeIf(event -> (event.type & displayTypes) == 0);
         if (actionBar != null) {
             if (timelineUserId == 0) {
-                actionBar.setTitle(LocaleController.getString(R.string.ContactChangesTitle));
+                actionBar.setTitle(LocaleController.getString(activityMode
+                        ? (receiptsMode ? R.string.OutgoingReadHistory : R.string.ObservedActivityTitle) : R.string.ContactChangesTitle));
             } else {
                 final TLRPC.User user = getMessagesController().getUser(timelineUserId);
                 actionBar.setTitle(user == null ? String.valueOf(timelineUserId) : UserObject.getUserName(user));
@@ -171,7 +192,8 @@ public class ContactChangesActivity extends BaseFragment {
             listView.getAdapter().notifyDataSetChanged();
         }
         if (emptyView != null) {
-            emptyView.setVisibility(events.isEmpty() ? View.VISIBLE : View.GONE);
+            emptyView.setText(LocaleController.getString(activityMode ? R.string.ObservedActivityNotice : R.string.ContactChangesEmpty));
+            emptyView.setVisibility((activityMode ? activityEvents.isEmpty() : events.isEmpty()) ? View.VISIBLE : View.GONE);
         }
     }
 
@@ -260,6 +282,31 @@ public class ContactChangesActivity extends BaseFragment {
 
         @Override
         public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+            if (activityMode) {
+                LocalLastSeen.Event e = activityEvents.get(position);
+                TLRPC.User user = getMessagesController().getUser(e.userId);
+                String name = user == null ? String.valueOf(e.userId) : UserObject.getUserName(user);
+                int label;
+                switch (e.source) {
+                    case LocalLastSeen.MESSAGE: label = R.string.ActivityMessage; break;
+                    case LocalLastSeen.TYPING: label = R.string.ActivityTyping; break;
+                    case LocalLastSeen.READ: label = R.string.ActivityRead; break;
+                    case LocalLastSeen.ONLINE: label = R.string.ActivityOnline; break;
+                    case LocalLastSeen.OFFLINE: label = R.string.ActivityOffline; break;
+                    default: label = R.string.ObservedActivityTitle;
+                }
+                String detail = LocaleController.formatDateAudio(e.date, false);
+                detail += "\n" + LocaleController.getString(R.string.ActivityObservedAt) + " "
+                        + LocaleController.formatDateAudio(e.observedAt / 1000, false);
+                if (e.source == LocalLastSeen.READ) {
+                    detail = LocaleController.formatString(R.string.ActivityReadRange, e.fromMessageId, e.maxMessageId)
+                            + "\n" + LocaleController.getString(R.string.ActivityObservedAt) + " "
+                            + LocaleController.formatDateAudio(e.observedAt / 1000, false);
+                }
+                ((TextDetailSettingsCell) holder.itemView).setTextAndValue(name + " · " + LocaleController.getString(label),
+                        detail, position < activityEvents.size() - 1);
+                return;
+            }
             final ContactChanges.Event e = events.get(position);
             final TLRPC.User user = getMessagesController().getUser(e.userId);
             final String name = user != null ? UserObject.getUserName(user) : String.valueOf(e.userId);
@@ -283,7 +330,7 @@ public class ContactChangesActivity extends BaseFragment {
 
         @Override
         public int getItemCount() {
-            return events.size();
+            return activityMode ? activityEvents.size() : events.size();
         }
     }
 }
