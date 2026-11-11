@@ -18369,8 +18369,6 @@ public class MessagesController extends BaseController implements NotificationCe
                 parvaOnlinePrivacyPut(user.id, updates.date);
                 updateStatus = true;
             }
-            if (!updates.out && user != null && Math.abs(getConnectionsManager().getCurrentTime() - updates.date) < 30) {
-            }
 
             if (missingData) {
                 needGetDiff = true;
@@ -18989,8 +18987,6 @@ public class MessagesController extends BaseController implements NotificationCe
                             if (!message.out && a == 1 && user.status != null && user.status.expires <= 0 && Math.abs(getConnectionsManager().getCurrentTime() - message.date) < 30) {
                                 parvaOnlinePrivacyPut(userId, message.date);
                                 interfaceUpdateMask |= UPDATE_MASK_STATUS;
-                            }
-                            if (!message.out && a == 1 && Math.abs(getConnectionsManager().getCurrentTime() - message.date) < 30) {
                             }
                         }
                     }

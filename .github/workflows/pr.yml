@@ -21,6 +21,10 @@ on:
         required: false
         default: false
 
+concurrency:
+  group: parvagram-build-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   publish:
     name: Publish a build as the latest release

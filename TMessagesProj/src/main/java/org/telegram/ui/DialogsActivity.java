@@ -8712,7 +8712,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 getMessagesStorage().readAllDialogs(1);
             } else if (which == 1 && viewPages != null) {
                 for (int a = 0; a < viewPages.length; a++) {
-                    if (viewPages[a].dialogsType != 0 || viewPages[a].getVisibility() != View.VISIBLE) {
+                    if (!supportsArchivePull(viewPages[a].dialogsType) || viewPages[a].getVisibility() != View.VISIBLE) {
                         continue;
                     }
                     DialogCell dialogCell = findArchiveDialogCell(viewPages[a]);

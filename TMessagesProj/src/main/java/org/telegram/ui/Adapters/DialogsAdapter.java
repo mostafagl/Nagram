@@ -1465,7 +1465,8 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
 
         protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
             int size = itemInternals.size();
-            boolean hasArchive = folderId == 0 && dialogsType == 0 && MessagesController.getInstance(currentAccount).dialogs_dict.get(DialogObject.makeFolderDialogId(1)) != null;
+            ArrayList<TLRPC.Dialog> dialogs = parentFragment.getDialogsArray(currentAccount, dialogsType, folderId, dialogsListFrozen);
+            boolean hasArchive = folderId == 0 && !dialogs.isEmpty() && DialogObject.isFolderDialogId(dialogs.get(0).id);
             View parent = (View) getParent();
             int height;
             int blurOffset = 0;
