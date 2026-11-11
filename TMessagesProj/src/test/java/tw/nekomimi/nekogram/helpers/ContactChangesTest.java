@@ -13,7 +13,7 @@ import java.io.File;
 import java.io.RandomAccessFile;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(application = android.app.Application.class)
+@Config(application = android.app.Application.class, sdk = 28)
 public class ContactChangesTest {
     @Test public void cleanupHonorsRetentionQuotaAndArchiveFileBoundary() throws Exception {
         Context context = ApplicationProvider.getApplicationContext();

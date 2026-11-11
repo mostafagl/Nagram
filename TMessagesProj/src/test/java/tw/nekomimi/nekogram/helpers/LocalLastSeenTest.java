@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.Assert.*;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(application = android.app.Application.class)
+@Config(application = android.app.Application.class, sdk = 28)
 public class LocalLastSeenTest {
     @Before public void reset() throws Exception {
         Context context = ApplicationProvider.getApplicationContext();

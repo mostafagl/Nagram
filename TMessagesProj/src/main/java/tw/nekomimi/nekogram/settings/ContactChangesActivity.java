@@ -45,6 +45,13 @@ public class ContactChangesActivity extends BaseFragment {
     private boolean receiptsMode;
     private ArrayList<LocalLastSeen.Event> activityEvents = new ArrayList<>();
 
+    public static ContactChangesActivity forActivity(boolean receipts) {
+        ContactChangesActivity activity = new ContactChangesActivity();
+        activity.activityMode = true;
+        activity.receiptsMode = receipts;
+        return activity;
+    }
+
     public static int typeName(int type) {
         switch (type) {
             case ContactChanges.TYPE_PHOTO:
@@ -71,11 +78,12 @@ public class ContactChangesActivity extends BaseFragment {
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(true);
         actionBar.setTitle(LocaleController.getString(R.string.ContactChangesTitle));
-        actionBar.createMenu().addItem(1, R.drawable.msg_delete);
-        actionBar.createMenu().addItem(2, R.drawable.ic_ab_back);
-        actionBar.createMenu().addItem(3, R.drawable.msg_photos);
-        actionBar.createMenu().addItem(5, R.drawable.msg_search);
-        actionBar.createMenu().addItem(4, R.drawable.msg_info);
+        org.telegram.ui.ActionBar.ActionBarMenuItem actions = actionBar.createMenu().addItem(0, R.drawable.ic_ab_other);
+        actions.addSubItem(4, R.drawable.msg_info, LocaleController.getString(R.string.ContactTimelineView));
+        actions.addSubItem(2, R.drawable.ic_ab_back, LocaleController.getString(R.string.ContactChangesTitle));
+        actions.addSubItem(3, R.drawable.msg_photos, LocaleController.getString(R.string.ContactPhotoArchive));
+        actions.addSubItem(5, R.drawable.msg_search, LocaleController.getString(R.string.ContactTimelineFilter));
+        actions.addSubItem(1, R.drawable.msg_delete, LocaleController.getString(R.string.Delete));
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
@@ -136,6 +144,15 @@ public class ContactChangesActivity extends BaseFragment {
                     timelineUserId = userId;
                     reload();
                 } else {
+                    ContactChanges.Event event = activityMode ? null : events.get(position);
+                    if (event != null && (event.type == ContactChanges.TYPE_PHOTO || event.type == ContactChanges.TYPE_PHOTO_REMOVED)) {
+                        try {
+                            long photoId = Long.parseLong(event.type == ContactChanges.TYPE_PHOTO_REMOVED ? event.oldValue : event.newValue);
+                            java.io.File file = new java.io.File(ContactChanges.getInstance(currentAccount).archiveDirectory(), userId + "_" + photoId + ".jpg");
+                            if (file.isFile()) showPhotoComparison(file); else showArchive();
+                        } catch (Exception ignored) { showArchive(); }
+                        return;
+                    }
                     final Bundle args = new Bundle();
                     args.putLong("user_id", userId);
                     presentFragment(new ProfileActivity(args));
@@ -316,7 +333,8 @@ public class ContactChangesActivity extends BaseFragment {
             }
             title.append(name).append(" · ").append(LocaleController.getString(typeName(e.type)));
             final StringBuilder detail = new StringBuilder();
-            if (!TextUtils.isEmpty(e.oldValue) || !TextUtils.isEmpty(e.newValue)) {
+            if (e.type != ContactChanges.TYPE_PHOTO && e.type != ContactChanges.TYPE_PHOTO_REMOVED
+                    && (!TextUtils.isEmpty(e.oldValue) || !TextUtils.isEmpty(e.newValue))) {
                 final String prefix = e.type == ContactChanges.TYPE_USERNAME ? "@" : e.type == ContactChanges.TYPE_PHONE ? "+" : "";
                 detail.append(TextUtils.isEmpty(e.oldValue) ? "—" : prefix + e.oldValue)
                         .append("  →  ")

@@ -80,3 +80,6 @@ Commit: `9f359b0df004877473aede1b41aac6fbc80afed6`; CI: https://github.com/mosta
 | Smart rotation and transport handover | `7fe5b11e6962cc622861fcdea682cbfdd7e843f7` |
 
 Activity CI: https://github.com/mostafagl/Nagram/actions/runs/42930322551. Smart-proxy CI: https://github.com/mostafagl/Nagram/actions/runs/42930916018. Final results and APK artifact will be recorded after the current validation completes.
+
+- Activity build compiled successfully and passed the three ghost policy tests; Robolectric rejected the default target SDK before executing the two Android-context test classes. Those preference/file tests now explicitly use SDK 28 (within the existing supported application range). App compile/target/min SDKs are unchanged.
+- Final UI review moved timeline actions into a labelled overflow menu, added direct activity/receipt settings entries, and replaced raw photo-ID display with archived/current image comparison.
