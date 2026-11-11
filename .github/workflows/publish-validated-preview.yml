@@ -11,7 +11,7 @@ permissions:
   actions: write
 concurrency:
   group: publish-validated-release
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   publish:
     runs-on: ubuntu-latest

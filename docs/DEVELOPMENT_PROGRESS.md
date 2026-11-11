@@ -178,3 +178,5 @@ Local validation: Java syntax parse and git diff --check passed. Gradle unit-tes
 Real-device checks required: authenticated filtered-tab archive pull (short/long lists, RTL, cancel, tab switches), proxy toolbar actions on a real subscription/VPN, launcher migration on OEM launchers, and existing ghost playback with a second account. No fabricated presence/profile-view detection is included. User explicitly authorized an ordinary Release, not a pre-release; no merge is authorized.
 
 CI orchestration correction: a publishing-only commit initially retriggered the PR build and cancelled its predecessor under the new concurrency policy. No APK was published from that cancelled run. The publishing workflow is now excluded from ordinary PR path triggers, and this combined CI-policy commit explicitly waits for its own complete PR build.
+
+Archive integration audit also covered drag-reordering pinned dialogs: filtered views containing the synthetic archive row return a presentation copy, so reorder now writes to the existing DialogFilter owner collection by dialog identity. This preserves upstream pinned-chat movement rather than mutating a temporary display list.
