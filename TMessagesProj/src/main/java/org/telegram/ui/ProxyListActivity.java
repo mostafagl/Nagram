@@ -547,18 +547,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
             actionBar.setOccupyStatusBar(false);
         }
         actionBar.setAllowOverlayTitle(false);
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
-            @Override
-            public void onItemClick(int id) {
-                if (id == -1) {
-                    finishFragment();
-                } else if (id == 10001) {
-                    V2RaySubscriptionsActivity.updateAll(ProxyListActivity.this);
-                } else if (id == 10002) {
-                    testProxies(new ArrayList<>(proxyList), null);
-                }
-            }
-        });
+
 
         // na: action bar menu
         ActionBarMenu menu = actionBar.createMenu();
@@ -751,6 +740,12 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
             @Override
             public void onItemClick(int id) {
                 switch (id) {
+                    case 10001:
+                        V2RaySubscriptionsActivity.updateAll(ProxyListActivity.this);
+                        break;
+                    case 10002:
+                        testProxies(new ArrayList<>(proxyList), null);
+                        break;
                     case -1:
                         if (selectedItems.isEmpty()) {
                             finishFragment();
@@ -872,6 +867,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
                     info.available = true;
                 }
                 NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxyCheckDone, info);
+                if (testProgressDialog != null) testProgressDialog.setMessage(getString(R.string.ProxyTestAll) + " · " + (list.size() - left[0] + 1) + "/" + list.size());
                 if (--left[0] == 0 && onDone != null) {
                     onDone.run();
                 }
@@ -951,6 +947,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
         }
         testProgressDialog = new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_SPINNER);
         testProgressDialog.setCanCancel(false);
+        testProgressDialog.setMessage(getString(R.string.ProxyTestAll));
         testProgressDialog.show();
     }
 
@@ -986,6 +983,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
                     failed.add(info);
                 }
             }
+            if (testProgressDialog != null) testProgressDialog.setMessage(getString(R.string.ProxyDeleteNoPing) + " · 2/2");
             testProxies(failed, () -> {
                 dismissTestProgress();
                 final List<SharedConfig.ProxyInfo> stillFailed = new ArrayList<>();
