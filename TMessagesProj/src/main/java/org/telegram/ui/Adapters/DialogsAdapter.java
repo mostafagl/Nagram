@@ -1212,18 +1212,23 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
         int toIndex = fixPosition(toPosition);
         TLRPC.Dialog fromDialog = dialogs.get(fromIndex);
         TLRPC.Dialog toDialog = dialogs.get(toIndex);
+        ArrayList<TLRPC.Dialog> orderedDialogs = dialogs;
         if (dialogsType == 7 || dialogsType == 8) {
             MessagesController.DialogFilter filter = MessagesController.getInstance(currentAccount).selectedDialogFilter[dialogsType == 8 ? 1 : 0];
             int idx1 = filter.pinnedDialogs.get(fromDialog.id);
             int idx2 = filter.pinnedDialogs.get(toDialog.id);
             filter.pinnedDialogs.put(fromDialog.id, idx2);
             filter.pinnedDialogs.put(toDialog.id, idx1);
+            // The archive/hidden-chat display list may be a copy. Reorder the owner's list.
+            orderedDialogs = filter.dialogs;
         } else {
             int oldNum = fromDialog.pinnedNum;
             fromDialog.pinnedNum = toDialog.pinnedNum;
             toDialog.pinnedNum = oldNum;
         }
-        Collections.swap(dialogs, fromIndex, toIndex);
+        int sourceIndex = orderedDialogs.indexOf(fromDialog);
+        int targetIndex = orderedDialogs.indexOf(toDialog);
+        if (sourceIndex >= 0 && targetIndex >= 0) Collections.swap(orderedDialogs, sourceIndex, targetIndex);
         updateList(null);
     }
 
@@ -1465,7 +1470,8 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
 
         protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
             int size = itemInternals.size();
-            boolean hasArchive = folderId == 0 && dialogsType == 0 && MessagesController.getInstance(currentAccount).dialogs_dict.get(DialogObject.makeFolderDialogId(1)) != null;
+            ArrayList<TLRPC.Dialog> dialogs = parentFragment.getDialogsArray(currentAccount, dialogsType, folderId, dialogsListFrozen);
+            boolean hasArchive = folderId == 0 && dialogs != null && !dialogs.isEmpty() && DialogObject.isFolderDialogId(dialogs.get(0).id);
             View parent = (View) getParent();
             int height;
             int blurOffset = 0;

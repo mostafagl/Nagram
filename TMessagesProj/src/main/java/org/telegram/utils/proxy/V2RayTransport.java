@@ -48,22 +48,33 @@ public final class V2RayTransport {
             if (controller != null && controller.getIsRunning() && link.equals(runningLink)) {
                 return runningPort;
             }
-            stopInternal();
             if (!CrashGuard.allowStart()) {
                 return 0;
             }
+            CoreController candidate = null;
             try {
                 ensureInitialized();
                 final int port = findFreePort();
                 CrashGuard.starting();
-                controller = Libv2ray.newCoreController(new Callback());
-                controller.startLoop(config.buildConfig(port), 0);
+                candidate = Libv2ray.newCoreController(new Callback());
+                candidate.startLoop(config.buildConfig(port), 0);
+                if (!candidate.getIsRunning()) {
+                    throw new IllegalStateException("Candidate core is not running");
+                }
+                // Keep the old core alive until the replacement has actually started.
+                final CoreController previous = controller;
+                controller = candidate;
                 runningLink = link;
                 runningPort = port;
+                if (previous != null) {
+                    try { previous.stopLoop(); } catch (Throwable ignored) { }
+                }
                 return port;
             } catch (Throwable e) {
-                FileLog.e(e);
-                stopInternal();
+                if (candidate != null) {
+                    try { candidate.stopLoop(); } catch (Throwable ignored) { }
+                }
+                FileLog.e("V2Ray candidate failed to start; previous transport retained");
                 return 0;
             }
         }
@@ -94,6 +105,54 @@ public final class V2RayTransport {
         } catch (Throwable e) {
             return -1;
         }
+    }
+
+    /** No accessible physical route, denied VPN bypass, or unsupported direct protocol. */
+    public static final long DIRECT_UNAVAILABLE = -2;
+
+    /** Blocking functional HTTP test on a physical network, never a VPN-routed fallback. */
+    public static long measureDirectDelaySync(V2RayConfig config) {
+        DirectProxyNetwork network = DirectProxyNetwork.acquire();
+        if (network == null) return DIRECT_UNAVAILABLE;
+        try {
+            ensureInitialized();
+            long elapsed = Libv2ray.measureOutboundDelayOnNetwork(config.buildConfig(findFreePort()), DELAY_TEST_URL, network);
+            return network.denied.get() || network.boundSockets.get() == 0 ? DIRECT_UNAVAILABLE
+                    : (elapsed > 0 ? elapsed : (network.multipleAddresses.get() ? DIRECT_UNAVAILABLE : -1));
+        } catch (LinkageError unavailableNativeBinding) {
+            return DIRECT_UNAVAILABLE;
+        } catch (Throwable e) {
+            // Exceptions can contain server configuration. Return a status, never the text.
+            return network.denied.get() || network.multipleAddresses.get() || network.boundSockets.get() == 0
+                    ? DIRECT_UNAVAILABLE : -1;
+        }
+    }
+
+    /** Conservative guard for legacy tgnet probes, which cannot bind an Android Network. */
+    public static boolean isVpnActiveOrUnknown() {
+        try {
+            android.net.ConnectivityManager manager = (android.net.ConnectivityManager)
+                    ApplicationLoader.applicationContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            if (manager == null) return true;
+            for (android.net.Network network : manager.getAllNetworks()) {
+                android.net.NetworkCapabilities caps = manager.getNetworkCapabilities(network);
+                if (caps != null && caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)) return true;
+            }
+            return false;
+        } catch (RuntimeException denied) {
+            return true;
+        }
+    }
+
+    /** Manual tests use an isolated physical-network core; unsupported protocols fail closed. */
+    public static void checkDirectProxy(ProxySettings settings, RequestTimeDelegate delegate) {
+        if (settings.getType() != ProxySettings.Type.V2RAY) {
+            delegate.run(DIRECT_UNAVAILABLE);
+            return;
+        }
+        final V2RayConfig config = V2RayConfig.parse(settings.getSecret());
+        if (config == null) { delegate.run(-1); return; }
+        testExecutor.execute(() -> delegate.run(measureDirectDelaySync(config)));
     }
 
     /**
@@ -234,7 +293,8 @@ public final class V2RayTransport {
     private static final class Callback implements CoreCallbackHandler {
         @Override
         public long onEmitStatus(long code, String message) {
-            FileLog.d("v2ray: " + message);
+            // Native status text may contain server details; never log proxy credentials.
+            FileLog.d("v2ray status code: " + code);
             return 0;
         }
 

@@ -411,7 +411,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
         Runnable saveScrollPositionRunnable = () -> {
             if (listView != null && listView.getScrollState() == RecyclerView.SCROLL_STATE_IDLE && listView.getChildCount() > 0 && listView.getLayoutManager() != null) {
-                boolean hasHiddenArchive = dialogsType == DIALOGS_TYPE_DEFAULT && hasHiddenArchive() && archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN;
+                boolean hasHiddenArchive = supportsArchivePull(dialogsType) && hasHiddenArchive() && archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN;
                 float tabsTranslation = scrollYOffset;
                 LinearLayoutManager layoutManager = ((LinearLayoutManager) listView.getLayoutManager());
                 View view = null;
@@ -979,7 +979,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
             if (invalidateScrollY && (rightSlidingDialogContainer == null || !rightSlidingDialogContainer.hasFragment()) && progressToActionMode == 0) {
                 invalidateScrollY = false;
-                int firstItemPosition = hasHiddenArchive() && viewPages[0].dialogsType == DIALOGS_TYPE_DEFAULT ? 1 : 0;
+                int firstItemPosition = hasHiddenArchive() && supportsArchivePull(viewPages[0].dialogsType) ? 1 : 0;
                 DialogsRecyclerView recyclerView = viewPages[0].listView;
                 if (fixScrollYAfterArchiveOpened) {
                     if (waitingForScrollFinished) {
@@ -2080,7 +2080,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 RecyclerView.ViewHolder holder = parentPage.listView.findViewHolderForAdapterPosition(pos);
                 if (holder != null) {
                     int top = holder.itemView.getTop();
-                    if (parentPage.dialogsType == DIALOGS_TYPE_DEFAULT && hasHiddenArchive() && parentPage.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN) {
+                    if (supportsArchivePull(parentPage.dialogsType) && hasHiddenArchive() && parentPage.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN) {
                         pos = Math.max(1, pos);
                     }
                     ignoreLayout = true;
@@ -2088,7 +2088,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     ignoreLayout = false;
                 }
             } else if (pos == RecyclerView.NO_POSITION && firstLayout) {
-                parentPage.layoutManager.scrollToPositionWithOffset(parentPage.dialogsType == DIALOGS_TYPE_DEFAULT && hasHiddenArchive() ? 1 : 0, (int) scrollYOffset);
+                parentPage.layoutManager.scrollToPositionWithOffset(supportsArchivePull(parentPage.dialogsType) && hasHiddenArchive() ? 1 : 0, (int) scrollYOffset);
             }
 
             ignoreLayout = true;
@@ -2134,7 +2134,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             ignoreLayout = false;
 
             if (firstLayout && getMessagesController().dialogsLoaded) {
-                if (parentPage.dialogsType == DIALOGS_TYPE_DEFAULT && hasHiddenArchive()) {
+                if (supportsArchivePull(parentPage.dialogsType) && hasHiddenArchive()) {
                     ignoreLayout = true;
                     LinearLayoutManager layoutManager = (LinearLayoutManager) getLayoutManager();
                     layoutManager.scrollToPositionWithOffset(1, (int) scrollYOffset);
@@ -2270,7 +2270,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 }
             }
             boolean result = super.onTouchEvent(e);
-            if (parentPage.dialogsType == DIALOGS_TYPE_DEFAULT && (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) && parentPage.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN && hasHiddenArchive()) {
+            if (supportsArchivePull(parentPage.dialogsType) && (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) && parentPage.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN && hasHiddenArchive()) {
                 LinearLayoutManager layoutManager = (LinearLayoutManager) getLayoutManager();
                 int currentPosition = layoutManager.findFirstVisibleItemPosition();
                 if (currentPosition == 0) {
@@ -2281,7 +2281,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                         int diff = (view.getTop() - pTop) + view.getMeasuredHeight();
 
                         long pullingTime = System.currentTimeMillis() - startArchivePullingTime;
-                        if (diff < height || pullingTime < PullForegroundDrawable.minPullingTime) {
+                        if (action == MotionEvent.ACTION_CANCEL || diff < height || (!NekoConfig.openArchiveOnPull.Bool() && pullingTime < PullForegroundDrawable.minPullingTime)) {
                             disableActionBarScrolling = true;
                             smoothScrollBy(0, diff, CubicBezierInterpolator.EASE_OUT_QUINT);
                             parentPage.archivePullViewState = ARCHIVE_ITEM_STATE_HIDDEN;
@@ -2409,7 +2409,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                         int p = adapter.findDialogPosition(anchorView.getDialogId());
                         int offset = (int) (anchorView.getTop() - anchorListView.getPaddingTop() + scrollOffset);
                         if (p >= 0) {
-                            boolean hasArchive = parentPage.dialogsType == DIALOGS_TYPE_DEFAULT && parentPage.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN && hasHiddenArchive();
+                            boolean hasArchive = supportsArchivePull(parentPage.dialogsType) && parentPage.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN && hasHiddenArchive();
                             int fixedOffset = adapter.fixScrollGap(this, p, offset, hasArchive, hasStories, canShowFilterTabsView, opened);
                             ((LinearLayoutManager) animationSupportListView.getLayoutManager()).scrollToPositionWithOffset(p, fixedOffset);
                         }
@@ -4289,7 +4289,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
                 @Override
                 protected int firstPosition() {
-                    if (viewPage.dialogsType == DIALOGS_TYPE_DEFAULT && hasHiddenArchive() && viewPage.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN) {
+                    if (supportsArchivePull(viewPage.dialogsType) && hasHiddenArchive() && viewPage.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN) {
                         return 1;
                     }
                     return 0;
@@ -4382,7 +4382,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     if (hasStories && !rightSlidingDialogContainer.hasFragment() && !fixScrollYAfterArchiveOpened) {
                         pTop -= dp(DialogStoriesCell.HEIGHT_IN_DP);
                     }
-                    boolean hasHiddenArchive = !fixScrollYAfterArchiveOpened && viewPage.dialogsType == DIALOGS_TYPE_DEFAULT && !onlySelect && folderId == 0 && communityId == 0 && getMessagesController().hasHiddenArchive() && viewPage.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN;
+                    boolean hasHiddenArchive = !fixScrollYAfterArchiveOpened && supportsArchivePull(viewPage.dialogsType) && !onlySelect && folderId == 0 && communityId == 0 && getMessagesController().hasHiddenArchive() && viewPage.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN;
                     if ((hasHiddenArchive || (hasStories && !rightSlidingDialogContainer.hasFragment())) && dy < 0) {
                         viewPage.listView.setOverScrollMode(View.OVER_SCROLL_ALWAYS);
                         int currentPosition = viewPage.layoutManager.findFirstVisibleItemPosition();
@@ -4441,7 +4441,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                         }
                     }
 
-                    if (viewPage.dialogsType == 0 && viewPage.listView.getViewOffset() != 0 && dy > 0 && isDragging) {
+                    if (supportsArchivePull(viewPage.dialogsType) && viewPage.listView.getViewOffset() != 0 && dy > 0 && isDragging) {
                         float ty = (int) viewPage.listView.getViewOffset();
                         ty -= dy;
                         if (ty < 0) {
@@ -4453,7 +4453,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                         viewPage.listView.setViewsOffset(ty);
                     }
 
-                    if (viewPage.dialogsType == DIALOGS_TYPE_DEFAULT && viewPage.archivePullViewState != ARCHIVE_ITEM_STATE_PINNED && hasHiddenArchive() && !fixScrollYAfterArchiveOpened) {
+                    if (supportsArchivePull(viewPage.dialogsType) && viewPage.archivePullViewState != ARCHIVE_ITEM_STATE_PINNED && hasHiddenArchive() && !fixScrollYAfterArchiveOpened) {
                         int usedDy = super.scrollVerticallyBy(measuredDy, recycler, state);
                         if (viewPage.pullForegroundDrawable != null) {
                             viewPage.pullForegroundDrawable.scrollDy = usedDy;
@@ -4480,7 +4480,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                                 k = 1f;
                             }
                             long pullingTime = System.currentTimeMillis() - startArchivePullingTime;
-                            boolean canShowInternal = k > PullForegroundDrawable.SNAP_HEIGHT && pullingTime > PullForegroundDrawable.minPullingTime + 20;
+                            boolean canShowInternal = k > PullForegroundDrawable.SNAP_HEIGHT && (NekoConfig.openArchiveOnPull.Bool() || pullingTime > PullForegroundDrawable.minPullingTime + 20);
                             if (canShowHiddenArchive != canShowInternal) {
                                 canShowHiddenArchive = canShowInternal;
                                 if (viewPage.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN) {
@@ -4745,7 +4745,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                         }
                     }
                     if (!hasStories && recyclerView == viewPages[0].listView && !searching && actionBar != null && !actionBar.isActionModeShowed() && !disableActionBarScrolling && !rightSlidingDialogContainer.hasFragment()) {
-                        if (dy > 0 && hasHiddenArchive() && viewPages[0].dialogsType == DIALOGS_TYPE_DEFAULT) {
+                        if (dy > 0 && hasHiddenArchive() && supportsArchivePull(viewPages[0].dialogsType)) {
                             View child = recyclerView.getChildAt(0);
                             if (child != null) {
                                 RecyclerView.ViewHolder holder = recyclerView.getChildViewHolder(child);
@@ -5667,7 +5667,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     LinearLayoutManager layoutManager = new LinearLayoutManager(context) {
                         @Override
                         protected int firstPosition() {
-                            if (page.dialogsType == DIALOGS_TYPE_DEFAULT && hasHiddenArchive() && page.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN) {
+                            if (supportsArchivePull(page.dialogsType) && hasHiddenArchive() && page.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN) {
                                 return 1;
                             }
                             return 0;
@@ -7053,7 +7053,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
         viewPages[a].dialogsAdapter.setDialogsType(viewPages[a].dialogsType);
-        viewPages[a].layoutManager.scrollToPositionWithOffset(viewPages[a].dialogsType == DIALOGS_TYPE_DEFAULT && hasHiddenArchive() && viewPages[a].archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN ? 1 : 0, (int) scrollYOffset);
+        viewPages[a].layoutManager.scrollToPositionWithOffset(supportsArchivePull(viewPages[a].dialogsType) && hasHiddenArchive() && viewPages[a].archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN ? 1 : 0, (int) scrollYOffset);
         checkListLoad(viewPages[a]);
     }
 
@@ -7196,7 +7196,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 canShowFilterTabsView = false;
                 updateFilterTabsVisibility(animated);
                 for (int a = 0; a < viewPages.length; a++) {
-                    if (viewPages[a].dialogsType == DIALOGS_TYPE_DEFAULT && viewPages[a].archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN && hasHiddenArchive()) {
+                    if (supportsArchivePull(viewPages[a].dialogsType) && viewPages[a].archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN && hasHiddenArchive()) {
                         int p = viewPages[a].layoutManager.findFirstVisibleItemPosition();
                         if (p == 0 || p == 1) {
                             viewPages[a].layoutManager.scrollToPositionWithOffset(1, (int) scrollYOffset);
@@ -7418,7 +7418,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         showFiltersHint();
         if (viewPages != null) {
             for (int a = 0; a < viewPages.length; a++) {
-                if (viewPages[a].dialogsType == 0 && viewPages[a].archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN && viewPages[a].layoutManager.findFirstVisibleItemPosition() == 0 && hasHiddenArchive()) {
+                if (supportsArchivePull(viewPages[a].dialogsType) && viewPages[a].archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN && viewPages[a].layoutManager.findFirstVisibleItemPosition() == 0 && hasHiddenArchive()) {
                     viewPages[a].layoutManager.scrollToPositionWithOffset(1, (int) scrollYOffset);
                 }
                 if (a == 0) {
@@ -8712,7 +8712,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 getMessagesStorage().readAllDialogs(1);
             } else if (which == 1 && viewPages != null) {
                 for (int a = 0; a < viewPages.length; a++) {
-                    if (viewPages[a].dialogsType != 0 || viewPages[a].getVisibility() != View.VISIBLE) {
+                    if (!supportsArchivePull(viewPages[a].dialogsType) || viewPages[a].getVisibility() != View.VISIBLE) {
                         continue;
                     }
                     DialogCell dialogCell = findArchiveDialogCell(viewPages[a]);
@@ -9917,7 +9917,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         int selectedDialogIndex = -1;
         int currentDialogIndex = -1;
 
-        int scrollToPosition = viewPages[0].dialogsType == 0 && hasHiddenArchive() && viewPages[0].archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN ? 1 : 0;
+        int scrollToPosition = supportsArchivePull(viewPages[0].dialogsType) && hasHiddenArchive() && viewPages[0].archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN ? 1 : 0;
         int currentPosition = viewPages[0].layoutManager.findFirstVisibleItemPosition();
 
         if (filter != null) {
@@ -9987,7 +9987,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     viewPages[0].dialogsItemAnimator.prepareForRemove();
                     viewPages[0].updateList(true);
 
-                    viewPages[0].layoutManager.scrollToPositionWithOffset(viewPages[0].dialogsType == 0 && hasHiddenArchive() && viewPages[0].archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN ? 1 : 0, (int) scrollYOffset);
+                    viewPages[0].layoutManager.scrollToPositionWithOffset(supportsArchivePull(viewPages[0].dialogsType) && hasHiddenArchive() && viewPages[0].archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN ? 1 : 0, (int) scrollYOffset);
 
                     animate = true;
                 } else if (currentDialogIndex >= 0 && selectedDialogIndex == currentDialogIndex) {
@@ -10006,7 +10006,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             return;
         }
 
-        int position = viewPages[0].dialogsType == 0 && hasHiddenArchive() && viewPages[0].archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN ? 1 : 0;
+        int position = supportsArchivePull(viewPages[0].dialogsType) && hasHiddenArchive() && viewPages[0].archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN ? 1 : 0;
         int offset = 0;
         if (hasStories && !expandStories && !dialogStoriesCell.isExpanded()) {
             offset = -dp(DialogStoriesCell.HEIGHT_IN_DP);
@@ -10760,7 +10760,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
         int oldItemCount = viewPage.dialogsAdapter.getCurrentCount();
 
-        if (viewPage.dialogsType == 0 && hasHiddenArchive() && viewPage.listView.getChildCount() == 0 && viewPage.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN) {
+        if (supportsArchivePull(viewPage.dialogsType) && hasHiddenArchive() && viewPage.listView.getChildCount() == 0 && viewPage.archivePullViewState == ARCHIVE_ITEM_STATE_HIDDEN) {
             LinearLayoutManager layoutManager = (LinearLayoutManager) viewPage.listView.getLayoutManager();
             layoutManager.scrollToPositionWithOffset(1, (int) scrollYOffset);
         }
@@ -11289,12 +11289,27 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         return dialogsType == DIALOGS_TYPE_FORWARD || dialogsType == DIALOGS_TYPE_FORWARD_RECENT;
     }
 
+    private boolean supportsArchivePull(int type) {
+        return type == DIALOGS_TYPE_DEFAULT || (NekoConfig.openArchiveOnPull.Bool()
+                && (type == DIALOGS_TYPE_FOLDER1 || type == DIALOGS_TYPE_FOLDER2));
+    }
+
     private ArrayList<TLRPC.Dialog> botShareDialogs;
 
     @NonNull
     public ArrayList<TLRPC.Dialog> getDialogsArray(int currentAccount, int dialogsType, int folderId, boolean frozen) {
         // Parvagram: hidden chats stay out of every list (chats, folders, forward picker).
-        return tw.nekomimi.nekogram.helpers.HiddenChats.filter(currentAccount, getDialogsArrayInternal(currentAccount, dialogsType, folderId, frozen));
+        ArrayList<TLRPC.Dialog> dialogs = getDialogsArrayInternal(currentAccount, dialogsType, folderId, frozen);
+        if (!onlySelect && communityId == 0 && folderId == 0 && initialDialogsType == DIALOGS_TYPE_DEFAULT
+                && dialogsType != DIALOGS_TYPE_DEFAULT && supportsArchivePull(dialogsType)) {
+            TLRPC.Dialog archive = getMessagesController().dialogs_dict.get(DialogObject.makeFolderDialogId(1));
+            if (archive != null && !dialogs.contains(archive)) {
+                // Filter collections belong to MessagesController; never insert into them directly.
+                dialogs = new ArrayList<>(dialogs);
+                dialogs.add(0, archive);
+            }
+        }
+        return tw.nekomimi.nekogram.helpers.HiddenChats.filter(currentAccount, dialogs);
     }
 
     private ArrayList<TLRPC.Dialog> getDialogsArrayInternal(int currentAccount, int dialogsType, int folderId, boolean frozen) {

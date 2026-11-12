@@ -38,6 +38,7 @@ git -C "$WORK/src" checkout -q FETCH_HEAD
 cd "$WORK/src"
 # geoip/geosite databases are only needed for routing rules, which the generated configs don't use.
 rm -rf assets
+python3 "$PROJECT/bin/libs/parva-direct/apply.py" "$PROJECT/bin/libs/parva-direct"
 gomobile init
 gomobile bind -v -target="$TARGETS" -androidapi 23 -trimpath -ldflags='-s -w -buildid= -checklinkname=0' -o libv2ray.aar ./
 

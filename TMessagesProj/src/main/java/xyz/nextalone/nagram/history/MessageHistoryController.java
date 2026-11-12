@@ -276,7 +276,7 @@ public final class MessageHistoryController {
             if (!dir.isDirectory() && !dir.mkdirs()) {
                 return;
             }
-            final File target = new File(dir, snap.dialogId + "_" + snap.messageId + "_" + source.getName());
+            final File target = new File(dir, snap.account + "_" + snap.dialogId + "_" + snap.messageId + "_" + source.getName());
             if (target.exists()) {
                 return;
             }

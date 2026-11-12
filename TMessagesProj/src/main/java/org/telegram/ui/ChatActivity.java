@@ -16521,6 +16521,9 @@ public class ChatActivity extends BaseFragment implements
 
     /** {@code force}: the user chose to let the timer start, even with "keep timed media" on. */
     private Runnable sendSecretMessageRead(MessageObject messageObject, boolean readNow, boolean force) {
+        if (!tw.nekomimi.nekogram.utils.AyuGhostUtils.canSendReadPacket()) {
+            return null;
+        }
         if (NekoConfig.keepTimedMedia && !force) {
             return null; // marking it read would start the self-destruct timer
         }
@@ -16554,6 +16557,9 @@ public class ChatActivity extends BaseFragment implements
             return null;
         } else {
             return () -> {
+                if (!tw.nekomimi.nekogram.utils.AyuGhostUtils.canSendReadPacket()) {
+                    return;
+                }
                 final boolean delete = messageObject.messageOwner.ttl != 0x7FFFFFFF;
                 final int ttl = messageObject.messageOwner.ttl == 0x7FFFFFFF ? 0 : messageObject.messageOwner.ttl;
                 messageObject.messageOwner.destroyTime = ttl + getConnectionsManager().getCurrentTime();

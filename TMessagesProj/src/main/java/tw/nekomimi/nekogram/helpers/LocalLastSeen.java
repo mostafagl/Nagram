@@ -17,14 +17,19 @@ import java.util.concurrent.ConcurrentHashMap;
  * latest of those moments on this device and shows it after "last seen recently".
  */
 public final class LocalLastSeen {
-
     private static final ConcurrentHashMap<String, Integer> cache = new ConcurrentHashMap<>();
 
     private LocalLastSeen() {
     }
 
     private static SharedPreferences prefs() {
-        return ApplicationLoader.applicationContext.getSharedPreferences("parva_last_seen", Context.MODE_PRIVATE);
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("parva_last_seen", Context.MODE_PRIVATE);
+        if (!preferences.getBoolean("activity_history_removed", false)) {
+            SharedPreferences.Editor editor = preferences.edit();
+            for (String key : preferences.getAll().keySet()) if (key.startsWith("history_")) editor.remove(key);
+            editor.putBoolean("activity_history_removed", true).apply();
+        }
+        return preferences;
     }
 
     public static boolean isEnabled() {
@@ -39,17 +44,25 @@ public final class LocalLastSeen {
         return account + ":" + userId;
     }
 
-    public static void record(int account, long userId, int date) {
+    public static synchronized void record(int account, long userId, int date) {
+        if (!isEnabled()) return;
         if (userId <= 0 || date <= 0 || userId == UserConfig.getInstance(account).getClientUserId()) {
             return;
         }
         final String k = key(account, userId);
         final Integer old = get(k);
-        if (old != null && old >= date) {
-            return;
+        if (old == null || old < date) {
+            cache.put(k, date);
+            prefs().edit().putInt(k, date).apply();
         }
-        cache.put(k, date);
-        prefs().edit().putInt(k, date).apply();
+    }
+
+    public static synchronized void clearAccount(int account) {
+        String prefix = account + ":";
+        SharedPreferences.Editor editor = prefs().edit().remove("history_" + account);
+        for (String k : prefs().getAll().keySet()) if (k.startsWith(prefix)) editor.remove(k);
+        cache.keySet().removeIf(k -> k.startsWith(prefix));
+        editor.apply();
     }
 
     private static Integer get(String k) {

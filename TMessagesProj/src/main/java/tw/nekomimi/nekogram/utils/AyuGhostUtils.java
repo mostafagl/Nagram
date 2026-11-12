@@ -8,6 +8,19 @@ public class AyuGhostUtils {
         public boolean val;
         public int resetAfter;
 
+        public boolean peek() {
+            synchronized (sync) {
+                return val;
+            }
+        }
+
+        public void set(boolean value, int count) {
+            synchronized (sync) {
+                val = value && (count == -1 || count > 0);
+                resetAfter = count;
+            }
+        }
+
         public boolean process() {
             synchronized (sync) {
                 if (resetAfter == -1) {
@@ -29,8 +42,12 @@ public class AyuGhostUtils {
     private static final AyuStateVariable allowReadPacket = new AyuStateVariable();
 
     public static void setAllowReadPacket(boolean val, int resetAfter) {
-        allowReadPacket.val = val;
-        allowReadPacket.resetAfter = resetAfter;
+        allowReadPacket.set(val, resetAfter);
+    }
+
+    /** For UI/storage guards. Only the actual receipt transport consumes a permit. */
+    public static boolean canSendReadPacket() {
+        return NekoConfig.sendReadMessagePackets || allowReadPacket.peek();
     }
 
     public static boolean getAllowReadPacket() {

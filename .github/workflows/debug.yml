@@ -104,7 +104,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: TMessagesProj/libs/libv2ray.aar
-          key: libv2ray-${{ hashFiles('bin/libs/v2ray.sh') }}
+          key: libv2ray-${{ hashFiles('bin/libs/v2ray.sh', 'bin/libs/parva-direct/**') }}
       - name: Set up Go
         if: steps.v2ray-cache.outputs.cache-hit != 'true'
         uses: actions/setup-go@v6

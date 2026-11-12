@@ -1,5 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="ContactTimelineView">انتخاب تایم لاین</string>
+    <string name="ContactTimelineFilter">فیلتر تغییرات پروفایل</string>
+    <string name="SmartProxyRotationInfo">تعویض خودکار پس از مهلت اتصال تنظیم شده انجام میشود. انتخاب بر اساس پایداری و تاخیر تست های اخیر است و حداکثر هر ۳۰ ثانیه انجام میشود. اتصال سالم حفظ میشود. با خاموش کردن چرخش، انتخاب دستی حفظ میشود.</string>
+    <string name="SmartProxySwitchReason">اتصال در مهلت تنظیم شده برقرار نشد. پروکسی تست شده بر اساس پایداری، سابقه اتصال و تاخیر انتخاب شد. تعویض خودکار حداکثر هر ۳۰ ثانیه انجام میشود.</string>
+    <string name="ContactPhotoArchiveInfo">به صورت پیش فرض برای همه مخاطبین فعال است. انتخاب مخاطبین در پایین برای آرشیو هم اعمال میشود. فقط عکس های قابل دسترس برای همین حساب ذخیره میشوند. پیش فرض: ۳۰ روز، ۱۲۸ مگابایت و حداکثر ۵۰۰ عکس.</string>
+    <string name="ContactPhotoRetention">مدت نگهداری عکس</string>
+    <string name="ContactPhotoQuota">سهمیه فضای عکس ها</string>
+    <string name="ContactPhotoInclude">ثبت در آرشیو عکس</string>
+    <string name="ContactPhotoExclude">حذف از فهرست ثبت عکس</string>
+    <string name="ContactPhotoCurrent">عکس فعلی، در صورت قابل مشاهده بودن</string>
+    <string name="ContactPhotoArchived">نسخه آرشیو شده</string>
+    <string name="ContactObservedLocally">مشاهده محلی از اطلاعات پروفایل دریافت شده از تلگرام</string>
+    <string name="ContactPhotoDeleteAsk">عکس های آرشیو شده این بخش پاک شوند؟ عکس های پروفایل تلگرام و فایل های دیگر برنامه باقی میمانند.</string>
+    <string name="ObservedActivityTitle">فعالیت مشاهده شده</string>
+    <string name="OutgoingReadHistory">رسید خواندن پیام های ارسالی</string>
+    <string name="ObservedActivityNotice">فقط رویدادهای دریافت شده توسط این دستگاه، هنگام فعال بودن آخرین بازدید محلی ثبت میشوند. سقف نگهداری هر حساب ۵۰۰ رویداد است. زمان رسید، زمان مشاهده توسط این دستگاه است؛ ساعت دقیق خواندن نیست. بازدید پروفایل یا ورود بی سر و صدا به چت قابل تشخیص نیست.</string>
+    <string name="ActivityMessage">پیام دریافت شد</string>
+    <string name="ActivityTyping">تایپ یا فعالیت ارسال</string>
+    <string name="ActivityRead">رسید تجمعی خواندن پیام های ارسالی</string>
+    <string name="ActivityOnline">وضعیت آنلاین دریافت شد</string>
+    <string name="ActivityOffline">زمان آخرین آنلاین دریافت شد</string>
+    <string name="ActivityObservedAt">مشاهده توسط این دستگاه:</string>
+    <string name="ActivityReadRange">پیام های ارسالی این گفتگو با شناسه %1$d تا %2$d زیر پوشش این رسید تجمعی هستند. ساعت دقیق خواندن مشخص نیست.</string>
+    <string name="ContactChangeBio">تغییر بیو</string>
+    <string name="ContactPhotoArchive">آرشیو عکس های قابل مشاهده</string>
+    <string name="ContactPhotoArchiveEmpty">عکس های دریافت شده هنگام فعال بودن گزارش مخاطبین اینجا ذخیره میشوند. عکس های مخفی یا حذف شده پیش از دریافت قابل بازیابی نیستند. سقف نگهداری هر حساب: ۵۰۰ عکس یا ۱۲۸ مگابایت.</string>
     <string name="N_Config">تنظیمات پرواگرام</string>
     <string name="ForceCopy">اجازهٔ کپی در همه‌جا</string>
     <string name="disableSecondAddress">نپرسیدن آدرس دوم</string>
@@ -819,4 +845,11 @@
     <string name="LyricsNotFound">متنی برای این آهنگ پیدا نشد</string>
     <string name="LyricsSetting">متن آهنگ در موزیک‌پلیر</string>
     <string name="LyricsSettingInfo">گزینهٔ «متن آهنگ» به منوی پلیر اضافه می‌شود: متن همگام با آهنگ روی پس‌زمینه‌ای از رنگ‌های کاور. متن از سایت lrclib.net گرفته می‌شود؛ فقط نام آهنگ، خواننده و مدت آن فرستاده می‌شود و فقط وقتی متن را باز کنید.</string>
+    <string name="ProxyDirectTesting">در حال تست از مسیر مستقیم اینترنت…</string>
+    <string name="ProxyDirectUnavailable">مسیر مستقیم برای بعضی کانفیگ ها قابل استفاده یا پشتیبانی نیست. این کانفیگ ها خراب علامت گذاری یا حذف نشدند. تنظیمات مسدودسازی اینترنت بدون VPN را بررسی کنید و دوباره امتحان کنید.</string>
+    <string name="ProxyCheckBusy">بررسی پروکسی در حال اجراست. تا پایان آن منتظر بمانید.</string>
+    <string name="ProxyDeleteFirstPass">مرحله ۱ از ۲: بررسی همه کانفیگ ها…</string>
+    <string name="ProxyDeleteSecondPass">مرحله ۲ از ۲: بررسی دوباره کانفیگ های ناموفق پیش از حذف…</string>
+    <string name="V2RaySubscriptionEmpty">ساب هیچ کانفیگ قابل پشتیبانی برنگرداند. کانفیگ های قبلی حفظ شدند.</string>
+    <string name="ProxyAutoConnectSkipped">فعال سازی خودکار برای حفظ انتخاب فعلی پروکسی یا VPN انجام نشد، یا راه اندازی اتصال جایگزین ممکن نبود.</string>
 </resources>

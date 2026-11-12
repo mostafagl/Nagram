@@ -7051,6 +7051,11 @@ public class MessageObject {
         return false;
     }
 
+    /** Raw GIF89a belongs to the animated-image decoder, even when video-style GIFs are enabled. */
+    public static boolean shouldUseVideoPlayerForGif(TLRPC.Document document, boolean preferVideo) {
+        return preferVideo && isNewGifDocument(document);
+    }
+
     public static boolean isNewGifDocument(TLRPC.Document document) {
         if (document != null && "video/mp4".equals(document.mime_type)) {
             int width = 0;

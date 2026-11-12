@@ -11,6 +11,7 @@ public class LauncherIconController {
     public static void tryFixLauncherIconIfNeeded() {
         for (LauncherIcon icon : LauncherIcon.values()) {
             if (isEnabled(icon)) {
+                if (!icon.isAvailable()) setIcon(LauncherIcon.DEFAULT);
                 return;
             }
         }
@@ -25,6 +26,7 @@ public class LauncherIconController {
     }
 
     public static void setIcon(LauncherIcon icon) {
+        if (!icon.isAvailable()) icon = LauncherIcon.DEFAULT;
         Context ctx = ApplicationLoader.applicationContext;
         PackageManager pm = ctx.getPackageManager();
         for (LauncherIcon i : LauncherIcon.values()) {
@@ -70,6 +72,11 @@ public class LauncherIconController {
             this.foreground = foreground;
             this.title = title;
             this.premium = premium;
+        }
+
+        /** Keep old aliases for upgrade compatibility, but hide Nagram-branded artwork. */
+        public boolean isAvailable() {
+            return this == DEFAULT || this == NOX;
         }
 
         public boolean isNekoX() {

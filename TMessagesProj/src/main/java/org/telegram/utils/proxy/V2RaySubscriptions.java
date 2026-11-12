@@ -30,7 +30,6 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
-import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -63,9 +62,7 @@ public final class V2RaySubscriptions {
     private static final int JOB_ID = 0x50415256; // "PARV"
     private static final int MAX_DOWNLOAD_BYTES = 8 * 1024 * 1024;
     private static final int MAX_LINKS = 20000;
-    private static final int TCP_TIMEOUT_MS = 3000;
     private static final int TEST_THREADS = 4;
-    private static final int TCP_THREADS = 16;
     /** How many saved configs to try as a temporary route when the subscription host is blocked. */
     private static final int FALLBACK_ROUTES = 3;
     /**
@@ -140,6 +137,7 @@ public final class V2RaySubscriptions {
         public int duplicates;
         public int tested;
         public int working;
+        public int directUnavailable;
         public int added;
         public int renamed;
         public int max;
@@ -159,6 +157,17 @@ public final class V2RaySubscriptions {
         }
     }
 
+    /** A single HTTP subscription URL; Telegram proxy share URLs keep their existing importer. */
+    public static boolean isSubscriptionUrl(String value) {
+        if (value == null || value.isEmpty()) return false;
+        for (int i = 0; i < value.length(); i++) if (Character.isWhitespace(value.charAt(i))) return false;
+        Uri uri = Uri.parse(value);
+        String host = uri.getHost();
+        return ("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))
+                && !TextUtils.isEmpty(host) && !"t.me".equalsIgnoreCase(host)
+                && !"telegram.me".equalsIgnoreCase(host) && !"telegram.dog".equalsIgnoreCase(host);
+    }
+
     // region storage
 
     public static synchronized List<Subscription> getAll() {
@@ -169,7 +178,7 @@ public final class V2RaySubscriptions {
                 list.add(Subscription.fromJson(array.getJSONObject(i)));
             }
         } catch (Exception e) {
-            FileLog.e(e);
+            FileLog.e("Subscription operation: " + e.getClass().getSimpleName());
         }
         return list;
     }
@@ -219,7 +228,7 @@ public final class V2RaySubscriptions {
             }
             prefs().edit().putString(PREF, array.toString()).commit();
         } catch (Exception e) {
-            FileLog.e(e);
+            FileLog.e("Subscription operation: " + e.getClass().getSimpleName());
         }
         scheduleJob();
     }
@@ -272,7 +281,7 @@ public final class V2RaySubscriptions {
                     .build();
             scheduler.schedule(job);
         } catch (Throwable e) {
-            FileLog.e(e);
+            FileLog.e("Subscription operation: " + e.getClass().getSimpleName());
         }
     }
 
@@ -312,8 +321,8 @@ public final class V2RaySubscriptions {
         try {
             updateInternal(subscriptionId, progress, timeBudgetMs, result);
         } catch (Throwable e) {
-            FileLog.e(e);
-            result.error = e.getClass().getSimpleName() + (e.getMessage() != null ? ": " + e.getMessage() : "");
+            // Subscription URLs often contain access tokens; exception messages can echo them.
+            result.error = e.getClass().getSimpleName();
         } finally {
             running.set(false);
         }
@@ -347,7 +356,7 @@ public final class V2RaySubscriptions {
         try {
             links = downloadLinks(subscription.url, progress);
         } catch (IOException e) {
-            result.error = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            result.error = e.getClass().getSimpleName();
             return;
         }
         result.links = links.size();
@@ -449,7 +458,6 @@ public final class V2RaySubscriptions {
      */
     private static void testCandidates(List<V2RayConfig> candidates, int slots, Progress progress, long deadline,
                                        Result result, List<V2RayConfig> working, List<Long> pings) throws InterruptedException {
-        final ExecutorService tcpPool = Executors.newFixedThreadPool(TCP_THREADS);
         final ExecutorService testPool = Executors.newFixedThreadPool(TEST_THREADS);
         final AtomicInteger tested = new AtomicInteger();
         final AtomicInteger found = new AtomicInteger();
@@ -468,12 +476,10 @@ public final class V2RaySubscriptions {
                         if (found.get() >= slots || progress != null && progress.isCancelled() || SystemClock.elapsedRealtime() > deadline) {
                             return;
                         }
-                        long delay = -1;
-                        if (tcpReachable(tcpPool, config)) {
-                            delay = V2RayTransport.measureDelaySync(config);
-                        }
+                        long delay = V2RayTransport.measureDirectDelaySync(config);
                         synchronized (resultLock) {
                             result.tested++;
+                            if (delay == V2RayTransport.DIRECT_UNAVAILABLE) result.directUnavailable++;
                             if (delay > 0 && found.get() < slots) {
                                 found.incrementAndGet();
                                 working.add(config);
@@ -496,23 +502,7 @@ public final class V2RaySubscriptions {
             result.limitReached = found.get() >= slots;
             result.cancelled = progress != null && progress.isCancelled();
         } finally {
-            tcpPool.shutdownNow();
             testPool.shutdownNow();
-        }
-    }
-
-    private static boolean tcpReachable(ExecutorService pool, V2RayConfig config) {
-        try {
-            return pool.submit(() -> {
-                try (Socket socket = new Socket()) {
-                    socket.connect(new InetSocketAddress(config.address, config.port), TCP_TIMEOUT_MS);
-                    return true;
-                } catch (IOException e) {
-                    return false;
-                }
-            }).get(TCP_TIMEOUT_MS + 2000, TimeUnit.MILLISECONDS);
-        } catch (Exception e) {
-            return false;
         }
     }
 
@@ -754,9 +744,19 @@ public final class V2RaySubscriptions {
     }
 
     private static void collect(String text, LinkedHashSet<String> links) {
-        final java.util.regex.Matcher matcher = V2RayConfig.LINK_PATTERN.matcher(text);
-        while (matcher.find()) {
-            links.add(V2RayConfig.trimLink(matcher.group()));
+        for (String line : text.split("\\r?\\n")) {
+            line = line.trim();
+            final java.util.regex.Matcher matcher = V2RayConfig.LINK_PATTERN.matcher(line);
+            while (matcher.find()) {
+                String link = matcher.group();
+                // A subscription has one link per line. Unescaped spaces after # are its name.
+                if (matcher.start() == 0 && link.indexOf('#') >= 0
+                        && !V2RayConfig.LINK_PATTERN.matcher(line.substring(matcher.end())).find()) {
+                    int fragment = line.indexOf('#');
+                    link = line.substring(0, fragment + 1) + android.net.Uri.encode(android.net.Uri.decode(line.substring(fragment + 1)));
+                }
+                links.add(V2RayConfig.trimLink(link));
+            }
         }
     }
 

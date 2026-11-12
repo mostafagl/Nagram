@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - '**.md'
       - '**.xml'
+      - '.github/workflows/publish-validated-preview.yml'
   # Manual start (Actions tab, or the API) when GitHub doesn't trigger the PR event.
   # With publish_tag set, nothing is built: that build pre-release becomes the latest release,
   # which the app offers as an update.
@@ -20,6 +21,10 @@ on:
         type: boolean
         required: false
         default: false
+
+concurrency:
+  group: parvagram-build-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   publish:
@@ -142,7 +147,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: TMessagesProj/libs/libv2ray.aar
-          key: libv2ray-${{ hashFiles('bin/libs/v2ray.sh') }}
+          key: libv2ray-${{ hashFiles('bin/libs/v2ray.sh', 'bin/libs/parva-direct/**') }}
       - name: Set up Go
         if: steps.v2ray-cache.outputs.cache-hit != 'true'
         uses: actions/setup-go@v6
@@ -240,7 +245,7 @@ jobs:
           d['client'].append(copy)
           json.dump(d, open(p, 'w'), indent=2)
           PY
-      - name: Debug Build
+      - name: Release build and focused regression tests
         env:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS || 'android' }}
           ALIAS_NAME: ${{ secrets.ALIAS_NAME || 'androiddebugkey' }}
@@ -249,8 +254,8 @@ jobs:
           export LOCAL_PROPERTIES="${{ secrets.LOCAL_PROPERTIES }}"
           export DEBUG_BUILD=true
           export EXTRA_ABI_X86_64=true
-          sed -i 's/signingConfig signingConfigs.release//g' TMessagesProj/build.gradle
-          ./gradlew TMessagesProj:assembleRelease --build-cache --no-configuration-cache
+          ./gradlew TMessagesProj:testReleaseUnitTest --tests '*AyuGhostUtilsTest' --tests '*ContactChangesTest' --tests '*LocalLastSeenTest' --tests '*ProxyRotationHealthTest' --tests '*V2RaySubscriptionNamesTest' --tests '*GifPlaybackPolicyTest' --tests '*ManualProxyChecksTest' --build-cache --no-configuration-cache -PparvaDevelopmentBuild=false
+          ./gradlew TMessagesProj:assembleRelease --build-cache --no-configuration-cache -PparvaDevelopmentBuild=false
 
           APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk')
           APK=$(dirname $APK)
@@ -259,6 +264,14 @@ jobs:
           echo "$BUILD_TS" > "$APK/build_timestamp.txt"
       # Fails the build unless every APK is signed with the app's key, so a build that couldn't
       # update the installed app is never published.
+      - name: Upload regression test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: regression-tests
+          path: |
+            TMessagesProj/build/reports/tests
+            TMessagesProj/build/test-results
       - name: Verify APK signatures
         env:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS || 'android' }}
@@ -335,7 +348,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: bash bin/scripts/uitest/run.sh apk
       - name: Publish screenshots
-        if: always()
+        if: always() && (github.head_ref || github.ref_name) != 'feature/contact-activity-smart-proxy-voice-ghost'
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash bin/scripts/uitest/publish.sh
@@ -350,7 +363,7 @@ jobs:
     needs:
       - build
     # Only builds signed with the app's key: anything else couldn't update the installed app.
-    if: needs.build.outputs.stable_key == 'true'
+    if: needs.build.outputs.stable_key == 'true' && (github.head_ref || github.ref_name) != 'feature/contact-activity-smart-proxy-voice-ghost'
     permissions:
       contents: write
     steps:
