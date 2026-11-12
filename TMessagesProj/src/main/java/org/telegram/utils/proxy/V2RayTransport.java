@@ -107,6 +107,54 @@ public final class V2RayTransport {
         }
     }
 
+    /** No accessible physical route, denied VPN bypass, or unsupported direct protocol. */
+    public static final long DIRECT_UNAVAILABLE = -2;
+
+    /** Blocking functional HTTP test on a physical network, never a VPN-routed fallback. */
+    public static long measureDirectDelaySync(V2RayConfig config) {
+        DirectProxyNetwork network = DirectProxyNetwork.acquire();
+        if (network == null) return DIRECT_UNAVAILABLE;
+        try {
+            ensureInitialized();
+            long elapsed = Libv2ray.measureOutboundDelayOnNetwork(config.buildConfig(findFreePort()), DELAY_TEST_URL, network);
+            return network.denied.get() || network.boundSockets.get() == 0 ? DIRECT_UNAVAILABLE
+                    : (elapsed > 0 ? elapsed : (network.multipleAddresses.get() ? DIRECT_UNAVAILABLE : -1));
+        } catch (LinkageError unavailableNativeBinding) {
+            return DIRECT_UNAVAILABLE;
+        } catch (Throwable e) {
+            // Exceptions can contain server configuration. Return a status, never the text.
+            return network.denied.get() || network.multipleAddresses.get() || network.boundSockets.get() == 0
+                    ? DIRECT_UNAVAILABLE : -1;
+        }
+    }
+
+    /** Conservative guard for legacy tgnet probes, which cannot bind an Android Network. */
+    public static boolean isVpnActiveOrUnknown() {
+        try {
+            android.net.ConnectivityManager manager = (android.net.ConnectivityManager)
+                    ApplicationLoader.applicationContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            if (manager == null) return true;
+            for (android.net.Network network : manager.getAllNetworks()) {
+                android.net.NetworkCapabilities caps = manager.getNetworkCapabilities(network);
+                if (caps != null && caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)) return true;
+            }
+            return false;
+        } catch (RuntimeException denied) {
+            return true;
+        }
+    }
+
+    /** Manual tests use an isolated physical-network core; unsupported protocols fail closed. */
+    public static void checkDirectProxy(ProxySettings settings, RequestTimeDelegate delegate) {
+        if (settings.getType() != ProxySettings.Type.V2RAY) {
+            delegate.run(DIRECT_UNAVAILABLE);
+            return;
+        }
+        final V2RayConfig config = V2RayConfig.parse(settings.getSecret());
+        if (config == null) { delegate.run(-1); return; }
+        testExecutor.execute(() -> delegate.run(measureDirectDelaySync(config)));
+    }
+
     /**
      * A short-lived extra core with its own SOCKS5 port, for downloads that must not depend on
      * (or disturb) the connection Telegram is using. Close it when done.

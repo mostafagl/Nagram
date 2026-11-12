@@ -845,4 +845,11 @@
     <string name="LyricsNotFound">متنی برای این آهنگ پیدا نشد</string>
     <string name="LyricsSetting">متن آهنگ در موزیک‌پلیر</string>
     <string name="LyricsSettingInfo">گزینهٔ «متن آهنگ» به منوی پلیر اضافه می‌شود: متن همگام با آهنگ روی پس‌زمینه‌ای از رنگ‌های کاور. متن از سایت lrclib.net گرفته می‌شود؛ فقط نام آهنگ، خواننده و مدت آن فرستاده می‌شود و فقط وقتی متن را باز کنید.</string>
+    <string name="ProxyDirectTesting">در حال تست از مسیر مستقیم اینترنت…</string>
+    <string name="ProxyDirectUnavailable">مسیر مستقیم برای بعضی کانفیگ ها قابل استفاده یا پشتیبانی نیست. این کانفیگ ها خراب علامت گذاری یا حذف نشدند. تنظیمات مسدودسازی اینترنت بدون VPN را بررسی کنید و دوباره امتحان کنید.</string>
+    <string name="ProxyCheckBusy">بررسی پروکسی در حال اجراست. تا پایان آن منتظر بمانید.</string>
+    <string name="ProxyDeleteFirstPass">مرحله ۱ از ۲: بررسی همه کانفیگ ها…</string>
+    <string name="ProxyDeleteSecondPass">مرحله ۲ از ۲: بررسی دوباره کانفیگ های ناموفق پیش از حذف…</string>
+    <string name="V2RaySubscriptionEmpty">ساب هیچ کانفیگ قابل پشتیبانی برنگرداند. کانفیگ های قبلی حفظ شدند.</string>
+    <string name="ProxyAutoConnectSkipped">فعال سازی خودکار برای حفظ انتخاب فعلی پروکسی یا VPN انجام نشد، یا راه اندازی اتصال جایگزین ممکن نبود.</string>
 </resources>

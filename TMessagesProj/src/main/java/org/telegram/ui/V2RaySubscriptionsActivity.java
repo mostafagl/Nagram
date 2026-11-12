@@ -39,6 +39,13 @@ import java.util.List;
 public class V2RaySubscriptionsActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate {
 
     private LinearLayout listLayout;
+    private String initialUrl;
+
+    public V2RaySubscriptionsActivity() { }
+
+    public V2RaySubscriptionsActivity(String initialUrl) {
+        this.initialUrl = initialUrl;
+    }
 
     @Override
     public boolean onFragmentCreate() {
@@ -83,6 +90,15 @@ public class V2RaySubscriptionsActivity extends BaseFragment implements Notifica
         scrollView.addView(listLayout, new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
         rebuild();
         return fragmentView;
+    }
+
+    @Override
+    public void onTransitionAnimationEnd(boolean isOpen, boolean backward) {
+        super.onTransitionAnimationEnd(isOpen, backward);
+        if (isOpen && initialUrl != null && getParentActivity() != null) {
+            showEditor(null);
+            initialUrl = null;
+        }
     }
 
     private void rebuild() {
@@ -236,7 +252,7 @@ public class V2RaySubscriptionsActivity extends BaseFragment implements Notifica
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(AndroidUtilities.dp(24), 0, AndroidUtilities.dp(24), 0);
 
-        final EditTextBoldCursor urlField = makeField(context, getString(R.string.V2RaySubscriptionUrl), existing != null ? s.url : null, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        final EditTextBoldCursor urlField = makeField(context, getString(R.string.V2RaySubscriptionUrl), existing != null ? s.url : initialUrl, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         urlField.setGravity(Gravity.LEFT);
         layout.addView(urlField, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 8));
         final EditTextBoldCursor nameField = makeField(context, getString(R.string.V2RaySubscriptionName), existing != null ? s.name : null, InputType.TYPE_CLASS_TEXT);
@@ -383,18 +399,51 @@ public class V2RaySubscriptionsActivity extends BaseFragment implements Notifica
                 summary.append(s.getDisplayName()).append("\n").append(describeResult(result));
             }
             AndroidUtilities.runOnUIThread(() -> {
-                try {
-                    progressDialog.dismiss();
-                } catch (Exception ignore) {
-                }
-                if (owner instanceof V2RaySubscriptionsActivity) ((V2RaySubscriptionsActivity) owner).rebuild();
-                if (owner.getParentActivity() != null) {
-                    final AlertDialog.Builder done = new AlertDialog.Builder(owner.getParentActivity());
-                    done.setTitle(getString(R.string.V2RaySubscriptionResultTitle));
-                    done.setMessage(summary.toString());
-                    done.setPositiveButton(getString(R.string.OK), null);
-                    owner.showDialog(done.create());
-                }
+                final Runnable showSummary = () -> {
+                    try { progressDialog.dismiss(); } catch (Exception ignored) { }
+                    if (owner instanceof V2RaySubscriptionsActivity) ((V2RaySubscriptionsActivity) owner).rebuild();
+                    if (owner.getParentActivity() != null) {
+                        owner.showDialog(new AlertDialog.Builder(owner.getParentActivity())
+                                .setTitle(getString(R.string.V2RaySubscriptionResultTitle))
+                                .setMessage(summary.toString()).setPositiveButton(getString(R.string.OK), null).create());
+                    }
+                };
+                final long waitUntil = android.os.SystemClock.elapsedRealtime() + 60_000;
+                final Runnable[] check = new Runnable[1];
+                check[0] = () -> {
+                    if (cancelled.get() || owner.getParentActivity() == null) { showSummary.run(); return; }
+                    nameView.setText(getString(R.string.ProxyTestAll));
+                    statusView.setText(getString(R.string.ProxyDirectTesting));
+                    bar.setIndeterminate(true);
+                    boolean started = org.telegram.messenger.ProxyRotationController.checkManually(new ArrayList<>(SharedConfig.proxyList),
+                            new org.telegram.messenger.ProxyRotationController.ManualCheckListener() {
+                                @Override public void onProgress(int done, int total) {
+                                    bar.setIndeterminate(false);
+                                    bar.setMax(Math.max(1, total));
+                                    bar.setProgress(done);
+                                    statusView.setText(getString(R.string.ProxyDirectTesting) + " " + done + "/" + total);
+                                }
+                                @Override public void onComplete(List<SharedConfig.ProxyInfo> measured, int unavailable) {
+                                    if (!cancelled.get() && owner.getParentActivity() != null) {
+                                        boolean connected = org.telegram.messenger.ProxyRotationController.connectLowestMeasured(measured);
+                                        if (!connected && measured.stream().anyMatch(info -> info.available && info.ping > 0))
+                                            summary.append("\n\n").append(getString(R.string.ProxyAutoConnectSkipped));
+                                        if (unavailable > 0) summary.append("\n\n").append(getString(R.string.ProxyDirectUnavailable));
+                                    }
+                                    showSummary.run();
+                                }
+                            });
+                    if (!started) {
+                        if (android.os.SystemClock.elapsedRealtime() < waitUntil) {
+                            statusView.setText(getString(R.string.ProxyCheckBusy));
+                            AndroidUtilities.runOnUIThread(check[0], 1500);
+                        } else {
+                            summary.append("\n\n").append(getString(R.string.ProxyCheckBusy));
+                            showSummary.run();
+                        }
+                    }
+                };
+                check[0].run();
             });
         }, "v2ray-subscription-ui").start();
     }
@@ -404,7 +453,11 @@ public class V2RaySubscriptionsActivity extends BaseFragment implements Notifica
             return LocaleController.formatString(R.string.V2RaySubscriptionFailed, r.error);
         }
         String text = LocaleController.formatString(R.string.V2RaySubscriptionResult, r.links, r.duplicates, r.invalid, r.tested, r.working, r.added);
-        if (r.limitReached && r.added == 0) {
+        if (r.directUnavailable > 0) {
+            text += "\n" + getString(R.string.ProxyDirectUnavailable);
+        } else if (r.links == 0 && r.error == null) {
+            text += "\n" + getString(R.string.V2RaySubscriptionEmpty);
+        } else if (r.limitReached && r.added == 0) {
             text += "\n" + LocaleController.formatString(R.string.V2RaySubscriptionFull, r.max);
         } else if (r.limitReached) {
             text += "\n" + getString(R.string.V2RaySubscriptionLimitReached);

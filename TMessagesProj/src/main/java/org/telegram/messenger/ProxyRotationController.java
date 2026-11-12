@@ -173,6 +173,156 @@ public class ProxyRotationController implements NotificationCenter.NotificationC
         }
     };
 
+    public interface ManualCheckListener {
+        void onProgress(int done, int total);
+        void onComplete(List<SharedConfig.ProxyInfo> measured, int unavailable);
+    }
+
+    private boolean manualChecking;
+
+    interface ManualProxyChecker {
+        void check(SharedConfig.ProxyInfo info, org.telegram.tgnet.RequestTimeDelegate delegate);
+    }
+    static ManualProxyChecker manualProxyChecker;
+    static SharedPreferences manualPreferences;
+    private static SharedPreferences manualPreferences() {
+        return manualPreferences != null ? manualPreferences : MessagesController.getGlobalMainSettings();
+    }
+    private List<SharedConfig.ProxyInfo> lastManualResults;
+    private SharedConfig.ProxyInfo selectionAtManualStart;
+    private boolean enabledAtManualStart, manualSelectionChanged;
+
+    private static void checkManualProxy(SharedConfig.ProxyInfo info, org.telegram.tgnet.RequestTimeDelegate delegate) {
+        if (manualProxyChecker != null) { manualProxyChecker.check(info, delegate); return; }
+        if (info.settings.getType() == ProxySettings.Type.V2RAY) {
+            V2RayTransport.checkDirectProxy(info.settings, delegate);
+        } else if (V2RayTransport.isVpnActiveOrUnknown()) {
+            delegate.run(V2RayTransport.DIRECT_UNAVAILABLE);
+        } else {
+            ConnectionsManager.getInstance(UserConfig.selectedAccount).checkProxy(info.settings,
+                    time -> delegate.run(V2RayTransport.isVpnActiveOrUnknown() ? V2RayTransport.DIRECT_UNAVAILABLE : time));
+        }
+    }
+
+    /** One bounded manual batch shared by ping, subscription refresh and deletion. UI thread. */
+    public static boolean checkManually(List<SharedConfig.ProxyInfo> requested, ManualCheckListener listener) {
+        if (INSTANCE.manualChecking) return false;
+        final ArrayList<SharedConfig.ProxyInfo> scope = new ArrayList<>();
+        final java.util.HashSet<SharedConfig.ProxyInfo> foreign = new java.util.HashSet<>();
+        final java.util.IdentityHashMap<SharedConfig.ProxyInfo, ProxySettings> owned = new java.util.IdentityHashMap<>();
+        for (SharedConfig.ProxyInfo info : requested) {
+            if (SharedConfig.proxyList.contains(info) && !scope.contains(info)) {
+                scope.add(info);
+                if (info.checking) foreign.add(info); else { info.checking = true; owned.put(info, info.settings); }
+            }
+        }
+        INSTANCE.manualChecking = true;
+        INSTANCE.invalidateBatch();
+        INSTANCE.lastManualResults = null;
+        INSTANCE.selectionAtManualStart = SharedConfig.currentProxy;
+        SharedPreferences preferences = manualPreferences();
+        INSTANCE.enabledAtManualStart = preferences.getBoolean("proxy_enabled", false);
+        INSTANCE.manualSelectionChanged = false;
+        SharedPreferences.OnSharedPreferenceChangeListener settingsObserver = (prefs, key) -> {
+            if (key != null && key.startsWith("proxy_")) INSTANCE.manualSelectionChanged = true;
+        };
+        preferences.registerOnSharedPreferenceChangeListener(settingsObserver);
+        final ArrayList<SharedConfig.ProxyInfo> pending = new ArrayList<>(scope);
+        final ArrayList<SharedConfig.ProxyInfo> measured = new ArrayList<>();
+        final int[] done = {0}, active = {0}, unavailable = {0};
+        final boolean[] finished = {false};
+        final Runnable[] pump = new Runnable[1], timeout = new Runnable[1];
+        final Runnable finish = () -> {
+            if (finished[0]) return;
+            finished[0] = true;
+            AndroidUtilities.cancelRunOnUIThread(pump[0]);
+            AndroidUtilities.cancelRunOnUIThread(timeout[0]);
+            preferences.unregisterOnSharedPreferenceChangeListener(settingsObserver);
+            for (java.util.Map.Entry<SharedConfig.ProxyInfo, ProxySettings> entry : owned.entrySet()) {
+                if (entry.getKey().settings == entry.getValue()) entry.getKey().checking = false;
+            }
+            INSTANCE.lastManualResults = measured;
+            INSTANCE.manualChecking = false;
+            listener.onComplete(measured, unavailable[0]);
+            // Resume the existing rotation observer after the manual operation, if needed.
+            NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxySettingsChanged);
+        };
+        timeout[0] = () -> {
+            if (finished[0]) return;
+            unavailable[0] += scope.size() - done[0];
+            finish.run(); // Late native callbacks must not overwrite newer measurements.
+        };
+        pump[0] = () -> {
+            if (finished[0]) return;
+            AndroidUtilities.cancelRunOnUIThread(pump[0]);
+            for (int i = 0; i < pending.size() && active[0] < 4;) {
+                SharedConfig.ProxyInfo info = pending.get(i);
+                if (foreign.contains(info) && info.checking) { i++; continue; }
+                pending.remove(i);
+                foreign.remove(info);
+                final ProxySettings testedSettings = info.settings;
+                owned.put(info, testedSettings);
+                info.checking = true;
+                active[0]++;
+                final boolean[] accepted = {false};
+                org.telegram.tgnet.RequestTimeDelegate callback = time -> AndroidUtilities.runOnUIThread(() -> {
+                    if (finished[0] || accepted[0]) return;
+                    accepted[0] = true;
+                    owned.remove(info);
+                    boolean stillSame = info.settings == testedSettings && SharedConfig.proxyList.contains(info);
+                    if (stillSame) info.checking = false;
+                    active[0]--;
+                    done[0]++;
+                    if (!stillSame || time == V2RayTransport.DIRECT_UNAVAILABLE) unavailable[0]++;
+                    else {
+                        info.availableCheckTime = SystemClock.elapsedRealtime();
+                        info.available = time > 0;
+                        info.ping = time > 0 ? time : 0;
+                        if (SharedConfig.proxyList.contains(info)) measured.add(info);
+                    }
+                    NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxyCheckDone, info);
+                    listener.onProgress(done[0], scope.size());
+                    pump[0].run();
+                }, 1);
+                try {
+                    checkManualProxy(info, callback);
+                } catch (RuntimeException | LinkageError startupFailure) {
+                    callback.run(V2RayTransport.DIRECT_UNAVAILABLE);
+                }
+            }
+            if (done[0] == scope.size() && active[0] == 0) finish.run();
+            else if (!pending.isEmpty()) AndroidUtilities.runOnUIThread(pump[0], 250);
+        };
+        AndroidUtilities.runOnUIThread(timeout[0], 6 * 60_000L);
+        pump[0].run();
+        return true;
+    }
+
+    /** Connect only a result actually measured by the completed manual operation. UI thread. */
+    public static boolean connectLowestMeasured(List<SharedConfig.ProxyInfo> measured) {
+        if (measured.isEmpty() || measured != INSTANCE.lastManualResults || INSTANCE.manualSelectionChanged
+                || SharedConfig.currentProxy != INSTANCE.selectionAtManualStart
+                || manualPreferences().getBoolean("proxy_enabled", false) != INSTANCE.enabledAtManualStart) return false;
+        if (org.telegram.utils.proxy.ProxyVpnGuard.isEnabled() && org.telegram.utils.proxy.ProxyVpnGuard.isVpnActive()) return false;
+        final ArrayList<SharedConfig.ProxyInfo> sorted = new ArrayList<>(measured);
+        sorted.sort((a, b) -> Long.compare(a.ping, b.ping));
+        for (SharedConfig.ProxyInfo info : sorted) {
+            if (!SharedConfig.proxyList.contains(info) || !info.available || info.ping <= 0 || info.checking) continue;
+            if (info.settings.getType() == ProxySettings.Type.V2RAY && V2RayTransport.start(info.settings.getSecret()) == 0) continue;
+            SharedPreferences.Editor editor = MessagesController.getGlobalMainSettings().edit().putBoolean("proxy_enabled", true);
+            info.settings.toSharedPreferences(editor);
+            editor.apply();
+            SharedConfig.currentProxy = info;
+            INSTANCE.lastManualResults = null;
+            INSTANCE.lastSwitchTime = SystemClock.elapsedRealtime();
+            INSTANCE.invalidateBatch();
+            ConnectionsManager.setProxySettings(true, info.settings);
+            NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxySettingsChanged);
+            return true;
+        }
+        return false;
+    }
+
     public static void init() {
         INSTANCE.initInternal();
     }
@@ -244,7 +394,7 @@ public class ProxyRotationController implements NotificationCenter.NotificationC
     }
 
     private boolean canRotate() {
-        return !org.telegram.utils.proxy.ProxyVpnGuard.isSuspended()
+        return !manualChecking && !org.telegram.utils.proxy.ProxyVpnGuard.isSuspended()
                 && SharedConfig.isProxyEnabled() && SharedConfig.proxyRotationEnabled && SharedConfig.proxyList.size() > 1;
     }
 

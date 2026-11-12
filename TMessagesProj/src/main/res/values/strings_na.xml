@@ -845,4 +845,11 @@
     <string name="LyricsNotFound">No lyrics found for this song</string>
     <string name="LyricsSetting">Song lyrics in the music player</string>
     <string name="LyricsSettingInfo">Adds \"Lyrics\" to the player\'s menu: synced lyrics that follow the song over a background from its cover. Lyrics come from lrclib.net; only the song\'s title, artist and length are sent, and only when you open them.</string>
+    <string name="ProxyDirectTesting">Testing through the direct internet connection…</string>
+    <string name="ProxyDirectUnavailable">A direct route is unavailable or unsupported for some configs. These configs were not marked failed or deleted. Check VPN lockdown and try again.</string>
+    <string name="ProxyCheckBusy">A proxy check is already in progress. Please wait for it to finish.</string>
+    <string name="ProxyDeleteFirstPass">Step 1 of 2: checking all configs…</string>
+    <string name="ProxyDeleteSecondPass">Step 2 of 2: rechecking failed configs before deletion…</string>
+    <string name="V2RaySubscriptionEmpty">The subscription returned no supported configs. Existing configs were preserved.</string>
+    <string name="ProxyAutoConnectSkipped">Automatic activation was skipped to preserve your current proxy/VPN choice, or because the replacement could not start.</string>
 </resources>

@@ -147,7 +147,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: TMessagesProj/libs/libv2ray.aar
-          key: libv2ray-${{ hashFiles('bin/libs/v2ray.sh') }}
+          key: libv2ray-${{ hashFiles('bin/libs/v2ray.sh', 'bin/libs/parva-direct/**') }}
       - name: Set up Go
         if: steps.v2ray-cache.outputs.cache-hit != 'true'
         uses: actions/setup-go@v6
@@ -254,7 +254,7 @@ jobs:
           export LOCAL_PROPERTIES="${{ secrets.LOCAL_PROPERTIES }}"
           export DEBUG_BUILD=true
           export EXTRA_ABI_X86_64=true
-          ./gradlew TMessagesProj:testReleaseUnitTest --tests '*AyuGhostUtilsTest' --tests '*ContactChangesTest' --tests '*LocalLastSeenTest' --tests '*ProxyRotationHealthTest' --tests '*V2RaySubscriptionNamesTest' --build-cache --no-configuration-cache -PparvaDevelopmentBuild=false
+          ./gradlew TMessagesProj:testReleaseUnitTest --tests '*AyuGhostUtilsTest' --tests '*ContactChangesTest' --tests '*LocalLastSeenTest' --tests '*ProxyRotationHealthTest' --tests '*V2RaySubscriptionNamesTest' --tests '*GifPlaybackPolicyTest' --tests '*ManualProxyChecksTest' --build-cache --no-configuration-cache -PparvaDevelopmentBuild=false
           ./gradlew TMessagesProj:assembleRelease --build-cache --no-configuration-cache -PparvaDevelopmentBuild=false
 
           APK=$(find TMessagesProj/build/outputs/apk -name '*arm64-v8a*.apk')

@@ -843,36 +843,35 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
      * connection in use is not touched.
      */
     private void testProxies(List<SharedConfig.ProxyInfo> list, Runnable onDone) {
-        list.removeIf(info -> info.checking);
         if (list.isEmpty()) {
-            if (onDone != null) {
-                onDone.run();
-            }
+            showAlert(getString(R.string.ProxyTestAll), getString(R.string.NoProxy));
             return;
         }
-        final int[] left = {list.size()};
-        for (SharedConfig.ProxyInfo info : list) {
-            info.checking = true;
-        }
-        refreshProxyCells();
-        for (SharedConfig.ProxyInfo info : list) {
-            ConnectionsManager.getInstance(currentAccount).checkProxy(info.settings, time -> AndroidUtilities.runOnUIThread(() -> {
-                info.availableCheckTime = SystemClock.elapsedRealtime();
-                info.checking = false;
-                if (time == -1) {
-                    info.available = false;
-                    info.ping = 0;
-                } else {
-                    info.ping = time;
-                    info.available = true;
-                }
-                NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxyCheckDone, info);
-                if (testProgressDialog != null) testProgressDialog.setMessage(getString(R.string.ProxyTestAll) + " · " + (list.size() - left[0] + 1) + "/" + list.size());
-                if (--left[0] == 0 && onDone != null) {
-                    onDone.run();
-                }
-            }));
-        }
+        final AlertDialog progressOwner = testProgressDialog;
+        boolean started = org.telegram.messenger.ProxyRotationController.checkManually(list,
+                new org.telegram.messenger.ProxyRotationController.ManualCheckListener() {
+                    @Override public void onProgress(int done, int total) {
+                        if (progressOwner != null && testProgressDialog == progressOwner)
+                            progressOwner.setMessage(getString(R.string.ProxyDirectTesting) + " " + done + "/" + total);
+                    }
+                    @Override public void onComplete(List<SharedConfig.ProxyInfo> measured, int unavailable) {
+                        refreshProxyCells();
+                        if (onDone != null) onDone.run();
+                        else {
+                            boolean connected = org.telegram.messenger.ProxyRotationController.connectLowestMeasured(measured);
+                            if (!connected && measured.stream().anyMatch(ProxyListActivity::hasPing))
+                                tw.nekomimi.nekogram.utils.AlertUtil.showToast(getString(R.string.ProxyAutoConnectSkipped));
+                            if (getParentActivity() != null && unavailable > 0)
+                                showAlert(getString(R.string.ProxyTestAll), getString(R.string.ProxyDirectUnavailable));
+                            else if (getParentActivity() != null && !measured.isEmpty() && measured.stream().noneMatch(ProxyListActivity::hasPing))
+                                showAlert(getString(R.string.ProxyTestAll), getString(R.string.ProxyNothingResponded));
+                        }
+                    }
+                });
+        if (!started) {
+            if (progressOwner != null) dismissTestProgress();
+            tw.nekomimi.nekogram.utils.AlertUtil.showToast(getString(R.string.ProxyCheckBusy));
+        } else refreshProxyCells();
     }
 
     private static boolean hasPing(SharedConfig.ProxyInfo info) {
@@ -934,7 +933,10 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
             }
         } catch (Exception ignore) {
         }
-        if (!V2RayConfigSheet.open(getParentActivity(), text)) {
+        final String clipboardUrl = text == null ? "" : text.toString().trim();
+        if (org.telegram.utils.proxy.V2RaySubscriptions.isSubscriptionUrl(clipboardUrl)) {
+            presentFragment(new V2RaySubscriptionsActivity(clipboardUrl));
+        } else if (!V2RayConfigSheet.open(getParentActivity(), text)) {
             // Telegram proxy links, or an error toast when there is nothing to import.
             ProxyUtil.importFromClipboard(getParentActivity());
         }
@@ -967,40 +969,56 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
      * network rather than at the configs.
      */
     private void deleteWithoutPing() {
-        if (proxyList.isEmpty() || getParentActivity() == null) {
-            return;
-        }
+        if (proxyList.isEmpty() || getParentActivity() == null) return;
         if (!org.telegram.messenger.ApplicationLoader.isNetworkOnline()) {
             showAlert(getString(R.string.ProxyDeleteNoPing), getString(R.string.ProxyDeleteNoNetwork));
             return;
         }
-        final List<SharedConfig.ProxyInfo> all = new ArrayList<>(proxyList);
         showTestProgress();
-        testProxies(all, () -> {
-            final List<SharedConfig.ProxyInfo> failed = new ArrayList<>();
-            for (SharedConfig.ProxyInfo info : all) {
-                if (!info.available) {
-                    failed.add(info);
-                }
+        final AlertDialog progressOwner = testProgressDialog;
+        final List<SharedConfig.ProxyInfo> scope = new ArrayList<>(proxyList);
+        org.telegram.messenger.ProxyRotationController.ManualCheckListener first = new org.telegram.messenger.ProxyRotationController.ManualCheckListener() {
+            @Override public void onProgress(int done, int total) {
+                if (testProgressDialog == progressOwner) progressOwner.setMessage(getString(R.string.ProxyDeleteFirstPass) + " " + done + "/" + total);
             }
-            if (testProgressDialog != null) testProgressDialog.setMessage(getString(R.string.ProxyDeleteNoPing) + " · 2/2");
-            testProxies(failed, () -> {
-                dismissTestProgress();
-                final List<SharedConfig.ProxyInfo> stillFailed = new ArrayList<>();
-                for (SharedConfig.ProxyInfo info : failed) {
-                    if (!info.available) {
-                        stillFailed.add(info);
-                    }
+            @Override public void onComplete(List<SharedConfig.ProxyInfo> measured, int unavailable) {
+                if (getParentActivity() == null || testProgressDialog != progressOwner) return;
+                final List<SharedConfig.ProxyInfo> failed = new ArrayList<>();
+                for (SharedConfig.ProxyInfo info : measured) if (!hasPing(info)) failed.add(info);
+                if (unavailable > 0) {
+                    dismissTestProgress();
+                    showAlert(getString(R.string.ProxyDeleteNoPing), getString(R.string.ProxyDirectUnavailable));
+                    return; // Never interpret an unavailable direct route as a dead server.
                 }
-                if (stillFailed.isEmpty()) {
+                if (failed.isEmpty()) {
+                    dismissTestProgress();
                     showAlert(getString(R.string.ProxyDeleteNoPing), getString(R.string.ProxyAllResponded));
-                } else if (stillFailed.size() == all.size()) {
-                    showAlert(getString(R.string.ProxyDeleteNoPing), getString(R.string.ProxyNothingResponded));
-                } else {
-                    confirmDelete(stillFailed);
+                    return;
                 }
-            });
-        });
+                org.telegram.messenger.ProxyRotationController.checkManually(failed, new org.telegram.messenger.ProxyRotationController.ManualCheckListener() {
+                    @Override public void onProgress(int done, int total) {
+                        if (testProgressDialog == progressOwner) progressOwner.setMessage(getString(R.string.ProxyDeleteSecondPass) + " " + done + "/" + total);
+                    }
+                    @Override public void onComplete(List<SharedConfig.ProxyInfo> retested, int unavailableAgain) {
+                        if (getParentActivity() == null || testProgressDialog != progressOwner) return;
+                        dismissTestProgress();
+                        if (unavailableAgain > 0) {
+                            showAlert(getString(R.string.ProxyDeleteNoPing), getString(R.string.ProxyDirectUnavailable));
+                            return;
+                        }
+                        final List<SharedConfig.ProxyInfo> dead = new ArrayList<>();
+                        for (SharedConfig.ProxyInfo info : retested) if (!hasPing(info)) dead.add(info);
+                        if (dead.isEmpty()) showAlert(getString(R.string.ProxyDeleteNoPing), getString(R.string.ProxyAllResponded));
+                        else if (dead.size() == scope.size()) showAlert(getString(R.string.ProxyDeleteNoPing), getString(R.string.ProxyNothingResponded));
+                        else confirmDelete(dead);
+                    }
+                });
+            }
+        };
+        if (!org.telegram.messenger.ProxyRotationController.checkManually(scope, first)) {
+            dismissTestProgress();
+            tw.nekomimi.nekogram.utils.AlertUtil.showToast(getString(R.string.ProxyCheckBusy));
+        }
     }
 
     private void showAlert(String title, String text) {
@@ -1172,37 +1190,9 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
         } else {
             deleteAllRow = -1;
         }
-        checkProxyList();
+        // Explicit pings use the shared direct-route batch; do not queue VPN-routed checks on entry.
         if (notify && listAdapter != null) {
             listAdapter.notifyDataSetChanged();
-        }
-    }
-
-    private void checkProxyList() {
-        checkProxyList(false);
-    }
-
-    private void checkProxyList(boolean force) {
-        for (int a = 0, count = proxyList.size(); a < count; a++) {
-            final SharedConfig.ProxyInfo proxyInfo = proxyList.get(a);
-            if (proxyInfo.checking || SystemClock.elapsedRealtime() - proxyInfo.availableCheckTime < 2 * 60 * 1000) {
-                if (!force) {
-                    continue;
-                }
-            }
-            proxyInfo.checking = true;
-            ConnectionsManager.getInstance(currentAccount).checkProxy(proxyInfo.settings, time -> AndroidUtilities.runOnUIThread(() -> {
-                proxyInfo.availableCheckTime = SystemClock.elapsedRealtime();
-                proxyInfo.checking = false;
-                if (time == -1) {
-                    proxyInfo.available = false;
-                    proxyInfo.ping = 0;
-                } else {
-                    proxyInfo.ping = time;
-                    proxyInfo.available = true;
-                }
-                NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxyCheckDone, proxyInfo);
-            }));
         }
     }
 

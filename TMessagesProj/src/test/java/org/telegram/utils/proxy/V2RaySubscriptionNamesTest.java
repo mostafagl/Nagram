@@ -21,6 +21,21 @@ public class V2RaySubscriptionNamesTest {
         assertNames(V2RaySubscriptions.parseLinks(Base64.encodeToString(body.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP)));
     }
 
+    @Test public void clipboardDistinguishesSubscriptionsFromTelegramProxyLinks() {
+        assertTrue(V2RaySubscriptions.isSubscriptionUrl("https://example.com/sub/token?client=1"));
+        assertTrue(V2RaySubscriptions.isSubscriptionUrl("http://192.168.1.1/sub"));
+        assertFalse(V2RaySubscriptions.isSubscriptionUrl("https://T.ME/proxy?server=example.com"));
+        assertFalse(V2RaySubscriptions.isSubscriptionUrl("https://telegram.dog/socks?server=example.com"));
+        assertFalse(V2RaySubscriptions.isSubscriptionUrl("tg://proxy?server=example.com"));
+    }
+
+    @Test public void clipboardRejectsMultipleLinksAndNonHttpText() {
+        assertFalse(V2RaySubscriptions.isSubscriptionUrl("https://example.com/sub\nhttps://other.com/sub"));
+        assertFalse(V2RaySubscriptions.isSubscriptionUrl("https://"));
+        assertFalse(V2RaySubscriptions.isSubscriptionUrl("vless://id@example.com:443#server"));
+        assertFalse(V2RaySubscriptions.isSubscriptionUrl("a subscription link"));
+    }
+
     private void assertNames(List<String> links) {
         assertEquals(2, links.size());
         assertEquals("🇩🇪 My server 1", V2RayConfig.parse(links.get(0)).remark);

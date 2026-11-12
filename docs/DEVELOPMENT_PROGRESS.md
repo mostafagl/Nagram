@@ -1,5 +1,22 @@
 # Development validation record
 
+## Parallel proxy, subscription and GIF corrections — integration validation pending
+
+The user explicitly authorized parallel implementation, independent review, testing, then an ordinary Latest Release. No merge is authorized. This section supersedes earlier pending-scope notes below.
+
+- Reused the existing proxy screen, subscription worker and rotation controller. Fixed toolbar callback replacement; clipboard HTTP(S) subscription links open the existing subscription editor with the URL prefilled.
+- Manual ping, subscription final check and deletion share one bounded four-worker batch. Foreign automatic checks are awaited without dropping entries. A six-minute watchdog finishes once and ignores late results. Direct-route denial/unsupported transport is not a dead-server result and cannot enter deletion evidence. User selection/preferences changing during the operation prevent automatic reconnection. Editing a config while a check runs cannot apply the old config's ping to the new one.
+- Manual and refreshed-subscription results select the lowest successfully measured server through the existing lifecycle. Active VPN guard policy remains respected; UI explains when auto-connect is skipped. Subscription refresh preserves saved entries, deduplicates and only adds functionally working candidates up to the existing configured quota. Failed or empty results have explicit summaries. Deletion shows first/second-pass counts and asks confirmation for the twice-failed subset; denial of a direct route aborts deletion.
+- V2Ray direct checks use isolated per-test sockets and Android physical-network binding, including physical-network DNS. The pinned Xray dependency receives a small per-token hook; neither the process network nor the active Telegram core is rebound. Android lockdown/no route/DNS denial/native hook absence/zero bound sockets return unavailable. Failed multi-address DNS probes return unavailable conservatively because this patch does not implement full address fallback. Legacy non-V2Ray checks retain the existing checker only when no VPN is active; under VPN they report unsupported direct measurement.
+- Raw GIF89a remains in the animated-image path even when the video-style GIF preference is enabled; only animated MP4 qualifies for the video player. Both gallery classification and initial autostart use the same policy. The supplied sample decoded completely using ffmpeg (77 frames, 600x338, 6.16s); no sample media is committed. Runtime authenticated channel playback still needs a phone check.
+- Existing ShowDeletedMessages and ForceCopy already default to true and are reused. Received deletion IDs/push updates retain locally received messages with the existing deleted mark. No fabricated actor or separate reliable “partner cleared whole chat” event is introduced. Server-side deletion cannot be prevented. Saved media-copy filenames now include account index to prevent cross-account collisions; old files remain untouched.
+
+Independent review addressed caller-scope mutation/skipped-check false success, progress operation ownership, native fd ownership, VPN/DNS route leakage, unavailable-vs-dead semantics, stale selection/config edits, one-shot callbacks and synchronous checker failures.
+
+Local validation: Java syntax parsing, shell syntax, Python AST, diff whitespace and pinned native patch-anchor dry-run passed. The local Gradle distribution could not be downloaded; there is no local Go compiler (the installed `go` is an unrelated game). Actual Go helper tests, gomobile AAR build, Android compilation, regression XML results, signature verification and emulator launch smoke must pass in CI before publication. Final results, source/run IDs and APK checksums will be recorded after that validation. Device-dependent acceptance remains separate from CI.
+
+---
+
 ## Latest requested corrections — published ordinary Release
 
 Source: `31f3a0702a83c3c0ca0424ab6dc1d0b8fde12c81`.
@@ -261,3 +278,12 @@ Real-device checks required: authenticated filtered-tab archive pull (short/long
 CI orchestration correction: a publishing-only commit initially retriggered the PR build and cancelled its predecessor under the new concurrency policy. No APK was published from that cancelled run. The publishing workflow is now excluded from ordinary PR path triggers, and this combined CI-policy commit explicitly waits for its own complete PR build.
 
 Archive integration audit also covered drag-reordering pinned dialogs: filtered views containing the synthetic archive row return a presentation copy, so reorder now writes to the existing DialogFilter owner collection by dialog identity. This preserves upstream pinned-chat movement rather than mutating a temporary display list.
+
+
+## Raw GIF playback correction (pending Android validation)
+
+The supplied playback sample is GIF89a, 600x338, 77 frames, 6.16 seconds, 2,786,816 bytes. ffprobe recognized GIF and ffmpeg decoded the entire file without errors. No sample media is committed to the repository.
+
+PhotoViewer treated every GIF as video when takeGIFasVideo was enabled. Both initial player autostart and gallery item classification now use the existing MessageObject.isNewGif() MP4/animated predicate. Raw image/gif remains in the upstream animated image path. This does not force autoplay against the user's existing autoplay preferences or claim support for every video codec. Actual channel download and playback with the original Telegram document metadata must still be checked on an authenticated device.
+
+Previous proxy-toolbar correction: commit 2ed18187, CI 43129732337. Remaining scope is still pending: direct-network measurements under third-party VPN, post-test/update automatic connection, clipboard subscriptions, and full-chat deletion handling. Existing ForceCopy and ShowDeletedMessages settings already default to true; do not add duplicates or claim the server identifies deletion actors. No new release has been published for these corrections.
