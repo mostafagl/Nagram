@@ -1,5 +1,86 @@
 # Development validation record
 
+## Latest requested corrections — published ordinary Release
+
+Source: `31f3a0702a83c3c0ca0424ab6dc1d0b8fde12c81`.
+Build: https://github.com/mostafagl/Nagram/actions/runs/43123540262.
+Publisher: https://github.com/mostafagl/Nagram/actions/runs/43123533796.
+
+The user explicitly requested an ordinary Latest Release, not a pre-release. Publication is gated on all three native jobs and the Gradle job (focused regression tests, optimized APK assembly, signature checks and emulator launch smoke) completing successfully. No merge is authorized.
+
+Current validation: PASSED for the release build checks. Native builds for all three ABIs, Java/Kotlin compilation, `testReleaseUnitTest`, `assembleRelease`, APK signatures and emulator launch smoke all passed. The build log explicitly confirms `minifyReleaseWithR8`; resource shrinking is enabled in the release configuration.
+
+Test XML from artifact `13903600784` was downloaded, its ZIP SHA-256 verified (`6232f2fd8c3935e8084b4c925cb9e1389a1f3ea0b74ca879937ff779bacfec81`) and inspected:
+
+| Regression class | Passed | Failures/errors/skips |
+| --- | ---: | ---: |
+| AyuGhostUtilsTest | 3 | 0 |
+| ContactChangesTest | 2 | 0 |
+| LocalLastSeenTest | 2 | 0 |
+| ProxyRotationHealthTest | 2 | 0 |
+| V2RaySubscriptionNamesTest | 1 | 0 |
+| Total | 10 | 0 |
+
+APK artifact: `13902463450`, ZIP SHA-256 `5914d90e1029b10889cc96a47e9cb07025ba0ee53cc1517d193add3d8e1fb69e`. Publisher independently verified that artifact digest, APK signatures and the absence of a debuggable application flag. Expected signing certificate SHA-256: `3b76c1cdce57941b2b24a5973fedf787c8af82956f32e7f1b44c0663fe78d9ab`.
+Release: https://github.com/mostafagl/Nagram/releases/tag/build-1794441705607 . Confirmed through `/releases/latest`: `draft=false`, `prerelease=false`, target source `31f3a0702a83c3c0ca0424ab6dc1d0b8fde12c81`. Publisher run `43123533796` succeeded. The release uses the existing `build-<timestamp>` updater format and includes `build_timestamp.txt` plus checksums. No merge was performed.
+
+| APK | Bytes | SHA-256 |
+| --- | ---: | --- |
+| Parvagram-arm64-v8a.apk | 64,488,908 | `3c178902995a6b22541685589f39a5256738b092b337ad2373f07703ec4a1844` |
+| Parvagram-armeabi-v7a.apk | 63,298,726 | `c72b3e770f2987bcf331411fd1ad59931bd842214337facaeb97a1e52130e339` |
+| Parvagram-x86_64.apk | 66,160,899 | `23ce19f7b1df3749ba9452637d75a325f3c44d676121f9683c85d665216c2263` |
+
+The broader inherited authenticated emulator suite is separate from the release launch smoke. Its account-dependent results are not claimed as acceptance of the requested touch/Telegram-account scenarios.
+
+### Resulting behavior
+
+- Main filter tabs (including Users with All hidden) expose the existing archive row/pull animation. The gesture follows the existing Telegram parallax, quick pulls use the distance threshold, and cancelled gestures snap back. Short-list scroll range and pinned-chat reordering remain supported.
+- Proxy toolbar: refresh updates all saved subscriptions through the existing cancellable workflow; if there are no subscriptions, it opens their management screen. Ping uses the existing checker and does not duplicate checks already running. Unset sort preference defaults to ascending ping; explicit existing sort choices are preserved. Results re-sort with a 200 ms debounce.
+- One-link-per-line subscription names preserve unescaped spaces after # for plain and base64 bodies. The generic V2Ray suffix is removed from titles. Update the subscription after installing to recover previously truncated names. The existing protection against replacing an active config remains: its saved link/name is refreshed after switching away and updating again.
+- Typing/message/activity timelines and outgoing read-watermark history are removed from collection and navigation. Old history preferences are cleared on access. The original approximate latest observed timestamp and real profile/photo changes remain.
+- Nagram-branded launcher variants are hidden. Existing enabled legacy aliases migrate to the Parvagram default; manifest aliases remain for upgrade compatibility.
+
+### Commits for this request
+
+- `c88e3bf9`: archive pull in filters, proxy names/controls, activity/read-history removal, launcher selection cleanup, targeted regression coverage and optimized CI build.
+- `ab56fa7d`: short-list archive range and CI concurrency policy.
+- `d7eaecc4`: gated stable publisher.
+- `a9760454`: prevent publishing-only commits from cancelling their source build; validate the exact source.
+- `31f3a070`: preserve pinned-chat reordering for presentation copies.
+
+Earlier CI attempts were cancelled when a newer source superseded them. A publishing-only commit initially retriggered the PR build under the concurrency policy; that orchestration error was corrected. No cancelled build was released. Local Gradle failed before configuration because its distribution download had no network route. Java syntax checks and git diff --check passed; Android test/build results come from the final CI run above.
+
+### Files changed for this request
+
+- `.github/workflows/pr.yml`
+- `.github/workflows/publish-validated-preview.yml`
+- `TMessagesProj/src/main/java/org/telegram/messenger/MessagesController.java`
+- `TMessagesProj/src/main/java/org/telegram/ui/Adapters/DialogsAdapter.java`
+- `TMessagesProj/src/main/java/org/telegram/ui/Cells/AppIconsSelectorCell.java`
+- `TMessagesProj/src/main/java/org/telegram/ui/Components/Premium/PremiumAppIconsPreviewView.java`
+- `TMessagesProj/src/main/java/org/telegram/ui/DialogsActivity.java`
+- `TMessagesProj/src/main/java/org/telegram/ui/LauncherIconController.java`
+- `TMessagesProj/src/main/java/org/telegram/ui/ProxyListActivity.java`
+- `TMessagesProj/src/main/java/org/telegram/ui/V2RaySubscriptionsActivity.java`
+- `TMessagesProj/src/main/java/org/telegram/utils/proxy/V2RaySubscriptions.java`
+- `TMessagesProj/src/main/java/tw/nekomimi/nekogram/helpers/LocalLastSeen.java`
+- `TMessagesProj/src/main/java/tw/nekomimi/nekogram/settings/ContactChangesActivity.java`
+- `TMessagesProj/src/main/java/tw/nekomimi/nekogram/settings/ParvaSecuritySettingsActivity.java`
+- `TMessagesProj/src/test/java/org/telegram/utils/proxy/V2RaySubscriptionNamesTest.java`
+- `TMessagesProj/src/test/java/tw/nekomimi/nekogram/helpers/LocalLastSeenTest.java`
+- `docs/DEVELOPMENT_PROGRESS.md`
+
+### Remaining device acceptance
+
+- Filtered-tab archive drag on a signed-in phone: RTL, short/long lists, gesture cancellation, fast pull, switching tabs and moving pinned chats.
+- Toolbar refresh/ping on a real subscription/network, lowest-ping ordering, active-config name refresh after switching away, and VPN transitions.
+- Launcher migration on the phone's OEM launcher.
+- Sender-side voice/round-video listened markers with a second account while ghost mode is enabled, including autoplay and secret chats.
+
+The inherited emulator account login previously failed with Wrong code; green wrapper-job status alone is not evidence that authenticated UI scenarios passed.
+
+---
+
 ## Historical validation: previous preview (superseded by the corrections below)
 
 Implementation is available for device review. CI-verifiable checks below passed; full real-device/two-account acceptance is still pending. This is a development artifact, not a stable release.
