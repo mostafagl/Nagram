@@ -852,4 +852,6 @@
     <string name="ProxyDeleteSecondPass">Step 2 of 2: rechecking failed configs before deletion…</string>
     <string name="V2RaySubscriptionEmpty">The subscription returned no supported configs. Existing configs were preserved.</string>
     <string name="ProxyAutoConnectSkipped">Automatic activation was skipped to preserve your current proxy/VPN choice, or because the replacement could not start.</string>
+    <string name="ArchiveHidesInFolders">Archived chats hidden in all folders</string>
+    <string name="ArchiveHidesInFoldersInfo">When you archive a chat it disappears from every folder (Contacts, Groups and your own folders), not only from the main list. Unarchive it to bring it back.</string>
 </resources>

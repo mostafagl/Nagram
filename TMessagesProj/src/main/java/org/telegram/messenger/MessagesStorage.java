@@ -2742,6 +2742,11 @@ public class MessagesStorage extends BaseController {
     private LongSparseArray<Integer> dialogsWithMentions = new LongSparseArray<>();
     private LongSparseArray<Integer> dialogsWithUnread = new LongSparseArray<>();
 
+    /** Recounts the folder tabs' unread badges (after a setting that changes which chats a folder holds). */
+    public void recalcFolderUnreadCounters() {
+        storageQueue.postRunnable(() -> calcUnreadCounters(true));
+    }
+
     private void calcUnreadCounters(boolean apply) {
         SQLiteCursor cursor = null;
         try {
@@ -2947,6 +2952,9 @@ public class MessagesStorage extends BaseController {
                     flags = filter.flags;
                     if (NekoConfig.ignoreMutedCount.Bool() && (flags & MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED) == 0) {
                         flags |= MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED;
+                    }
+                    if (NekoConfig.archiveHidesInFolders) {
+                        flags |= MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_ARCHIVED; // same rule as the folder's chat list
                     }
                 } else {
                     filter = null;
@@ -6290,6 +6298,9 @@ public class MessagesStorage extends BaseController {
                 flags = filter.flags;
                 if (NekoConfig.ignoreMutedCount.Bool() && (flags & MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED) == 0) {
                     flags |= MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED;
+                }
+                if (NekoConfig.archiveHidesInFolders) {
+                    flags |= MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_ARCHIVED;
                 }
             } else {
                 filter = null;

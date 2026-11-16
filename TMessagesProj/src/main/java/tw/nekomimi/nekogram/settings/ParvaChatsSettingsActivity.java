@@ -90,6 +90,15 @@ public class ParvaChatsSettingsActivity extends ParvaPageActivity {
                     NekoConfig.hideAllTab.setConfigBool(!v);
                     getNotificationCenter().postNotificationName(NotificationCenter.dialogFiltersUpdated);
                 });
+        check("archiveHidesInFolders", R.string.ArchiveHidesInFolders, R.string.ArchiveHidesInFoldersInfo,
+                () -> NekoConfig.archiveHidesInFolders, v -> {
+                    NekoConfig.archiveHidesInFolders = v;
+                    NekoConfig.putBoolean("archiveHidesInFolders", v);
+                    getMessagesController().sortDialogs(null);
+                    getMessagesStorage().recalcFolderUnreadCounters();
+                    getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
+                    getNotificationCenter().postNotificationName(NotificationCenter.dialogFiltersUpdated);
+                });
         check("OpenArchiveOnPull", R.string.OpenArchiveOnPull, R.string.OpenArchiveOnPullInfo,
                 () -> NekoConfig.openArchiveOnPull.Bool(), v -> {
                     NekoConfig.openArchiveOnPull.setConfigBool(v);

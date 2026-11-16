@@ -852,4 +852,6 @@
     <string name="ProxyDeleteSecondPass">مرحله ۲ از ۲: بررسی دوباره کانفیگ های ناموفق پیش از حذف…</string>
     <string name="V2RaySubscriptionEmpty">ساب هیچ کانفیگ قابل پشتیبانی برنگرداند. کانفیگ های قبلی حفظ شدند.</string>
     <string name="ProxyAutoConnectSkipped">فعال سازی خودکار برای حفظ انتخاب فعلی پروکسی یا VPN انجام نشد، یا راه اندازی اتصال جایگزین ممکن نبود.</string>
+    <string name="ArchiveHidesInFolders">چت آرشیوشده در همهٔ پوشه‌ها مخفی شود</string>
+    <string name="ArchiveHidesInFoldersInfo">وقتی چتی را آرشیو می‌کنید، از همهٔ پوشه‌ها (مخاطبین، گروه‌ها و پوشه‌های خودتان) ناپدید می‌شود، نه فقط از لیست اصلی. با خارج کردن از آرشیو برمی‌گردد.</string>
 </resources>

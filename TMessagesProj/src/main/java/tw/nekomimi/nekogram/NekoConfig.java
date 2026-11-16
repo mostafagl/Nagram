@@ -58,6 +58,8 @@ public class NekoConfig {
     public static int avatarRoundness;
     /** Deleted messages kept in the chat: drawn faded (percent opacity) and with a bin icon of this color (0 = theme). */
     public static boolean deletedDim;
+    /** An archived chat is hidden in every folder, not only in the ones that exclude archived chats. */
+    public static boolean archiveHidesInFolders;
     public static boolean inAppPdfViewer;
     public static boolean menuHoldAndDrag;
     public static boolean musicLyrics;
@@ -332,6 +334,7 @@ public class NekoConfig {
             avatarTapAction = preferences.getInt("avatarTapAction", 0);
             avatarRoundness = preferences.getInt("avatarRoundness", 50);
             deletedDim = preferences.getBoolean("deletedDim", true);
+            archiveHidesInFolders = preferences.getBoolean("archiveHidesInFolders", true);
             inAppPdfViewer = preferences.getBoolean("inAppPdfViewer", true);
             menuHoldAndDrag = preferences.getBoolean("menuHoldAndDrag", true);
             musicLyrics = preferences.getBoolean("musicLyrics", true);

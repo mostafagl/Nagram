@@ -1348,6 +1348,11 @@ public class MessagesController extends BaseController implements NotificationCe
             if (neverShow.contains(dialogId)) {
                 return false;
             }
+            if (d.folder_id != 0 && NekoConfig.archiveHidesInFolders) {
+                // Archiving a chat takes it out of every folder, also folders it was added to by hand
+                // and category folders (Contacts, Groups, ...) that don't exclude archived chats.
+                return false;
+            }
             if (alwaysShow.contains(dialogId)) {
                 return true;
             }
