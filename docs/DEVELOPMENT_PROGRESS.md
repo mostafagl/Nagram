@@ -287,3 +287,12 @@ The supplied playback sample is GIF89a, 600x338, 77 frames, 6.16 seconds, 2,786,
 PhotoViewer treated every GIF as video when takeGIFasVideo was enabled. Both initial player autostart and gallery item classification now use the existing MessageObject.isNewGif() MP4/animated predicate. Raw image/gif remains in the upstream animated image path. This does not force autoplay against the user's existing autoplay preferences or claim support for every video codec. Actual channel download and playback with the original Telegram document metadata must still be checked on an authenticated device.
 
 Previous proxy-toolbar correction: commit 2ed18187, CI 43129732337. Remaining scope is still pending: direct-network measurements under third-party VPN, post-test/update automatic connection, clipboard subscriptions, and full-chat deletion handling. Existing ForceCopy and ShowDeletedMessages settings already default to true; do not add duplicates or claim the server identifies deletion actors. No new release has been published for these corrections.
+
+
+## Archived chats in folders — November 2026
+
+Audit: `DialogFilter.includesDialog` answered `true` for chats added to a folder by hand (`alwaysShow`) before looking at the chat's archive state, and category folders (Contacts, Groups, ...) excluded archived chats only when the folder's own "exclude archived" option was set. So an archived chat stayed visible in those folders. Tab unread counters (`MessagesStorage.calcUnreadCounters`, two call sites) and the archive pagination in `DialogsActivity` follow the same flag.
+
+Change: new setting `archiveHidesInFolders` (default on, Parvagram > Chats and messages). The ordering decision is extracted to the pure `FolderArchiveRule.decide` (never-show, archived, always-show, exclude-flag) so it can be unit tested without loading `MessagesController`; `includesDialog` calls it and continues with the folder categories only when it returns null. Unread counters and pagination use the same setting. Turning the setting off restores upstream behavior exactly.
+
+Tests: `FolderArchiveRuleTest` (CI list in `pr.yml`). Locally only the pure helper was exercised with `javac` (11 cases passed); the Gradle/JUnit run happens in CI. Not verified on a device: real archive/unarchive in the Contacts folder and a hand-made folder, and the tab badge after toggling the setting.

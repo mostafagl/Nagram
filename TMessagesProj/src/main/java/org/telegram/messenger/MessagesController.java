@@ -1345,19 +1345,12 @@ public class MessagesController extends BaseController implements NotificationCe
         }
 
         public boolean includesDialog(AccountInstance accountInstance, long dialogId, TLRPC.Dialog d) {
-            if (neverShow.contains(dialogId)) {
-                return false;
-            }
-            if (d.folder_id != 0 && NekoConfig.archiveHidesInFolders) {
-                // Archiving a chat takes it out of every folder, also folders it was added to by hand
-                // and category folders (Contacts, Groups, ...) that don't exclude archived chats.
-                return false;
-            }
-            if (alwaysShow.contains(dialogId)) {
-                return true;
-            }
-            if (d.folder_id != 0 && (flags & DIALOG_FILTER_FLAG_EXCLUDE_ARCHIVED) != 0) {
-                return false;
+            // Archiving a chat takes it out of every folder, also folders it was added to by hand
+            // and category folders (Contacts, Groups, ...) that don't exclude archived chats.
+            final Boolean decided = FolderArchiveRule.decide(neverShow.contains(dialogId), alwaysShow.contains(dialogId),
+                    d.folder_id, (flags & DIALOG_FILTER_FLAG_EXCLUDE_ARCHIVED) != 0, NekoConfig.archiveHidesInFolders);
+            if (decided != null) {
+                return decided;
             }
             MessagesController messagesController = accountInstance.getMessagesController();
             ContactsController contactsController = accountInstance.getContactsController();
