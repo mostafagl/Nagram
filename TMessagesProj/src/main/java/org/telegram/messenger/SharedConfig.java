@@ -31,6 +31,7 @@ import androidx.core.content.pm.ShortcutManagerCompat;
 
 import org.json.JSONObject;
 import org.telegram.utils.proxy.ProxySettings;
+import org.telegram.utils.proxy.V2RayConfig;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.InputSerializedData;
 import org.telegram.tgnet.OutputSerializedData;
@@ -327,9 +328,9 @@ public class SharedConfig {
     public static boolean allowBigEmoji;
     public static boolean useSystemEmoji;
     public static boolean useSystemBoldFont;
-    public static int fontSize = 12;
+    public static int fontSize = 16;
     public static boolean fontSizeIsDefault;
-    public static int bubbleRadius = 3;
+    public static int bubbleRadius = 17;
     public static int ivFontSize = 12;
     public static boolean proxyRotationEnabled;
     public static int proxyRotationTimeout;
@@ -446,6 +447,11 @@ public class SharedConfig {
         }
 
         public static ProxyInfo fromUrl(String url) {
+            if (V2RayConfig.isV2RayLink(url)) {
+                ProxySettings settings = ProxySettings.fromV2RayLink(url);
+                if (settings == null) throw new IllegalArgumentException(url);
+                return new ProxyInfo(settings);
+            }
             Uri lnk = Uri.parse(url);
             if (lnk == null) throw new IllegalArgumentException(url);
             return new ProxyInfo(ProxySettings.fromUri(lnk));
@@ -658,9 +664,9 @@ public class SharedConfig {
             hasCameraCache = preferences.contains("cameraCache");
             roundCamera16to9 = true;
             repeatMode = preferences.getInt("repeatMode", 0);
-            fontSize = preferences.getInt("fons_size", AndroidUtilities.isTablet() && !AndroidUtilities.isFold() ? 14 : 12);
+            fontSize = preferences.getInt("fons_size", AndroidUtilities.isTablet() && !AndroidUtilities.isFold() ? 18 : 16);
             fontSizeIsDefault = !preferences.contains("fons_size");
-            bubbleRadius = preferences.getInt("bubbleRadius", 3);
+            bubbleRadius = preferences.getInt("bubbleRadius", 17);
             ivFontSize = preferences.getInt("iv_font_size", fontSize);
             allowBigEmoji = preferences.getBoolean("allowBigEmoji", true);
             useSystemBoldFont = preferences.getBoolean("useSystemBoldFont", false);
@@ -687,6 +693,13 @@ public class SharedConfig {
             directShareHash = preferences.getString("directShareHash2", null);
             useThreeLinesLayout = preferences.getBoolean("useThreeLinesLayout", false);
             archiveHidden = preferences.getBoolean("archiveHidden", false);
+            // "Open archive on pull" only works with the archive hidden above the list (revealed by
+            // pulling down); with it pinned in the list, pulling did nothing. Hide it once; the
+            // user can still pin it back from the archive's menu.
+            if (!archiveHidden && !preferences.getBoolean("parva_archive_pull_init", false) && tw.nekomimi.nekogram.NekoConfig.openArchiveOnPull.Bool()) {
+                archiveHidden = true;
+                preferences.edit().putBoolean("archiveHidden", true).putBoolean("parva_archive_pull_init", true).apply();
+            }
             distanceSystemType = preferences.getInt("distanceSystemType", 0);
             keepMedia = preferences.getInt("keep_media", CacheByChatsController.KEEP_MEDIA_ONE_MONTH);
             debugWebView = preferences.getBoolean("debugWebView", false);

@@ -5687,7 +5687,8 @@ public class EmojiView extends FrameLayout implements
         packs = MessagesController.getInstance(currentAccount).filterPremiumStickers(packs);
         for (int a = 0; a < packs.size(); a++) {
             TLRPC.TL_messages_stickerSet pack = packs.get(a);
-            if (pack.set != null && pack.set.archived || pack.documents == null || pack.documents.isEmpty()) {
+            if (pack.set != null && pack.set.archived || pack.documents == null || pack.documents.isEmpty()
+                    || tw.nekomimi.nekogram.helpers.HiddenStickers.shouldHidePack(pack.set)) {
                 continue;
             }
             stickerSets.add(pack);
@@ -5856,6 +5857,7 @@ public class EmojiView extends FrameLayout implements
         MediaDataController.getInstance(currentAccount).addRecentSticker(MediaDataController.TYPE_IMAGE, null, document, (int) (System.currentTimeMillis() / 1000), false);
         boolean wasEmpty = recentStickers.isEmpty();
         recentStickers = MediaDataController.getInstance(currentAccount).getRecentStickers(MediaDataController.TYPE_IMAGE, true);
+        tw.nekomimi.nekogram.helpers.HiddenStickers.filterStickers(recentStickers);
         if (stickersGridAdapter != null) {
             stickersGridAdapter.notifyDataSetChanged();
         }
@@ -6252,6 +6254,8 @@ public class EmojiView extends FrameLayout implements
             int previousCount2 = favouriteStickers.size();
             recentStickers = MediaDataController.getInstance(currentAccount).getRecentStickers(MediaDataController.TYPE_IMAGE, true);
             favouriteStickers = MediaDataController.getInstance(currentAccount).getRecentStickers(MediaDataController.TYPE_FAVE);
+            tw.nekomimi.nekogram.helpers.HiddenStickers.filterStickers(recentStickers);
+            tw.nekomimi.nekogram.helpers.HiddenStickers.filterStickers(favouriteStickers);
             if (UserConfig.getInstance(currentAccount).isPremium()) {
                 premiumStickers = MediaDataController.getInstance(currentAccount).getRecentStickers(MediaDataController.TYPE_PREMIUM_STICKERS);
             } else {
@@ -6297,6 +6301,7 @@ public class EmojiView extends FrameLayout implements
         final int prevSize = recentGifs.size();
         long prevHash = MediaDataController.calcDocumentsHash(recentGifs, Integer.MAX_VALUE);
         recentGifs = MediaDataController.getInstance(currentAccount).getRecentGifs();
+        tw.nekomimi.nekogram.helpers.HiddenStickers.filterGifs(recentGifs);
         long newHash = MediaDataController.calcDocumentsHash(recentGifs, Integer.MAX_VALUE);
         if (gifTabs != null && prevSize == 0 && !recentGifs.isEmpty() || prevSize != 0 && recentGifs.isEmpty()) {
             updateGifTabs();

@@ -1020,6 +1020,11 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
     private static Runnable broadcastPhotosRunnable;
 
     public boolean isSilent = false;
+    private boolean skipMarkContentAsRead;
+
+    public void setSkipMarkContentAsRead(boolean skip) {
+        skipMarkContentAsRead = skip;
+    }
     private boolean isPaused = false;
     private boolean wasPlayingAudioBeforePause = false;
     private VideoPlayer audioPlayer = null;
@@ -2485,6 +2490,9 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
         if (stopService && restoreMusicPlaylistState()) {
             return;
         }
+        if (stopService) {
+            skipMarkContentAsRead = false;
+        }
 
         if (audioPlayer != null) {
             if (reporter != null) {
@@ -3666,7 +3674,13 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
             }
             return true;
         }
-        if (!messageObject.isOut() && (messageObject.isContentUnread())) {
+        // Parvagram: listening to an incoming voice/round message in ghost mode must not
+        // send a content-read receipt. The normal preview path already skips this call;
+        // keep regular playback consistent with the user's ghost-mode preference.
+        final boolean ghostBlocksMediaReceipt = (messageObject.isVoice() || messageObject.isRoundVideo())
+                && !tw.nekomimi.nekogram.utils.AyuGhostUtils.canSendReadPacket();
+        if (!messageObject.isOut() && messageObject.isContentUnread() && !skipMarkContentAsRead
+                && !ghostBlocksMediaReceipt) {
             MessagesController.getInstance(messageObject.currentAccount).markMessageContentAsRead(messageObject);
         }
         boolean saved = false;

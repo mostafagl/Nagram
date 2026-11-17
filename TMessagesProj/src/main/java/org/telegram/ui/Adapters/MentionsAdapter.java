@@ -285,6 +285,9 @@ public class MentionsAdapter extends RecyclerListView.SelectionAdapter implement
         if (stickersMap != null && stickersMap.containsKey(key)) {
             return;
         }
+        if (tw.nekomimi.nekogram.helpers.HiddenStickers.shouldHideSticker(document)) {
+            return; // from a pack the user hid
+        }
         if (!UserConfig.getInstance(currentAccount).isPremium() && MessageObject.isPremiumSticker(document)) {
             return;
         }
@@ -309,6 +312,9 @@ public class MentionsAdapter extends RecyclerListView.SelectionAdapter implement
             String key = document.dc_id + "_" + document.id;
             if (stickersMap != null && stickersMap.containsKey(key)) {
                 continue;
+            }
+            if (tw.nekomimi.nekogram.helpers.HiddenStickers.shouldHideSticker(document)) {
+                continue; // from a pack the user hid
             }
             if (!UserConfig.getInstance(currentAccount).isPremium() && MessageObject.isPremiumSticker(document)) {
                 continue;

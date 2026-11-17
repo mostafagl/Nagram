@@ -6198,7 +6198,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         BaseFragment fragment = getLastFragment();
                         if (fragment != null) {
                             if (error == null) {
-                                BulletinFactory.of(fragment).createSimpleBulletin(R.raw.chats_infotip, LocaleController.getString(R.string.YourVersionIsLatest)).show();
+                                // There is no in-app update channel; new versions are on GitHub.
+                                Browser.openUrl(LaunchActivity.this, BuildVars.GITHUB_RELEASE_URL);
                             } else {
                                 AlertsCreator.createSimpleAlert(this, LocaleController.getString("ErrorOccurred", R.string.ErrorOccurred) + "\n" + error).show();
                             }
@@ -6981,6 +6982,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     @Override
     protected void onStop() {
         super.onStop();
+        tw.nekomimi.nekogram.helpers.ChatLock.relockAll(); // locked chats ask again after the app was in the background
         GramWalletStorageAuth.onActivityStopped(this);
         isStarted = false;
         pipActivityHandler.onStop();
@@ -7158,6 +7160,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     protected void onResume() {
         super.onResume();
         isResumed = true;
+        tw.nekomimi.nekogram.helpers.ParvaUpdater.checkIfNeeded();
         pipActivityHandler.onResume();
         if (onResumeStaticCallback != null) {
             onResumeStaticCallback.run();
@@ -7207,15 +7210,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
             }
         }
 
-        if (NaConfig.INSTANCE.getDisableProxyWhenVpnEnabled().Bool()) {
-            if (SharedConfig.isProxyEnabled() && ProxyUtil.isVPNEnabled()) {
-                SharedConfig.setProxyEnable(false);
-            } else if (!ProxyUtil.isVPNEnabled()) {
-                SharedConfig.setProxyEnable(true);
-            }
-            ProxyUtil.registerNetworkCallback();
-            NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxySettingsChanged);
-        }
+        // "Disable proxy when VPN enabled" is handled by ProxyVpnGuard, which only reacts to the
+        // VPN coming up or going down; doing it here turned the proxy on at every resume.
 
         ConnectionsManager.getInstance(currentAccount).setAppPaused(false, false);
         updateCurrentConnectionState(currentAccount);

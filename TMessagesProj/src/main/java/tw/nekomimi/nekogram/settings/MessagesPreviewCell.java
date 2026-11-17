@@ -20,6 +20,7 @@ import androidx.annotation.NonNull;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.ImageLocation;
+import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.MessagesController;
@@ -124,7 +125,7 @@ public class MessagesPreviewCell extends LinearLayout {
         messages[1] = new MessageObject(account, pollMessage, true, false);
 
         TLRPC.TL_message linkMessage = createMessage(44, date + 240);
-        String url = "https://nagram.app";
+        String url = BuildVars.GITHUB_REPO_URL;
         String appName = LocaleController.getString(R.string.NekoX);
         linkMessage.message = url;
         TLRPC.TL_messageEntityUrl urlEntity = new TLRPC.TL_messageEntityUrl();
@@ -147,7 +148,7 @@ public class MessagesPreviewCell extends LinearLayout {
 
         TimeStringHelper.getForwardsDrawable();
         for (int i = 0; i < cells.length; i++) {
-            messages[i].customName = "Nagram";
+            messages[i].customName = appName;
             messages[i].forceAvatar = true;
             cells[i] = new ChatMessageCell(context, account) {
                 @Override
@@ -203,7 +204,6 @@ public class MessagesPreviewCell extends LinearLayout {
         });
 
         refreshMessages();
-        loadPreviewChannel(account);
     }
 
     private void loadPreviewChannel(int account) {

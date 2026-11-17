@@ -252,11 +252,41 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
         @Override
         public boolean isAvatarClickable(long dialogId, TLRPC.Chat chat, TLRPC.User user) {
+            if (parvaAvatarAction(dialogId) != 0) {
+                return true;
+            }
             return (chat != null && chat.linked_community_id != 0 || user != null && user.linked_community_id != 0) && !insideCommunityList && opensCommunityFromAvatar();
+        }
+
+        /** Parvagram's "tap on avatar" setting for this row, or 0 for Telegram's default (stories, else the chat). */
+        private int parvaAvatarAction(long dialogId) {
+            if (parentFragment == null || currentDialogFolderId != 0 || isTopic || dialogId == 0
+                    || dialogId == UserConfig.getInstance(currentAccount).getClientUserId()) {
+                return 0;
+            }
+            return tw.nekomimi.nekogram.NekoConfig.avatarTapAction;
         }
 
         @Override
         public boolean onAvatarClick(View view, long dialogId) {
+            final int action = parvaAvatarAction(dialogId);
+            if (action != 0) {
+                final android.os.Bundle args = new android.os.Bundle();
+                if (dialogId > 0) {
+                    args.putLong("user_id", dialogId);
+                } else {
+                    args.putLong("chat_id", -dialogId);
+                }
+                if (action == tw.nekomimi.nekogram.NekoConfig.AVATAR_TAP_CHAT) {
+                    parentFragment.presentFragment(new org.telegram.ui.ChatActivity(args));
+                } else {
+                    if (action == tw.nekomimi.nekogram.NekoConfig.AVATAR_TAP_PHOTO) {
+                        args.putBoolean("expandPhoto", true);
+                    }
+                    parentFragment.presentFragment(new org.telegram.ui.ProfileActivity(args));
+                }
+                return true;
+            }
             if (parentFragment != null && !insideCommunityList && opensCommunityFromAvatar()) {
                 if (dialogId > 0) {
                     final TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(dialogId);
@@ -744,7 +774,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         Theme.createDialogsResources(context);
         drawMonoforumAvatar = false;
         drawCommunityAvatar = false;
-        avatarImage.setRoundRadius(dp(26));
+        avatarImage.setRoundRadius(tw.nekomimi.nekogram.helpers.ParvaLook.avatarRadius(dp(26)));
         avatarGroupSenderImage.setRoundRadius(dp(26));
         for (int i = 0; i < thumbImage.length; ++i) {
             thumbImage[i] = new ImageReceiver(this);
@@ -2453,6 +2483,9 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             if (ellipsizeWidth < 0) {
                 ellipsizeWidth = 0;
             }
+            if (currentDialogFolderId == 0 && tw.nekomimi.nekogram.helpers.ChatLock.hideName(currentAccount, currentDialogId)) {
+                nameString = getString(R.string.ChatLockHiddenName);
+            }
             if (nameString instanceof String) {
                 nameString = ((String) nameString).replace('\n', ' ');
             }
@@ -2837,6 +2870,12 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             FileLog.e(e);
         }
 
+        if (currentDialogFolderId == 0 && tw.nekomimi.nekogram.helpers.ChatLock.hideText(currentAccount, currentDialogId)) {
+            // A locked chat's last message stays out of the chat list.
+            messageString = getString(R.string.ChatLockHiddenText);
+            messageNameString = null;
+            thumbsCount = 0;
+        }
         try {
             CharSequence messageStringFinal;
             // Removing links and bold spans to get rid of underlining and boldness
@@ -3338,7 +3377,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             }
             drawMonoforumAvatar = false;
             drawCommunityAvatar = false;
-            avatarImage.setRoundRadius(dp(26));
+            avatarImage.setRoundRadius(tw.nekomimi.nekogram.helpers.ParvaLook.avatarRadius(dp(26)));
             drawUnmute = false;
         } else {
             int oldUnreadCount = unreadCount;
@@ -3809,10 +3848,12 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             } else if (chat != null && chat.forum && currentDialogFolderId == 0 && !useFromUserAsAvatar || !isSavedDialog && user != null && user.self && MessagesController.getInstance(currentAccount).savedViewAsChats) {
                 avatarRadius = dp(16);
             } else {
-                avatarRadius = dp(28);
+                avatarRadius = tw.nekomimi.nekogram.helpers.ParvaLook.avatarRadius(dp(28));
             }
 
             avatarImage.setRoundRadius(avatarRadius);
+            // The placeholder (initials) follows the same shape when avatars aren't circles.
+            avatarDrawable.setRoundRadius(tw.nekomimi.nekogram.helpers.ParvaLook.customAvatarShape() && avatarRadius == tw.nekomimi.nekogram.helpers.ParvaLook.avatarRadius(dp(28)) ? avatarRadius : 0);
         }
         if (!isTopic && (getMeasuredWidth() != 0 || getMeasuredHeight() != 0)) {
             rebuildLayout = true;

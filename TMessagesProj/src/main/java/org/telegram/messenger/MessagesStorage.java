@@ -2742,6 +2742,11 @@ public class MessagesStorage extends BaseController {
     private LongSparseArray<Integer> dialogsWithMentions = new LongSparseArray<>();
     private LongSparseArray<Integer> dialogsWithUnread = new LongSparseArray<>();
 
+    /** Recounts the folder tabs' unread badges (after a setting that changes which chats a folder holds). */
+    public void recalcFolderUnreadCounters() {
+        storageQueue.postRunnable(() -> calcUnreadCounters(true));
+    }
+
     private void calcUnreadCounters(boolean apply) {
         SQLiteCursor cursor = null;
         try {
@@ -2947,6 +2952,9 @@ public class MessagesStorage extends BaseController {
                     flags = filter.flags;
                     if (NekoConfig.ignoreMutedCount.Bool() && (flags & MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED) == 0) {
                         flags |= MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED;
+                    }
+                    if (NekoConfig.archiveHidesInFolders) {
+                        flags |= MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_ARCHIVED; // same rule as the folder's chat list
                     }
                 } else {
                     filter = null;
@@ -5976,6 +5984,9 @@ public class MessagesStorage extends BaseController {
     }
 
     public void createTaskForSecretChat(int chatId, int time, int readTime, int isOut, ArrayList<Long> random_ids) {
+        if (NekoConfig.keepTimedMedia) {
+            return; // keep self-destructing secret chat messages on this device
+        }
         storageQueue.postRunnable(() -> {
             SQLiteCursor cursor = null;
             SQLitePreparedStatement state = null;
@@ -6287,6 +6298,9 @@ public class MessagesStorage extends BaseController {
                 flags = filter.flags;
                 if (NekoConfig.ignoreMutedCount.Bool() && (flags & MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED) == 0) {
                     flags |= MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_MUTED;
+                }
+                if (NekoConfig.archiveHidesInFolders) {
+                    flags |= MessagesController.DIALOG_FILTER_FLAG_EXCLUDE_ARCHIVED;
                 }
             } else {
                 filter = null;
@@ -7874,6 +7888,51 @@ public class MessagesStorage extends BaseController {
             checkSQLException(e);
         }
         return ref.get();
+    }
+
+    /** The stored copy of a message, or null. Must run on the storage queue. */
+    public TLRPC.Message getStoredMessageInternal(long dialogId, int msgId) {
+        final ArrayList<Integer> ids = new ArrayList<>();
+        ids.add(msgId);
+        final ArrayList<TLRPC.Message> messages = getStoredMessagesInternal(dialogId, ids);
+        return messages.isEmpty() ? null : messages.get(0);
+    }
+
+    /**
+     * The stored copies of messages; {@code dialogId} 0 means any non-channel chat, as in
+     * updateDeleteMessages. Must run on the storage queue.
+     */
+    public ArrayList<TLRPC.Message> getStoredMessagesInternal(long dialogId, ArrayList<Integer> ids) {
+        final ArrayList<TLRPC.Message> result = new ArrayList<>();
+        if (ids == null || ids.isEmpty()) {
+            return result;
+        }
+        SQLiteCursor cursor = null;
+        try {
+            final String idsStr = TextUtils.join(",", ids);
+            if (dialogId != 0) {
+                cursor = database.queryFinalized(String.format(Locale.US, "SELECT data FROM messages_v2 WHERE mid IN(%s) AND uid = %d", idsStr, dialogId));
+            } else {
+                cursor = database.queryFinalized(String.format(Locale.US, "SELECT data FROM messages_v2 WHERE mid IN(%s) AND is_channel = 0", idsStr));
+            }
+            while (cursor.next()) {
+                NativeByteBuffer data = cursor.byteBufferValue(0);
+                if (data != null) {
+                    TLRPC.Message message = TLRPC.Message.TLdeserialize(data, data.readInt32(false), false);
+                    data.reuse();
+                    if (message != null) {
+                        result.add(message);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            checkSQLException(e);
+        } finally {
+            if (cursor != null) {
+                cursor.dispose();
+            }
+        }
+        return result;
     }
 
     private TLRPC.Message getMessageInternal(long dialogId, long msgId) {

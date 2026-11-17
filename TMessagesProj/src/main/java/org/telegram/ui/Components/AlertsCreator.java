@@ -295,6 +295,7 @@ public class AlertsCreator {
     }
 
     public static Dialog processError(int currentAccount, TLRPC.TL_error error, BaseFragment fragment, TLObject request, Object... args) {
+        tw.nekomimi.nekogram.diag.Diag.onError(currentAccount, error, request);
         if (error == null || error.code == 406 || error.text == null) {
             return null;
         }

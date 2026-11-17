@@ -153,7 +153,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
     private final AbstractConfigCell externalStickerCacheRow = cellGroup.appendCell(new ConfigCellAutoTextCheck(
             NaConfig.INSTANCE.getExternalStickerCache(), LocaleController.getString(R.string.ExternalStickerCacheHint), this::onExternalStickerCacheButtonClick));
     private final AbstractConfigCell externalStickerCacheAutoSyncRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getExternalStickerCacheAutoRefresh(), LocaleController.getString(R.string.ExternalStickerCacheAutoRefreshHint)));
-    private final AbstractConfigCell externalStickerCacheDirNameTypeRow = cellGroup.appendCell(new ConfigCellSelectBox(null, NaConfig.INSTANCE.getExternalStickerCacheDirNameType(), new String[]{ "Short name", "ID" }, null));
+    private final AbstractConfigCell externalStickerCacheDirNameTypeRow = cellGroup.appendCell(new ConfigCellSelectBox(null, NaConfig.INSTANCE.getExternalStickerCacheDirNameType(), new String[]{ LocaleController.getString(R.string.ExternalStickerCacheDirNameShort), "ID" }, null));
     private final AbstractConfigCell externalStickerCacheSyncAllRow = cellGroup.appendCell(new ConfigCellText("ExternalStickerCacheRefreshAll", ExternalStickerCacheHelper::syncAllCaches));
     private final AbstractConfigCell externalStickerCacheDeleteAllRow = cellGroup.appendCell(new ConfigCellText("ExternalStickerCacheDeleteAll", ExternalStickerCacheHelper::deleteAllCaches));
     private final AbstractConfigCell divider2 = cellGroup.appendCell(new ConfigCellDivider());
@@ -581,17 +581,8 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
             cellGroup.rows.remove(disableSendReadStoriesRow);
             cellGroup.rows.remove(dividerStory);
 
-            NekoConfig.localPremium.setConfigBool(false);
-            NekoConfig.setGhostMode(false);
-            NaConfig.INSTANCE.getForceCopy().setConfigBool(false);
-            NaConfig.INSTANCE.getDisableFlagSecure().setConfigBool(false);
-            NekoXConfig.disableFlagSecure = false;
-            NekoConfig.hideSponsoredMessage.setConfigBool(false);
-            NekoConfig.ignoreBlocked.setConfigBool(false);
-            NaConfig.INSTANCE.getRegexFiltersEnabled().setConfigBool(false);
-            NekoConfig.disableChatAction.setConfigBool(false);
-            NekoConfig.disableChoosingSticker.setConfigBool(false);
-            NaConfig.INSTANCE.getDisableSendReadStories().setConfigBool(false);
+            // Hiding these rows used to switch the features off too, which turned ghost mode and
+            // the other options off whenever this page was opened. They stay as they are now.
         }
 
         addRowsToMap();

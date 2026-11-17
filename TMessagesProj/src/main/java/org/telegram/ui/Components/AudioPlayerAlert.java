@@ -3184,6 +3184,12 @@ public class AudioPlayerAlert extends BottomSheet implements NotificationCenter.
             o.dismiss();
             onSubItemClick(4);
         });
+        if (tw.nekomimi.nekogram.NekoConfig.musicLyrics && messageObject.isMusic()) {
+            o.add(R.drawable.msg_photo_text_framed3, getString(R.string.LyricsTitle), () -> {
+                o.dismiss();
+                tw.nekomimi.nekogram.music.LyricsSheet.show(getContext(), messageObject);
+            });
+        }
         if (castAvailable) {
             castItem = o.add();
             castItem.setTextAndIcon(getString(R.string.VideoPlayerChromecast), R.drawable.menu_video_chromecast);

@@ -4680,11 +4680,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             } else if (position == nekoRow) {
                 presentFragment(new NekoSettingsActivity());
             } else if (position == questionRow) {
-                Browser.openUrl(getParentActivity(), "https://t.me/NekogramX");
+                Browser.openUrl(getParentActivity(), BuildVars.GITHUB_REPO_URL + "/issues");
             } else if (position == faqRow) {
                 Browser.openUrl(getParentActivity(), NekoXConfig.FAQ_URL);
             } else if (position == policyRow) {
-                Browser.openUrl(getParentActivity(), "https://nagram.app/privacy/");
+                Browser.openUrl(getParentActivity(), "https://telegram.org/privacy");
             } else if (position == sendLogsRow) {
                 sendLogs(getParentActivity(), false);
             } else if (position == sendLastLogsRow) {
@@ -4837,7 +4837,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     updateListAnimated(false);
                 });
                 o.add(R.drawable.msg_retry, LocaleController.getString(R.string.SwitchVersion), () -> {
-                    Browser.openUrl(ProfileActivity.this.getParentActivity(), "https://github.com/NextAlone/Nagram/releases");
+                    Browser.openUrl(ProfileActivity.this.getParentActivity(), BuildVars.GITHUB_RELEASE_URL);
                 });
 
                 o.add(R.drawable.msg_search, LocaleController.getString(R.string.CheckUpdate), () -> {
@@ -5945,6 +5945,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             onlineTextView[a].setEllipsizeByGradient(true);
             onlineTextView[a].setTextColor(applyPeerColor(getThemedColor(Theme.key_actionBarDefaultSubtitle), true, null));
             onlineTextView[a].setTextSizePx(dp(13.5f));
+            xyz.nextalone.nagram.font.CustomFonts.apply(onlineTextView[a]);
             onlineTextView[a].setGravity(Gravity.LEFT);
             onlineTextView[a].setAlpha(a == 0 ? 0.0f : 1.0f);
             onlineTextView[a].setPivotX(dp(8));
@@ -13631,7 +13632,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     return;
                 }
 
-                File logcatFile = new File(dir, "Nagram-" + System.currentTimeMillis() + ".log");
+                File logcatFile = new File(dir, "Parvagram-" + System.currentTimeMillis() + ".log");
                 try {
                     RuntimeUtil.exec("logcat", "-df", logcatFile.getPath()).waitFor();
                     RuntimeUtil.exec("logcat", "-c").waitFor();
@@ -15783,22 +15784,19 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     if (result == null) {
                         continue;
                     }
-                    String title = " " + result.searchTitle.toLowerCase();
                     SpannableStringBuilder stringBuilder = null;
                     for (int i = 0; i < searchArgs.length; i++) {
                         if (searchArgs[i].length() != 0) {
-                            String searchString = searchArgs[i];
-                            int index = title.indexOf(searchString);
-                            if (index < 0 && translitArgs[i] != null) {
-                                searchString = translitArgs[i];
-                                index = title.indexOf(searchString);
+                            // Persian-aware: آ/ا, ی/ي, ک/ك, digits, half-spaces and case don't matter.
+                            int[] range = tw.nekomimi.nekogram.utils.PersianSearch.find(result.searchTitle, searchArgs[i]);
+                            if (range == null && translitArgs[i] != null) {
+                                range = tw.nekomimi.nekogram.utils.PersianSearch.find(result.searchTitle, translitArgs[i]);
                             }
-                            if (index >= 0) {
-                                index -= 1;
+                            if (range != null) {
                                 if (stringBuilder == null) {
                                     stringBuilder = new SpannableStringBuilder(result.searchTitle);
                                 }
-                                stringBuilder.setSpan(new ForegroundColorSpan(fragment.getThemedColor(Theme.key_windowBackgroundWhiteBlueText4)), index, index + searchString.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                                stringBuilder.setSpan(new ForegroundColorSpan(fragment.getThemedColor(Theme.key_windowBackgroundWhiteBlueText4)), range[0], range[1], Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                             } else {
                                 break;
                             }
