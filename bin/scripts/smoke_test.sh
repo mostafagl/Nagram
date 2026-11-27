@@ -10,7 +10,32 @@ echo "APK: $APK"
 echo "===== NATIVE LIBS IN APK ====="
 unzip -l "$APK" | grep "lib/"
 
-adb install -r "$APK" || exit 1
+# Update path, as users get it: install the published release (what is on their phones), run it so it
+# leaves data behind, then install this build over it. A fresh install alone does not prove an update
+# works (signature, versionCode, data/database migration).
+echo "===== UPDATE FROM THE PUBLISHED RELEASE ====="
+REPO=${GITHUB_REPOSITORY:-mostafagl/Nagram}
+AUTH=()
+if [ -n "$GH_TOKEN" ]; then AUTH=(-H "Authorization: Bearer $GH_TOKEN"); fi
+OLD_URL=$(curl -fsSL "${AUTH[@]}" "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null \
+  | python3 -c 'import json,sys
+d=json.load(sys.stdin)
+print(next((a["browser_download_url"] for a in d.get("assets", []) if a["name"].endswith("arm64-v8a.apk")), ""))' 2>/dev/null)
+if [ -n "$OLD_URL" ] && curl -fsSL -o published.apk "$OLD_URL"; then
+  echo "Published release: $OLD_URL"
+  adb install published.apk || exit 1
+  adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1
+  sleep 25
+  adb shell am force-stop "$PKG"
+  if ! adb install -r "$APK"; then
+    echo "::error::This build cannot be installed over the published release (see the Failure line above)."
+    exit 1
+  fi
+  echo "Installed over the published release: OK"
+else
+  echo "::warning::Could not download the published release; the update path was not tested."
+  adb install -r "$APK" || exit 1
+fi
 adb logcat -c
 adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1
 sleep 45
