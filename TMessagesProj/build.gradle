@@ -35,7 +35,7 @@ idea {
 }
 
 def verName = APP_VERSION_NAME
-def verCode = 1255
+def verCode = 1256
 
 
 def officialVer = APP_VERSION_NAME
@@ -208,13 +208,13 @@ android {
         externalNativeBuild {
             cmake {
                 version '3.22.1'
-                arguments '-DANDROID_STL=c++_static', '-DANDROID_PLATFORM=android-21' //, '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON'
+                arguments '-DANDROID_STL=c++_static', '-DANDROID_PLATFORM=android-23' //, '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON'
                 // Certificate the native integrity check expects; unset skips the check.
                 def appSignatureSha1 = properties?.getProperty("APP_SIGNATURE_SHA1") ?: System.getenv("APP_SIGNATURE_SHA1")
                 if (appSignatureSha1 != null && !appSignatureSha1.isBlank()) {
                     arguments "-DAPP_SIGNATURE_SHA1=${appSignatureSha1.trim().toUpperCase()}"
                 }
-                targets 'tmessages.49'
+                targets 'tmessages.49', 'twidget'
             }
         }
     }
@@ -298,6 +298,8 @@ android {
     }
 
     buildFeatures {
+        // IWidgetEngine: the widget engine's isolated process (WidgetEngineService).
+        aidl true
         buildConfig true
     }
 
@@ -338,8 +340,6 @@ android {
     namespace "org.telegram.messenger"
 }
 
-def fcmVersion = "23.4.1"
-def crashlyticsVersion = "18.6.2"
 
 dependencies {
     // Xray-core bindings for V2Ray proxies, built by `./run libs v2ray`.
@@ -377,8 +377,11 @@ dependencies {
 
     compileOnly 'org.checkerframework:checker-qual:2.5.2'
     compileOnly 'org.checkerframework:checker-compat-qual:2.5.0'
-    implementation "com.google.firebase:firebase-messaging:$fcmVersion"
-    implementation "com.google.firebase:firebase-crashlytics:$crashlyticsVersion"
+    // 34.19.0 is the last Firebase BoM for minSdk 23 (BoM 35.x needs minSdk 24).
+    api platform('com.google.firebase:firebase-bom:34.19.0')
+    implementation 'com.google.firebase:firebase-messaging'
+    implementation "com.google.firebase:firebase-pnv"
+    implementation "com.google.firebase:firebase-crashlytics"
     implementation 'com.google.android.gms:play-services-maps:18.1.0'
     implementation 'com.google.android.gms:play-services-auth:20.4.0'
     implementation 'com.google.android.gms:play-services-vision:20.1.3'
