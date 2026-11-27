@@ -1,0 +1,28 @@
+installing apk/Parvagram-v13.2.2(1256)-x86_64.apk Performing Streamed Install
+Success
+
+===== p01_launch =====
+[screen 01_intro.png] Parvagram | The world's fastest messaging app. It is free and secure. | Switch to night theme | Start Messaging | Web tabs 
+PASS: app launches to the intro screen -- alive=True
+
+===== p02_vless_link =====
+[screen 02_v2ray_sheet.png] V2Ray server | 🇩🇪SV1 | Name | 🇩🇪SV1 | Protocol | VLESS | Server | www.speedtest.net | Port | 2053 | Transport | WebSocket | Security | TLS | SNI | noone.bingnet.online | Status | Check Status | Connect | Copy link | Save only
+PASS: vless link opens the V2Ray sheet
+PASS: sheet shows the parsed config -- V2Ray server 🇩🇪SV1 Name 🇩🇪SV1 Protocol VLESS Server www.speedtest.net Port 2053 Transport WebSocket Security TLS SNI noone.bingnet.online Status Check Status Connect Copy link Save only
+[screen 03_v2ray_ping.png] V2Ray server | 🇩🇪SV1 | Name | 🇩🇪SV1 | Protocol | VLESS | Server | www.speedtest.net | Port | 2053 | Transport | WebSocket | Security | TLS | SNI | noone.bingnet.online | Status | No response | Connect | Copy link | Save only
+PASS: ping test through V2Ray finishes -- No response
+[screen 04_v2ray_connect.png] Parvagram | The world's fastest messaging app. It is free and secure. | Switch to night theme | Start Messaging | Web tabs 
+PASS: connect to Telegram through the VLESS server -- Connected through 🇩🇪SV1
+v2ray log:
+  I/GoLog   ( 3989): 2026/11/27 21:11:19.895742 [Warning] core: Xray 26.10.21 started
+  I/GoLog   ( 3989): [Warning] core: Xray 26.10.21 started
+
+===== p03_proxy_list =====
+[screen 05_proxy_list.png] Use Proxy | Use Proxy | Turn off proxy while a VPN is on Turned back on when the VPN disconnects | Turn off proxy while a VPN is on | Turned back on when the VPN disconnects | Stay connected in the background Keeps the connection and notifications working  | Stay connected in the background | Keeps the connection and notifications working when the app is closed | Staying connected in the background shows a silent notification. Android or the  | Staying connected in the background shows a silent notification. Android or the  | Connections | Sort Lowest ping first | Sort | Lowest ping first | 🇩🇪SV1 | Connected | Share | Edit | Add V2Ray config | Add V2Ray config | Import From Clipboard | Import From Clipboard | V2Ray subscriptions | V2Ray subscriptions | Add MTProto Proxy | Add MTProto Proxy | Test ping of all | Test ping of all | Delete configs without ping | Delete configs without ping | Proxy Settings | Go back | Update all now | Test ping of all | More options | Web tabs 
+PASS: proxy list has the V2Ray rows -- Use Proxy | Use Proxy | Turn off proxy while a VPN is on
+Turned back on when the VPN disconnects | Turn off proxy while a VPN is on | Turned back on when the VPN disconnects | Stay connected in the background
+Keeps the connection and notifications working when the app is closed | Stay connected in the background | Keeps the connection and notifications working when the app is closed | Staying connected in the background shows a silent notification. Android or the phone maker's battery saver may still stop the app; allow Parvagram to run unrestricted in battery settings for the most reliable notifications. | Staying connected in the background shows a silent notification. Android or the phone maker's battery saver may still stop the app; allow Parvagram to run unrestricted in battery settings for the most reliable notifications. | Connections | Sort
+Lowest ping first | Sort | Lowest ping first | 🇩🇪SV1 | Connected | Share | Edit | Add V2Ray config | Add V2Ray config | Import From Clipboard | Import From Clipboard | V2Ray subscriptions | V2Ray subscriptions | Add MTProto Proxy
+[screen 06_proxy_ping_all.png] 
+FAIL: ping all shows ms or no response
+app not running after run
