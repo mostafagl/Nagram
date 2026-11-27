@@ -95,6 +95,7 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
     <uses-permission android:name="com.sec.android.provider.badge.permission.READ"/>
     <uses-permission android:name="com.sec.android.provider.badge.permission.WRITE"/>
@@ -116,8 +117,6 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29"
         tools:node="replace" />
-
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
     <uses-permission android:name="com.google.android.providers.gsf.permission.READ_GSERVICES" />
@@ -417,6 +416,15 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="tg" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="vless" />
+                <data android:scheme="vmess" />
+                <data android:scheme="trojan" />
+                <data android:scheme="ss" />
+            </intent-filter>
             <intent-filter android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:priority="1">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -454,12 +462,14 @@
         </activity-alias>
         <activity
             android:name="org.telegram.ui.BubbleActivity"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode|smallestScreenSize|screenLayout"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"
             android:allowEmbedded="true"
             android:documentLaunchMode="always"
             android:resizeableActivity="true"/>
+        <!-- Development: widget-sandbox's conformance set on the widget renderer, launched by adb.
+             Finishes at once outside internal (DEBUG_PRIVATE_VERSION) builds. -->
         <activity
             android:name="org.telegram.ui.ShareActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode"
@@ -587,6 +597,13 @@
 <!--            </intent-filter>-->
 <!--        </receiver>-->
 
+        <!-- The widget engine (HTML widgets' code): no permissions, files or network; one process for every widget. -->
+        <service
+            android:name="org.telegram.utils.twidget.WidgetEngineService"
+            android:process=":widgets"
+            android:isolatedProcess="true"
+            android:exported="false" />
+
         <service
             android:name=".AuthenticatorService"
             android:exported="true"
@@ -619,6 +636,10 @@
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:foregroundServiceType="dataSync"
         />
+        <service
+            android:name="org.telegram.utils.proxy.V2RaySubscriptionJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
         <service
             android:name=".BringAppForegroundService"
             android:enabled="true"
@@ -658,7 +679,7 @@
             android:name=".LocationSharingService"
             android:enabled="true"
             android:exported="true"
-            android:foregroundServiceType="location|dataSync"
+            android:foregroundServiceType="location"
         />
         <service
             android:name=".voip.VoIPService"

@@ -93,7 +93,7 @@
     <string name="DisableNumberRounding">Wyłącz zaokrąglanie liczb</string>
     <string name="Categories">Kategorie</string>
     <string name="OfficialChannel">Oficjalny kanał</string>
-    <string name="About">Informacje o Nagram</string>
+    <string name="About">Informacje o Parvagram</string>
     <string name="IgnoreBlockedAbout">Nie będziesz już widział wiadomości od zablokowanych użytkowników w grupach.</string>
     <string name="GooglePlay">Sklep Play</string>
     <string name="SourceCode">Kod źródłowy na GitHubie</string>
@@ -232,7 +232,7 @@
     <string name="PassQRNewPassword">Zabezpiecz ten kod QR hasłem</string>
     <string name="ConfirmNewPassword">Potwierdź hasło</string>
     <string name="PassQRAbout">Zapisuje Twoje hasło jako zaszyfrowany kod QR. Możesz go zeskanować, aby zalogować się na innym urządzeniu.</string>
-    <string name="PassQREncryption">Zeskanuj za pomocą Nagramu, aby się zalogować.</string>
+    <string name="PassQREncryption">Zeskanuj za pomocą Parvagramu, aby się zalogować.</string>
     <string name="InvalidPassQr">Invalid Passkey QR</string>
     <string name="PassQRPasswordTooShort">Hasło musi mieć co najmniej 8 znaków</string>
     <string name="PassQRPasswordWarning">Ostrzeżenie dotyczące bezpieczeństwa: to hasło jest jedyną rzeczą chroniącą twój klucz. Słabe hasło może być złamane w trybie offline, więc mieszać duże litery, małe litery, cyfry i symbole.</string>

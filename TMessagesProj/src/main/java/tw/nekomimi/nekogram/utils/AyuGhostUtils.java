@@ -8,6 +8,19 @@ public class AyuGhostUtils {
         public boolean val;
         public int resetAfter;
 
+        public boolean peek() {
+            synchronized (sync) {
+                return val;
+            }
+        }
+
+        public void set(boolean value, int count) {
+            synchronized (sync) {
+                val = value && (count == -1 || count > 0);
+                resetAfter = count;
+            }
+        }
+
         public boolean process() {
             synchronized (sync) {
                 if (resetAfter == -1) {
@@ -29,12 +42,40 @@ public class AyuGhostUtils {
     private static final AyuStateVariable allowReadPacket = new AyuStateVariable();
 
     public static void setAllowReadPacket(boolean val, int resetAfter) {
-        allowReadPacket.val = val;
-        allowReadPacket.resetAfter = resetAfter;
+        allowReadPacket.set(val, resetAfter);
+    }
+
+    /** For UI/storage guards. Only the actual receipt transport consumes a permit. */
+    public static boolean canSendReadPacket() {
+        return NekoConfig.sendReadMessagePackets || allowReadPacket.peek();
     }
 
     public static boolean getAllowReadPacket() {
         return NekoConfig.sendReadMessagePackets || allowReadPacket.process();
+    }
+
+    private static final AyuStateVariable automaticallyScheduled = new AyuStateVariable();
+
+    /** Whether the message just sent was scheduled by ghost mode (so the scheduled list isn't opened). */
+    public static boolean getAutomaticallyScheduled() {
+        return automaticallyScheduled.process();
+    }
+
+    /**
+     * With "send as scheduled" on, a message is scheduled a few seconds ahead instead of sent
+     * right away: the server then delivers it without marking the sender online. Telegram sends
+     * anything scheduled less than 10 seconds ahead immediately, so the margin is a bit larger.
+     */
+    public static int applyScheduledSend(int account, long peer, int scheduleDate, boolean media) {
+        if (!NekoConfig.useScheduledMessages || scheduleDate != 0 || peer == 0 || org.telegram.messenger.DialogObject.isEncryptedDialog(peer)) {
+            return scheduleDate;
+        }
+        if (peer == org.telegram.messenger.UserConfig.getInstance(account).getClientUserId()) {
+            return scheduleDate;
+        }
+        automaticallyScheduled.val = true;
+        automaticallyScheduled.resetAfter = 1;
+        return org.telegram.tgnet.ConnectionsManager.getInstance(account).getCurrentTime() + (media ? 26 : 11);
     }
 
     public static Long getDialogId(TLRPC.InputPeer peer) {

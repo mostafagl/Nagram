@@ -267,6 +267,8 @@ public class ApplicationLoader extends Application {
             e.printStackTrace();
         }
 
+        LiteMode.registerBatteryReceiver();
+
         try {
             PowerManager pm = (PowerManager) ApplicationLoader.applicationContext.getSystemService(Context.POWER_SERVICE);
             isScreenOn = pm.isScreenOn();
@@ -292,9 +294,14 @@ public class ApplicationLoader extends Application {
         }
         // init fcm
         initPushServices();
+        org.telegram.utils.proxy.ProxyVpnGuard.init();
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("app initied");
         }
+        // HTML widgets: the isolated engine's process up front, after the app's own start, so that a widget's first
+        // frame does not wait for it.
+        AndroidUtilities.runOnUIThread(() -> Utilities.globalQueue.postRunnable(
+                () -> org.telegram.utils.twidget.WidgetSandboxSession.prewarmEngine(applicationContext)), 3000);
     }
 
     public static void loadAccount(int account) {
@@ -337,6 +344,11 @@ public class ApplicationLoader extends Application {
         }
 
         super.onCreate();
+
+        // The widget engine's isolated process has no files, network or accounts: none of the client starts there.
+        if (org.telegram.utils.twidget.WidgetEngineService.isEngineProcess()) {
+            return;
+        }
 
         // AndroidUtilities must be initialized before FileLog
         final String helloWorld = AndroidUtilities.getHelloWorld();
@@ -423,7 +435,9 @@ public class ApplicationLoader extends Application {
         if (preferences.contains("pushService")) {
             enabled = preferences.getBoolean("pushService", false);
         } else {
-            enabled = MessagesController.getMainSettings(UserConfig.selectedAccount).getBoolean("keepAliveService", false);
+            // Without a push provider (the in-app push type) this is the only way messages arrive
+            // in the background, so it is on unless turned off.
+            enabled = MessagesController.getMainSettings(UserConfig.selectedAccount).getBoolean("keepAliveService", org.telegram.utils.proxy.ConnectionKeepAlive.isDefaultEnabled());
             SharedPreferences.Editor editor = preferences.edit();
             editor.putBoolean("pushService", enabled);
             editor.putBoolean("pushConnection", enabled);
@@ -443,7 +457,12 @@ public class ApplicationLoader extends Application {
                     Log.d("TFOSS", "Trying to start push service every 10 minutes");
                     // Telegram-FOSS: unconditionally enable push service
                     AlarmManager am = (AlarmManager) applicationContext.getSystemService(Context.ALARM_SERVICE);
-                    pendingIntent = PendingIntent.getService(applicationContext, 0, createNotificationsServiceIntent(), PendingIntent.FLAG_IMMUTABLE);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && NaConfig.INSTANCE.getPushServiceTypeInAppDialog().Bool()) {
+                        // A plain service can't be started from the background on Android 8+.
+                        pendingIntent = PendingIntent.getForegroundService(applicationContext, 0, createNotificationsServiceIntent(), PendingIntent.FLAG_IMMUTABLE);
+                    } else {
+                        pendingIntent = PendingIntent.getService(applicationContext, 0, createNotificationsServiceIntent(), PendingIntent.FLAG_IMMUTABLE);
+                    }
 
                     am.cancel(pendingIntent);
                     am.setInexactRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), 10 * 60 * 1000, pendingIntent);

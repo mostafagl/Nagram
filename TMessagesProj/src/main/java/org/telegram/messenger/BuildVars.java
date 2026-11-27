@@ -31,7 +31,8 @@ public class BuildVars {
     // SafetyNet key for Google Identity SDK, set it to empty to disable
     public static String SAFETYNET_KEY = "AIzaSyDqt8P-7F7CPCseMkOiVRgb1LY8RN1bvH8";
     public static int BUILD_VERSION; // generated
-    public static String GITHUB_RELEASE_URL = "https://github.com/NextAlone/Nagram/releases";
+    public static String GITHUB_REPO_URL = "https://github.com/mostafagl/Nagram";
+    public static String GITHUB_RELEASE_URL = GITHUB_REPO_URL + "/releases";
 
     public static int OFFICAL_APP_ID = 4;
     public static String OFFICAL_APP_HASH = "014b35b6184100b085b0d0572f9b5103";
@@ -41,6 +42,9 @@ public class BuildVars {
 
     // works only on official app ids, disable on your forks
     public static boolean SUPPORTS_PASSKEYS = true;
+    // the second main tab: News, or Contacts as before them
+
+    public static boolean SUPPORTS_FPNV = true;
 
     static {
 

@@ -232,7 +232,7 @@
     <string name="PassQRNewPassword">Προστασία αυτού του κωδικού QR με κωδικό πρόσβασης</string>
     <string name="ConfirmNewPassword">Επιβεβαίωση Κωδικού Πρόσβασης</string>
     <string name="PassQRAbout">Αποθηκεύει το συνθηματικό σας ως κρυπτογραφημένο κωδικό QR. Μπορείτε να το σαρώσετε για να συνδεθείτε σε άλλη συσκευή.</string>
-    <string name="PassQREncryption">Σαρώστε με τον Nagram για να συνδεθείτε.</string>
+    <string name="PassQREncryption">Σαρώστε με τον Parvagram για να συνδεθείτε.</string>
     <string name="InvalidPassQr">Invalid Passkey QR</string>
     <string name="PassQRPasswordTooShort">Ο κωδικός πρόσβασης πρέπει να περιέχει τουλάχιστον 8 χαρακτήρες</string>
     <string name="PassQRPasswordWarning">Προειδοποίηση ασφαλείας: αυτός ο κωδικός πρόσβασης είναι το μόνο πράγμα που προστατεύει το κλειδί σας. Ένας αδύναμος κωδικός πρόσβασης μπορεί να ραγιστεί εκτός σύνδεσης, οπότε ανακατέψτε τα κεφαλαία, τα πεζά, τους αριθμούς και τα σύμβολα.</string>

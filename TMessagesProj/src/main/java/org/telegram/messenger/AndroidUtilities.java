@@ -164,6 +164,7 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.INavigationLayout;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.ChatActivity;
 import org.telegram.ui.ChatBackgroundDrawable;
 import org.telegram.ui.Components.AlertsCreator;
@@ -270,7 +271,9 @@ public class AndroidUtilities {
 
     public static Typeface bold() {
         if (mediumTypeface == null) {
-            if (SharedConfig.useSystemBoldFont && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            if (xyz.nextalone.nagram.font.CustomFonts.getMedium() != null) {
+                mediumTypeface = xyz.nextalone.nagram.font.CustomFonts.getMedium();
+            } else if (SharedConfig.useSystemBoldFont && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 mediumTypeface = Typeface.create(null, 500, false);
             } else {
                 mediumTypeface = getTypeface(TYPEFACE_ROBOTO_MEDIUM);
@@ -282,6 +285,9 @@ public class AndroidUtilities {
     private static final Hashtable<String, Typeface> typefaceCache = new Hashtable<>();
     public static float touchSlop;
     private static int prevOrientation = -10;
+    private static int pendingUnlockOrientation = -10;
+    private static int pendingLockedOrientation = -10;
+    private static WeakReference<Activity> pendingUnlockActivity;
     private static boolean waitingForSms = false;
     private static boolean waitingForCall = false;
     private static final Object smsLock = new Object();
@@ -310,8 +316,12 @@ public class AndroidUtilities {
     public static boolean usingHardwareInput;
     public static boolean isInMultiwindow;
 
-    public static int roundPlayingMessageSize(boolean withSidemenu) {
-        return withSidemenu ? roundSidePlayingMessageSize : roundPlayingMessageSize;
+    public static int roundPlayingMessageSize(boolean withSidemenu, boolean compact) {
+        if (withSidemenu) {
+            return roundSidePlayingMessageSize;
+        }
+        // compact mode: a playing round video keeps the 16dp edge and a column for its side buttons
+        return compact ? roundPlayingMessageSize - dp(16 + 40 - 28 / 2) : roundPlayingMessageSize;
     }
 
     public static DecelerateInterpolator decelerateInterpolator = new DecelerateInterpolator();
@@ -743,6 +753,61 @@ public class AndroidUtilities {
         return spannableStringBuilder;
     }
 
+    /** like replaceSingleLink(str, color, onClick), but the link color is read from the theme on every draw */
+    public static SpannableStringBuilder replaceSingleLinkKey(String str, int colorKey, Theme.ResourcesProvider resourcesProvider, Runnable onClick) {
+        return replaceSingleLinkKey(str, colorKey, resourcesProvider, onClick, false);
+    }
+
+    /** like replaceSingleLinkBold(str, color, onClick), but the link color is read from the theme on every draw */
+    public static SpannableStringBuilder replaceSingleLinkBoldKey(String str, int colorKey, Theme.ResourcesProvider resourcesProvider, Runnable onClick) {
+        return replaceSingleLinkKey(str, colorKey, resourcesProvider, onClick, true);
+    }
+
+    private static SpannableStringBuilder replaceSingleLinkKey(String str, int colorKey, Theme.ResourcesProvider resourcesProvider, Runnable onClick, boolean bold) {
+        int startIndex = str.indexOf("**");
+        int endIndex = str.indexOf("**", startIndex + 1);
+        str = str.replace("**", "");
+        int index = -1;
+        int len = 0;
+        if (startIndex >= 0 && endIndex >= 0 && endIndex - startIndex > 2) {
+            len = endIndex - startIndex - 2;
+            index = startIndex;
+        }
+        SpannableStringBuilder spannableStringBuilder = new SpannableStringBuilder(str);
+        if (index >= 0) {
+            if (onClick != null) {
+                spannableStringBuilder.setSpan(new ClickableSpan() {
+                    @Override
+                    public void updateDrawState(@NonNull TextPaint ds) {
+                        super.updateDrawState(ds);
+                        ds.setUnderlineText(false);
+                        if (bold) {
+                            ds.setTypeface(AndroidUtilities.bold());
+                        }
+                        ds.setColor(Theme.getColor(colorKey, resourcesProvider));
+                    }
+
+                    @Override
+                    public void onClick(@NonNull View view) {
+                        onClick.run();
+                    }
+                }, index, index + len, 0);
+            } else {
+                spannableStringBuilder.setSpan(new CharacterStyle() {
+                    @Override
+                    public void updateDrawState(@NonNull TextPaint ds) {
+                        ds.setUnderlineText(false);
+                        if (bold) {
+                            ds.setTypeface(AndroidUtilities.bold());
+                        }
+                        ds.setColor(Theme.getColor(colorKey, resourcesProvider));
+                    }
+                }, index, index + len, 0);
+            }
+        }
+        return spannableStringBuilder;
+    }
+
     public static SpannableStringBuilder replaceSingleLinkBold(String str, int color) {
         return replaceSingleLinkBold(str, color, null);
     }
@@ -1068,7 +1133,7 @@ public class AndroidUtilities {
         CountDownLatch countDownLatch = new CountDownLatch(1);
         PixelCopy.request(surfaceView, surfaceBitmap, copyResult -> {
             countDownLatch.countDown();
-        }, Utilities.searchQueue.getHandler());
+        }, Utilities.searchQueue.getHandlerSync());
         try {
             countDownLatch.await();
         } catch (InterruptedException e) {
@@ -1094,7 +1159,7 @@ public class AndroidUtilities {
         CountDownLatch countDownLatch = new CountDownLatch(1);
         PixelCopy.request(surface, surfaceBitmap, copyResult -> {
             countDownLatch.countDown();
-        }, Utilities.searchQueue.getHandler());
+        }, Utilities.searchQueue.getHandlerSync());
         try {
             countDownLatch.await();
         } catch (InterruptedException e) {
@@ -1115,7 +1180,7 @@ public class AndroidUtilities {
         PixelCopy.request(window, bitmap, copyResult -> {
             success[0] = copyResult == PixelCopy.SUCCESS;
             countDownLatch.countDown();
-        }, Utilities.searchQueue.getHandler());
+        }, Utilities.searchQueue.getHandlerSync());
         try {
             countDownLatch.await();
         } catch (InterruptedException e) {
@@ -1908,7 +1973,8 @@ public class AndroidUtilities {
             return;
         }
         try {
-            prevOrientation = activity.getRequestedOrientation();
+            prevOrientation = getPendingUnlockOrientation(activity);
+            clearPendingOrientationUnlock();
             WindowManager manager = (WindowManager) activity.getSystemService(Activity.WINDOW_SERVICE);
             if (manager != null && manager.getDefaultDisplay() != null) {
                 int rotation = manager.getDefaultDisplay().getRotation();
@@ -1952,7 +2018,8 @@ public class AndroidUtilities {
             return;
         }
         try {
-            prevOrientation = activity.getRequestedOrientation();
+            prevOrientation = getPendingUnlockOrientation(activity);
+            clearPendingOrientationUnlock();
             activity.setRequestedOrientation(orientation);
         } catch (Exception e) {
             FileLog.e(e);
@@ -1966,9 +2033,53 @@ public class AndroidUtilities {
         }
         try {
             if (prevOrientation != -10) {
+                final int lockedOrientation = activity.getRequestedOrientation();
                 activity.setRequestedOrientation(prevOrientation);
+                if (isLargeScreen(activity)) {
+                    // a lock taken on a foldable's small screen: the large screen ignores the request, so apply it again on the next small one
+                    pendingUnlockOrientation = prevOrientation;
+                    pendingLockedOrientation = lockedOrientation;
+                    pendingUnlockActivity = new WeakReference<>(activity);
+                }
                 prevOrientation = -10;
             }
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+    }
+
+    private static boolean isLargeScreen(Activity activity) {
+        return activity.getResources().getConfiguration().smallestScreenWidthDp >= 600;
+    }
+
+    private static int getPendingUnlockOrientation(Activity activity) {
+        if (pendingUnlockOrientation != -10 && pendingUnlockActivity != null && pendingUnlockActivity.get() == activity) {
+            return pendingUnlockOrientation;
+        }
+        return activity.getRequestedOrientation();
+    }
+
+    // any other orientation request replaces the one the pending unlock would restore
+    public static void clearPendingOrientationUnlock() {
+        pendingUnlockOrientation = -10;
+        pendingLockedOrientation = -10;
+        pendingUnlockActivity = null;
+    }
+
+    public static void applyPendingOrientationUnlock(Activity activity) {
+        if (activity == null || pendingUnlockOrientation == -10 || prevOrientation != -10 || isLargeScreen(activity)) {
+            return;
+        }
+        if (pendingUnlockActivity == null || pendingUnlockActivity.get() != activity) {
+            return;
+        }
+        final int locked = pendingLockedOrientation;
+        final int unlocked = pendingUnlockOrientation;
+        clearPendingOrientationUnlock();
+        try {
+            // Activity skips a request equal to its last one, so restate the lock the system still holds first
+            activity.setRequestedOrientation(locked);
+            activity.setRequestedOrientation(unlocked);
         } catch (Exception e) {
             FileLog.e(e);
         }
@@ -2383,6 +2494,13 @@ public class AndroidUtilities {
 
     public static Typeface getTypeface(String assetPath) {
         synchronized (typefaceCache) {
+            final Typeface customMedium = xyz.nextalone.nagram.font.CustomFonts.getMedium();
+            if (customMedium != null && !assetPath.contains("mono") && !assetPath.contains("mw_bold") && !assetPath.contains("num") && !assetPath.contains("gram")) {
+                final boolean italic = assetPath.contains("italic");
+                final boolean heavy = assetPath.contains("medium") || assetPath.contains("bold");
+                final Typeface base = heavy ? customMedium : xyz.nextalone.nagram.font.CustomFonts.getRegular();
+                return italic ? Typeface.create(base, Typeface.ITALIC) : base;
+            }
             if (NekoConfig.typeface.Bool() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 if (assetPath.contains("medium") && assetPath.contains("italic")) {
                     return Typeface.create("sans-serif-medium", Typeface.ITALIC);
@@ -3015,13 +3133,9 @@ public class AndroidUtilities {
     }*/
 
     private static Runnable unregisterRunnable;
-    private static boolean hasCallPermissions = Build.VERSION.SDK_INT >= 23;
 
     @SuppressWarnings("unchecked")
     public static void endIncomingCall() {
-        if (!hasCallPermissions) {
-            return;
-        }
         try {
             TelephonyManager tm = (TelephonyManager) ApplicationLoader.applicationContext.getSystemService(Context.TELEPHONY_SERVICE);
             Class c = Class.forName(tm.getClass().getName());
@@ -3037,9 +3151,6 @@ public class AndroidUtilities {
     }
 
     public static String obtainLoginPhoneCall(String pattern) {
-        if (!hasCallPermissions) {
-            return null;
-        }
         String order;
         Bundle selectionArgs;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -3093,33 +3204,15 @@ public class AndroidUtilities {
         return true;
     }
 
-    private static Field mAttachInfoField;
-    private static Field mStableInsetsField;
-
     public static int getViewInset(View view) {
         if (view == null || view.getHeight() == AndroidUtilities.displaySize.y || view.getHeight() == AndroidUtilities.displaySize.y - statusBarHeight) {
             return 0;
         }
         try {
-            if (Build.VERSION.SDK_INT >= 23) {
-                WindowInsets insets = view.getRootWindowInsets();
-                return insets != null ? insets.getStableInsetBottom() : 0;
-            } else {
-                if (mAttachInfoField == null) {
-                    mAttachInfoField = View.class.getDeclaredField("mAttachInfo");
-                    mAttachInfoField.setAccessible(true);
-                }
-                Object mAttachInfo = mAttachInfoField.get(view);
-                if (mAttachInfo != null) {
-                    if (mStableInsetsField == null) {
-                        mStableInsetsField = mAttachInfo.getClass().getDeclaredField("mStableInsets");
-                        mStableInsetsField.setAccessible(true);
-                    }
-                    Rect insets = (Rect) mStableInsetsField.get(mAttachInfo);
-                    return insets.bottom;
-                }
-            }
-        } catch (Exception ignored) {
+            WindowInsets insets = view.getRootWindowInsets();
+            return insets != null ? insets.getStableInsetBottom() : 0;
+        } catch (Exception e) {
+            FileLog.e(e);
         }
         return 0;
     }
@@ -3637,7 +3730,7 @@ public class AndroidUtilities {
                 Build.VERSION.SDK_INT >= 33 &&
                 ApplicationLoader.applicationContext.checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED
             ) || (
-                Build.VERSION.SDK_INT >= 23 && Build.VERSION.SDK_INT <= 33 &&
+                Build.VERSION.SDK_INT <= 33 &&
                 ApplicationLoader.applicationContext.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
             )
         ) {
@@ -3645,7 +3738,7 @@ public class AndroidUtilities {
         }
         File storageDir = null;
         if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
-            storageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Nagram");
+            storageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Parvagram");
             if (!storageDir.mkdirs()) {
                 if (!storageDir.exists()) {
                     if (BuildVars.LOGS_ENABLED) {
@@ -4245,6 +4338,9 @@ public class AndroidUtilities {
 
     public static boolean openForView(File f, String fileName, String mimeType, final Activity activity, Theme.ResourcesProvider resourcesProvider, boolean restrict) {
         if (f != null && f.exists()) {
+            if (tw.nekomimi.nekogram.pdf.PdfViewerActivity.openIfPdf(f, fileName, mimeType, activity)) {
+                return true; // Parvagram's own PDF viewer
+            }
             String realMimeType = null;
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -4587,6 +4683,10 @@ public class AndroidUtilities {
                 return false;
             }
             Uri data = intent.getData();
+            if (data != null && org.telegram.utils.proxy.V2RayConfig.isV2RayLink(data.toString())) {
+                if (invoked) org.telegram.ui.V2RayConfigSheet.show(activity, data.toString());
+                return true;
+            }
             if (data != null) {
                 final ProxySettings proxySettings = ProxySettings.fromUri(data);
                 if (proxySettings != null && proxySettings.isValid()) {
@@ -4629,6 +4729,10 @@ public class AndroidUtilities {
 
     public static void showProxyAlert(Activity activity, final ProxySettings settings) {
         if (settings == null || !settings.isValid()) {
+            return;
+        }
+        if (settings.getType() == ProxySettings.Type.V2RAY) {
+            org.telegram.ui.V2RayConfigSheet.show(activity, settings.getSecret());
             return;
         }
 
@@ -4690,10 +4794,10 @@ public class AndroidUtilities {
                         checking[0] = false;
                         if (time == -1) {
                             statusTextView[0].setText(getString(R.string.Unavailable));
-                            statusTextView[0].setTextColor(Theme.getColor(Theme.key_text_RedRegular));
+                            ThemeBind.textColor(statusTextView[0], Theme.key_text_RedRegular);
                         } else {
                             statusTextView[0].setText(LocaleController.formatString(R.string.Ping2, time));
-                            statusTextView[0].setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGreenText));
+                            ThemeBind.textColor(statusTextView[0], Theme.key_windowBackgroundWhiteGreenText);
                         }
                         statusTextView[0].setOnClickListener((v) -> checkLink[0].run());
                     }));
@@ -4701,7 +4805,7 @@ public class AndroidUtilities {
                     checking[0] = false;
                     statusTextView[0].setOnClickListener((v) -> checkLink[0].run());
                     statusTextView[0].setText(getString(R.string.Unavailable));
-                    statusTextView[0].setTextColor(Theme.getColor(Theme.key_text_RedRegular));
+                    ThemeBind.textColor(statusTextView[0], Theme.key_text_RedRegular);
                 }
             };
 
@@ -5326,15 +5430,13 @@ public class AndroidUtilities {
 
 
     public static void setLightStatusBar(Window window, boolean enable) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            final View decorView = window.getDecorView();
-            changeSetSystemUiVisibility(decorView, View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR, enable);
+        final View decorView = window.getDecorView();
+        changeSetSystemUiVisibility(decorView, View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR, enable);
 
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                final int statusBarColor = Color.TRANSPARENT;
-                if (window.getStatusBarColor() != statusBarColor) {
-                    window.setStatusBarColor(statusBarColor);
-                }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            final int statusBarColor = Color.TRANSPARENT;
+            if (window.getStatusBarColor() != statusBarColor) {
+                window.setStatusBarColor(statusBarColor);
             }
         }
     }
@@ -5545,20 +5647,10 @@ public class AndroidUtilities {
     }
 
     public static boolean checkInlinePermissions(Context context) {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context);
+        return Settings.canDrawOverlays(context);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
-    public static boolean checkPipPermissions(Context context) {
-        if (!context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
-            return false;
-        }
-        AppOpsManager appOps = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
-        int mode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_PICTURE_IN_PICTURE, android.os.Process.myUid(), context.getPackageName());
-
-        return mode == AppOpsManager.MODE_ALLOWED;
-    }
-
     public static boolean isInPictureInPictureMode(Activity activity) {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && activity.isInPictureInPictureMode();
     }
@@ -5896,20 +5988,11 @@ public class AndroidUtilities {
 
     // detect Error NO SPaCe left on device :(
     public static boolean isENOSPC(Exception e) {
-        return (
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
-                        e instanceof IOException &&
-                        (e.getCause() instanceof ErrnoException &&
-                                ((ErrnoException) e.getCause()).errno == OsConstants.ENOSPC) ||
-                        (e.getMessage() != null && e.getMessage().equalsIgnoreCase("no space left on device"))
-        );
+        return e instanceof IOException && e.getCause() instanceof ErrnoException && ((ErrnoException) e.getCause()).errno == OsConstants.ENOSPC || e.getMessage() != null && e.getMessage().equalsIgnoreCase("no space left on device");
     }
 
     public static boolean isEROFS(Exception e) {
-        return (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && e instanceof IOException &&
-                (e.getCause() instanceof ErrnoException && ((ErrnoException) e.getCause()).errno == OsConstants.EROFS) ||
-                (e.getMessage() != null && e.getMessage().toLowerCase().contains("read-only file system"))
-        );
+        return e instanceof IOException && e.getCause() instanceof ErrnoException && ((ErrnoException) e.getCause()).errno == OsConstants.EROFS || e.getMessage() != null && e.getMessage().toLowerCase().contains("read-only file system");
     }
 
     public static SpannableStringBuilder replaceCharSequence(String what, CharSequence from, CharSequence obj) {
@@ -6640,7 +6723,7 @@ public class AndroidUtilities {
 
     public static String getBuildVersionInfo() {
         String[] abi = Build.SUPPORTED_ABIS[0].toLowerCase(Locale.ROOT).split("-");
-        return "Nagram v" + BuildConfig.VERSION_NAME + " (" + BuildConfig.BUILD_TIMESTAMP + ") " + abi[abi.length - 1];
+        return "Parvagram v" + BuildConfig.VERSION_NAME + " (" + BuildConfig.BUILD_TIMESTAMP + ") " + abi[abi.length - 1];
 //        try {
 //            PackageInfo pInfo = ApplicationLoader.applicationContext.getPackageManager().getPackageInfo(ApplicationLoader.applicationContext.getPackageName(), 0);
 //            int code = pInfo.versionCode / 10;
@@ -6925,9 +7008,7 @@ public class AndroidUtilities {
         if (context instanceof Activity) {
             final Activity activity = (Activity) context;
             if (activity.isFinishing()) return false;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                if (activity.isDestroyed()) return false;
-            }
+            if (activity.isDestroyed()) return false;
             return true;
         }
         if (context instanceof ContextWrapper) {

@@ -31,6 +31,7 @@ import androidx.core.content.pm.ShortcutManagerCompat;
 
 import org.json.JSONObject;
 import org.telegram.utils.proxy.ProxySettings;
+import org.telegram.utils.proxy.V2RayConfig;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.InputSerializedData;
 import org.telegram.tgnet.OutputSerializedData;
@@ -314,8 +315,11 @@ public class SharedConfig {
     public static boolean saveStreamMedia = true;
     public static boolean pauseMusicOnRecord = false;
     public static boolean pauseMusicOnMedia = false;
+    public static boolean compactMode = false;
     public static boolean noiseSupression;
     public static boolean debugWebView;
+    /** Experimental: a widget frame unchanged for a third of a second is drawn from a compositing layer. */
+    public static boolean widgetStaticLayers = true;
     public static boolean sortContactsByName;
     public static boolean sortFilesByName;
     public static boolean shuffleMusic;
@@ -327,9 +331,9 @@ public class SharedConfig {
     public static boolean allowBigEmoji;
     public static boolean useSystemEmoji;
     public static boolean useSystemBoldFont;
-    public static int fontSize = 12;
+    public static int fontSize = 16;
     public static boolean fontSizeIsDefault;
-    public static int bubbleRadius = 3;
+    public static int bubbleRadius = 17;
     public static int ivFontSize = 12;
     public static boolean proxyRotationEnabled;
     public static int proxyRotationTimeout;
@@ -337,7 +341,6 @@ public class SharedConfig {
     public static int emojiInteractionsHintCount;
     public static int dayNightThemeSwitchHintCount;
     public static int callEncryptionHintDisplayedCount;
-    public static boolean shadowsInSections;
     public static boolean debugViewMetrics;
     public static boolean photoHighQualityDefault;
     public static boolean photoLiveDefault;
@@ -446,6 +449,11 @@ public class SharedConfig {
         }
 
         public static ProxyInfo fromUrl(String url) {
+            if (V2RayConfig.isV2RayLink(url)) {
+                ProxySettings settings = ProxySettings.fromV2RayLink(url);
+                if (settings == null) throw new IllegalArgumentException(url);
+                return new ProxyInfo(settings);
+            }
             Uri lnk = Uri.parse(url);
             if (lnk == null) throw new IllegalArgumentException(url);
             return new ProxyInfo(ProxySettings.fromUri(lnk));
@@ -658,9 +666,9 @@ public class SharedConfig {
             hasCameraCache = preferences.contains("cameraCache");
             roundCamera16to9 = true;
             repeatMode = preferences.getInt("repeatMode", 0);
-            fontSize = preferences.getInt("fons_size", AndroidUtilities.isTablet() && !AndroidUtilities.isFold() ? 14 : 12);
+            fontSize = preferences.getInt("fons_size", AndroidUtilities.isTablet() && !AndroidUtilities.isFold() ? 18 : 16);
             fontSizeIsDefault = !preferences.contains("fons_size");
-            bubbleRadius = preferences.getInt("bubbleRadius", 3);
+            bubbleRadius = preferences.getInt("bubbleRadius", 17);
             ivFontSize = preferences.getInt("iv_font_size", fontSize);
             allowBigEmoji = preferences.getBoolean("allowBigEmoji", true);
             useSystemBoldFont = preferences.getBoolean("useSystemBoldFont", false);
@@ -674,6 +682,8 @@ public class SharedConfig {
             saveStreamMedia = preferences.getBoolean("saveStreamMedia", true);
             pauseMusicOnRecord = preferences.getBoolean("pauseMusicOnRecord", true);
             pauseMusicOnMedia = preferences.getBoolean("pauseMusicOnMedia", false);
+            // compact mode is still in development: private beta only
+            compactMode = preferences.getBoolean("compactMode", false);
             forceDisableTabletMode = preferences.getBoolean("forceDisableTabletMode", false);
             streamAllVideo = preferences.getBoolean("streamAllVideo", BuildVars.DEBUG_VERSION);
             streamMkv = preferences.getBoolean("streamMkv", false);
@@ -687,9 +697,17 @@ public class SharedConfig {
             directShareHash = preferences.getString("directShareHash2", null);
             useThreeLinesLayout = preferences.getBoolean("useThreeLinesLayout", false);
             archiveHidden = preferences.getBoolean("archiveHidden", false);
+            // "Open archive on pull" only works with the archive hidden above the list (revealed by
+            // pulling down); with it pinned in the list, pulling did nothing. Hide it once; the
+            // user can still pin it back from the archive's menu.
+            if (!archiveHidden && !preferences.getBoolean("parva_archive_pull_init", false) && tw.nekomimi.nekogram.NekoConfig.openArchiveOnPull.Bool()) {
+                archiveHidden = true;
+                preferences.edit().putBoolean("archiveHidden", true).putBoolean("parva_archive_pull_init", true).apply();
+            }
             distanceSystemType = preferences.getInt("distanceSystemType", 0);
             keepMedia = preferences.getInt("keep_media", CacheByChatsController.KEEP_MEDIA_ONE_MONTH);
             debugWebView = preferences.getBoolean("debugWebView", false);
+            widgetStaticLayers = preferences.getBoolean("widgetStaticLayers", true);
             lastKeepMediaCheckTime = preferences.getInt("lastKeepMediaCheckTime", 0);
             lastLogsCheckTime = preferences.getInt("lastLogsCheckTime", 0);
             searchMessagesAsListUsed = preferences.getBoolean("searchMessagesAsListUsed", false);
@@ -760,7 +778,6 @@ public class SharedConfig {
             multipleReactionsPromoShowed = preferences.getBoolean("multipleReactionsPromoShowed", false);
             callEncryptionHintDisplayedCount = preferences.getInt("callEncryptionHintDisplayedCount", 0);
             debugVideoQualities = preferences.getBoolean("debugVideoQualities", false);
-            shadowsInSections = preferences.getBoolean("shadowsInSections", false);
             debugViewMetrics = preferences.getBoolean("debugViewMetrics", false);
             photoHighQualityDefault = preferences.getBoolean("photoHighQualityDefault", false);
             photoLiveDefault = preferences.getBoolean("photoLiveDefault", false);
@@ -1169,6 +1186,11 @@ public class SharedConfig {
         editor.apply();
     }
 
+    public static void toggleWidgetStaticLayers() {
+        widgetStaticLayers = !widgetStaticLayers;
+        MessagesController.getGlobalMainSettings().edit().putBoolean("widgetStaticLayers", widgetStaticLayers).apply();
+    }
+
     public static void toggleDebugWebView() {
         debugWebView = !debugWebView;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -1469,6 +1491,19 @@ public class SharedConfig {
         SharedPreferences preferences = MessagesController.getGlobalMainSettings();
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("pauseMusicOnMedia", pauseMusicOnMedia);
+        editor.apply();
+    }
+
+    /** Compact mode of a dialog: the app's setting, and agent bot chats are always compact. */
+    public static boolean isCompactMode(int currentAccount, long dialogId) {
+        return compactMode || dialogId > 0 && AppGlobalConfig.getInstance(currentAccount).agentBotIds.contains(dialogId);
+    }
+
+    public static void toggleCompactMode() {
+        compactMode = !compactMode;
+        SharedPreferences preferences = MessagesController.getGlobalMainSettings();
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("compactMode", compactMode);
         editor.apply();
     }
 

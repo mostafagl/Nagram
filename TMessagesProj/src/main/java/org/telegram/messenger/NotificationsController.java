@@ -74,6 +74,7 @@ import org.telegram.messenger.utils.tlutils.TLKeyboardHelper;
 import org.telegram.messenger.utils.tlutils.TlUtils;
 import org.telegram.messenger.voip.VoIPGroupNotification;
 import org.telegram.tgnet.ConnectionsManager;
+import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.tgnet.tl.TL_account;
 import org.telegram.tgnet.tl.TL_keyboard;
@@ -112,7 +113,7 @@ public class NotificationsController extends BaseController implements Notificat
     public static final String EXTRA_VOICE_REPLY = "extra_voice_reply";
     public static String OTHER_NOTIFICATIONS_CHANNEL = null;
 
-    private static final DispatchQueue notificationsQueue = new DispatchQueue("notificationsQueue");
+    private static final DispatchQueue2 notificationsQueue = new DispatchQueue2("notificationsQueue");
     private final ArrayList<MessageObject> pushMessages = new ArrayList<>();
     private final ArrayList<MessageObject> delayedPushMessages = new ArrayList<>();
     private final LongSparseArray<SparseArray<MessageObject>> pushMessagesDict = new LongSparseArray<>();
@@ -125,6 +126,7 @@ public class NotificationsController extends BaseController implements Notificat
     private final LongSparseArray<Integer> lastWearNotifiedMessageId = new LongSparseArray<>();
     private final LongSparseArray<Integer> pushDialogsOverrideMention = new LongSparseArray<>();
     private final HashSet<String> pendingVoiceLoads = new HashSet<>();
+    private final NotificationAvatarLoads avatarLoads = new NotificationAvatarLoads();
     public final ArrayList<MessageObject> popupMessages = new ArrayList<>();
     public ArrayList<MessageObject> popupReplyMessages = new ArrayList<>();
     private final HashSet<Long> openedInBubbleDialogs = new HashSet<>();
@@ -256,6 +258,7 @@ public class NotificationsController extends BaseController implements Notificat
 
         AndroidUtilities.runOnUIThread(() -> {
             getNotificationCenter().addObserver(this, NotificationCenter.fileLoaded);
+            getNotificationCenter().addObserver(this, NotificationCenter.fileLoadFailed);
         });
     }
 
@@ -285,8 +288,17 @@ public class NotificationsController extends BaseController implements Notificat
             OTHER_NOTIFICATIONS_CHANNEL = "Other" + Utilities.random.nextLong();
             preferences.edit().putString("OtherKey", OTHER_NOTIFICATIONS_CHANNEL).commit();
         }
+        final String channelName = LocaleController.getString(R.string.InternalNotificationsSystemSetting);
+        if (notificationChannel != null && !TextUtils.equals(notificationChannel.getName(), channelName)) {
+            notificationChannel.setName(channelName);
+            try {
+                systemNotificationManager.createNotificationChannel(notificationChannel);
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        }
         if (notificationChannel == null) {
-            notificationChannel = new NotificationChannel(OTHER_NOTIFICATIONS_CHANNEL, "Internal notifications", NotificationManager.IMPORTANCE_DEFAULT);
+            notificationChannel = new NotificationChannel(OTHER_NOTIFICATIONS_CHANNEL, channelName, NotificationManager.IMPORTANCE_DEFAULT);
             notificationChannel.enableLights(false);
             notificationChannel.enableVibration(false);
             notificationChannel.setSound(null, null);
@@ -1160,6 +1172,14 @@ public class NotificationsController extends BaseController implements Notificat
             }
         }
 
+        // Parvagram: locked chats can keep their notifications out of sight.
+        for (int i = messageObjects.size() - 1; i >= 0; i--) {
+            final MessageObject m = messageObjects.get(i);
+            if (m != null && (tw.nekomimi.nekogram.helpers.ChatLock.hideNotifications(currentAccount, m.getDialogId())
+                    || tw.nekomimi.nekogram.helpers.HiddenChats.hideNotifications(currentAccount, m.getDialogId()))) {
+                messageObjects.remove(i);
+            }
+        }
         if (messageObjects.isEmpty()) {
             if (countDownLatch != null) {
                 countDownLatch.countDown();
@@ -2521,6 +2541,12 @@ public class NotificationsController extends BaseController implements Notificat
                         }
                     } else if (messageObject.messageOwner.media instanceof TLRPC.TL_messageMediaToDo) {
                         return LocaleController.getString(R.string.Todo);
+                    } else if (messageObject.messageOwner.media instanceof TLRPC.TL_messageMediaWidget) {
+                        // The caption, or "Widget" for a widget sent without one.
+                        if (TextUtils.isEmpty(messageObject.messageOwner.message)) {
+                            return LocaleController.getString(R.string.AttachWidget);
+                        }
+                        return replaceSpoilers(messageObject);
                     } else if (messageObject.messageOwner.media instanceof TLRPC.TL_messageMediaGiveaway) {
                         return LocaleController.getString(R.string.BoostingGiveaway);
                     } else if (messageObject.messageOwner.media instanceof TLRPC.TL_messageMediaGiveawayResults) {
@@ -3433,9 +3459,39 @@ public class NotificationsController extends BaseController implements Notificat
             notificationsQueue.postRunnable(() -> {
                 if (pendingVoiceLoads.remove(path)) {
                     showOrUpdateNotification(true);
+                } else if (avatarLoads.finished(path)) {
+                    // A profile photo the notification was waiting for: show it, without alerting again.
+                    showOrUpdateNotification(false);
                 }
             });
+        } else if (id == NotificationCenter.fileLoadFailed) {
+            final String path = (String) args[0];
+            notificationsQueue.postRunnable(() -> avatarLoads.failed(path));
         }
+    }
+
+    /**
+     * The small profile photo a notification shows is only a file in the cache once the app has displayed
+     * it somewhere; a sender whose photo was never opened, or who just changed it, used to get the
+     * placeholder initials until their next message. When the file isn't there, download it and refresh
+     * the notification (silently) when it arrives.
+     */
+    private void requestAvatarIfMissing(TLObject owner, TLRPC.FileLocation location, File file) {
+        if (owner == null || location == null || (file != null && file.exists())) {
+            return;
+        }
+        final ImageLocation imageLocation;
+        if (owner instanceof TLRPC.User) {
+            imageLocation = ImageLocation.getForUser(currentAccount, (TLRPC.User) owner, ImageLocation.TYPE_SMALL);
+        } else if (owner instanceof TLRPC.Chat) {
+            imageLocation = ImageLocation.getForChat(currentAccount, (TLRPC.Chat) owner, ImageLocation.TYPE_SMALL);
+        } else {
+            imageLocation = null;
+        }
+        if (imageLocation == null || !avatarLoads.begin(FileLoader.getAttachFileName(location, "jpg"))) {
+            return;
+        }
+        getFileLoader().loadFile(imageLocation, owner, "jpg", FileLoader.PRIORITY_NORMAL, 1);
     }
 
     private void playInChatSound() {
@@ -4744,6 +4800,7 @@ public class NotificationsController extends BaseController implements Notificat
                 } else {
                     try {
                         File file = getFileLoader().getPathToAttach(photoPath, true);
+                        requestAvatarIfMissing(chat != null ? (TLObject) chat : (TLObject) user, photoPath, file);
                         if (file.exists()) {
                             float scaleFactor = 160.0f / AndroidUtilities.dp(50);
                             BitmapFactory.Options options = new BitmapFactory.Options();
@@ -4947,6 +5004,7 @@ public class NotificationsController extends BaseController implements Notificat
         if (Build.VERSION.SDK_INT >= 26) {
             notificationBuilder.setChannelId(validateChannelId(lastDialogId, lastTopicId, chatName, vibrationPattern, ledColor, sound, importance, isDefault, isInApp, isSilent, chatType));
         }
+        notificationBuilder.setOnlyAlertOnce(isSilent);
         Notification mainNotification = notificationBuilder.build();
         if (Build.VERSION.SDK_INT <= 19) {
             notificationManager.notify(notificationId, mainNotification);
@@ -5089,6 +5147,7 @@ public class NotificationsController extends BaseController implements Notificat
             boolean isSupergroup = false;
             String name;
             TLRPC.FileLocation photoPath = null;
+            TLObject photoOwner = null; // the user or chat photoPath belongs to
             Bitmap avatarBitmap = null;
             File avatarFile = null;
             boolean canReply;
@@ -5107,6 +5166,7 @@ public class NotificationsController extends BaseController implements Notificat
                 }
                 if (user != null && user.photo != null && user.photo.photo_small != null && user.photo.photo_small.volume_id != 0 && user.photo.photo_small.local_id != 0) {
                     photoPath = user.photo.photo_small;
+                    photoOwner = user;
                 }
             } else if (!DialogObject.isEncryptedDialog(dialogId)) {
                 canReply = (lastMessageObject != null && !lastMessageObject.isReactionPush && !lastMessageObject.isStoryReactionPush) && dialogId != 777000;
@@ -5125,6 +5185,7 @@ public class NotificationsController extends BaseController implements Notificat
                         name = UserObject.getUserName(user);
                         if (user.photo != null && user.photo.photo_small != null && user.photo.photo_small.volume_id != 0 && user.photo.photo_small.local_id != 0) {
                             photoPath = user.photo.photo_small;
+                            photoOwner = user;
                         }
                     }
                     if (dialogId == UserObject.OAUTH) {
@@ -5156,6 +5217,7 @@ public class NotificationsController extends BaseController implements Notificat
                         name = getTitle(chat);
                         if (chat.photo != null && chat.photo.photo_small != null && chat.photo.photo_small.volume_id != 0 && chat.photo.photo_small.local_id != 0) {
                             photoPath = chat.photo.photo_small;
+                            photoOwner = chat;
                         }
 
                         if (topicId != 0) {
@@ -5175,11 +5237,13 @@ public class NotificationsController extends BaseController implements Notificat
                         TLRPC.User fwduser = getMessagesController().getUser(did);
                         if (fwduser.photo != null && fwduser.photo.photo_small != null && fwduser.photo.photo_small.volume_id != 0 && fwduser.photo.photo_small.local_id != 0) {
                             photoPath = fwduser.photo.photo_small;
+                            photoOwner = fwduser;
                         }
                     } else {
                         TLRPC.Chat fwdchat = getMessagesController().getChat(-did);
                         if (fwdchat.photo != null && fwdchat.photo.photo_small != null && fwdchat.photo.photo_small.volume_id != 0 && fwdchat.photo.photo_small.local_id != 0) {
                             photoPath = fwdchat.photo.photo_small;
+                            photoOwner = fwdchat;
                         }
                     }
                 }
@@ -5207,6 +5271,7 @@ public class NotificationsController extends BaseController implements Notificat
                 }
                 name = LocaleController.getString(R.string.SecretChatName);
                 photoPath = null;
+                photoOwner = null;
             }
             if (lastMessageObject != null && lastMessageObject.isStoryReactionPush && !preferences.getBoolean("EnableReactionsPreview", true)) {
                 canReply = false;
@@ -5221,11 +5286,13 @@ public class NotificationsController extends BaseController implements Notificat
                     name = LocaleController.getString(R.string.NotificationHiddenName);
                 }
                 photoPath = null;
+                photoOwner = null;
                 canReply = false;
             }
 
             if (photoPath != null) {
                 avatarFile = getFileLoader().getPathToAttach(photoPath, true);
+                requestAvatarIfMissing(photoOwner, photoPath, avatarFile);
                 if (Build.VERSION.SDK_INT < 28) {
                     BitmapDrawable img = ImageLoader.getInstance().getImageFromMemory(photoPath, null, "50_50");
                     if (img != null) {
@@ -5480,6 +5547,7 @@ public class NotificationsController extends BaseController implements Notificat
                                     senderUser = sender;
                                     if (sender.photo != null && sender.photo.photo_small != null && sender.photo.photo_small.volume_id != 0 && sender.photo.photo_small.local_id != 0) {
                                         avatar = getFileLoader().getPathToAttach(sender.photo.photo_small, true);
+                                        requestAvatarIfMissing(sender, sender.photo.photo_small, avatar);
                                     }
                                 }
                             }
@@ -5741,6 +5809,7 @@ public class NotificationsController extends BaseController implements Notificat
                     .setContentIntent(contentIntent)
                     .extend(wearableExtender)
                     .setSortKey(String.valueOf(Long.MAX_VALUE - date))
+                    .setOnlyAlertOnce(isSilent || dialogId != lastDialogId || topicId != lastTopicId)
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE);
 
             try {
@@ -5972,22 +6041,30 @@ public class NotificationsController extends BaseController implements Notificat
             try {
                 Bitmap bitmap = null;
                 if (avatar != null && avatar.exists()) {
-                    bitmap = ImageDecoder.decodeBitmap(ImageDecoder.createSource(avatar), (decoder, info, src) -> {
-                        decoder.setPostProcessor((canvas) -> {
-                            Path path = new Path();
-                            path.setFillType(Path.FillType.INVERSE_EVEN_ODD);
-                            int width = canvas.getWidth();
-                            int height = canvas.getHeight();
-                            path.addRoundRect(0, 0, width, height, width / 2, width / 2, Path.Direction.CW);
-                            Paint paint = new Paint();
-                            paint.setAntiAlias(true);
-                            paint.setColor(Color.TRANSPARENT);
-                            paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC));
-                            canvas.drawPath(path, paint);
-                            return PixelFormat.TRANSLUCENT;
+                    try {
+                        bitmap = ImageDecoder.decodeBitmap(ImageDecoder.createSource(avatar), (decoder, info, src) -> {
+                            decoder.setPostProcessor((canvas) -> {
+                                Path path = new Path();
+                                path.setFillType(Path.FillType.INVERSE_EVEN_ODD);
+                                int width = canvas.getWidth();
+                                int height = canvas.getHeight();
+                                path.addRoundRect(0, 0, width, height, width / 2, width / 2, Path.Direction.CW);
+                                Paint paint = new Paint();
+                                paint.setAntiAlias(true);
+                                paint.setColor(Color.TRANSPARENT);
+                                paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC));
+                                canvas.drawPath(path, paint);
+                                return PixelFormat.TRANSLUCENT;
+                            });
                         });
-                    });
-                } else if (firstName != null || lastName != null) {
+                    } catch (Throwable e) {
+                        // A cached photo that can't be decoded (partial or damaged file) must not leave the
+                        // notification without any picture: fall through to the initials below.
+                        FileLog.e(e);
+                        bitmap = null;
+                    }
+                }
+                if (bitmap == null && (firstName != null || lastName != null)) {
                     int sz = AndroidUtilities.dp(64);
                     bitmap = Bitmap.createBitmap(sz, sz, Bitmap.Config.ARGB_8888);
                     Canvas canvas = new Canvas(bitmap);

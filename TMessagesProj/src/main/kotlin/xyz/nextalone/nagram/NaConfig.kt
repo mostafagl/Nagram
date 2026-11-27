@@ -30,7 +30,7 @@ object NaConfig {
         addConfig(
             "ForceCopy",
             ConfigItem.configTypeBool,
-            false
+            true
         )
     val disableSecondAddress =
         addConfig(
@@ -131,6 +131,18 @@ object NaConfig {
     val showNoQuoteForward =
         addConfig(
             "NoQuoteForward",
+            ConfigItem.configTypeBool,
+            true
+        )
+    val showMessageEditHistory =
+        addConfig(
+            "ShowMessageEditHistory",
+            ConfigItem.configTypeBool,
+            true
+        )
+    val showDeletedMessages =
+        addConfig(
+            "ShowDeletedMessages",
             ConfigItem.configTypeBool,
             true
         )
@@ -339,7 +351,7 @@ object NaConfig {
         addConfig(
             "DisableProxyWhenVpnEnabled",
             ConfigItem.configTypeBool,
-            false
+            true
         )
     val fakeHighPerformanceDevice =
         addConfig(
@@ -599,7 +611,7 @@ object NaConfig {
         addConfig(
             "DisableFlagSecure",
             ConfigItem.configTypeBool,
-            false
+            true
         )
     val centerActionBarTitle =
         addConfig(
@@ -617,7 +629,8 @@ object NaConfig {
         addConfig(
             "PushServiceType",
             ConfigItem.configTypeInt,
-            1
+            // In-app: the bundled Firebase project has no app registered for this package id.
+            0
         )
     val pushServiceTypeInAppDialog =
         addConfig(
@@ -713,7 +726,7 @@ object NaConfig {
         addConfig(
             "ShowHiddenFeature",
             ConfigItem.configTypeBool,
-            false
+            true
         )
     val searchHashtagDefaultPageChannel =
         addConfig(
@@ -945,6 +958,13 @@ object NaConfig {
             "Forward",
             disableActionBarButton,
             4,
+            false
+        )
+    val disableActionBarButtonForwardNoQuote =
+        addConfig(
+            "ActionBarNoQuoteForward",
+            disableActionBarButton,
+            5,
             false
         )
     val coloredAdminTitle =
@@ -1370,6 +1390,7 @@ object NaConfig {
             false
         )
     val inputTextAnimations = addConfig("InputTextAnimations", ConfigItem.configTypeBool, false)
+    val allowMediaInChatPreview = addConfig("AllowMediaInChatPreview", ConfigItem.configTypeBool, true)
     val inputAnimationStrength = addConfig("InputAnimationStrength", ConfigItem.configTypeInt, 2)
     val forceVideoNewRewindMethod =
         addConfig(

@@ -17,6 +17,7 @@ import android.util.SparseIntArray;
 
 import androidx.annotation.Keep;
 
+import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
@@ -49,6 +50,7 @@ import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.StatsController;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
+import org.telegram.utils.proxy.V2RayTransport;
 import org.telegram.utils.proxy.WebProxyConnectionTester;
 import org.telegram.utils.proxy.WebProxyTransport;
 import org.telegram.utils.proxy.ProxySettings;
@@ -103,6 +105,8 @@ public class ConnectionsManager extends BaseController {
     public final static int ConnectionTypeDownload2 = ConnectionTypeDownload | (1 << 16);
     // Keep in sync with DOWNLOAD_CONNECTIONS_COUNT in tgnet/Defines.h.
     public final static int DownloadConnectionsCount = 8;
+    // Keep in sync with UPLOAD_CONNECTIONS_COUNT in tgnet/Defines.h.
+    public final static int UploadConnectionsCountPremium = 8;
 
     public final static int FileTypePhoto = 0x01000000;
     public final static int FileTypeVideo = 0x02000000;
@@ -352,11 +356,12 @@ public class ConnectionsManager extends BaseController {
             return false;
         }
         // --- 不发送已读消息 ---
-        if (!NekoConfig.sendReadMessagePackets && !AyuGhostUtils.getAllowReadPacket() &&
-                (object instanceof TLRPC.TL_messages_readHistory ||
+        if ((object instanceof TLRPC.TL_messages_readHistory ||
                         object instanceof TLRPC.TL_messages_readMessageContents ||
                         object instanceof TLRPC.TL_channels_readHistory ||
-                        object instanceof TLRPC.TL_channels_readMessageContents)) {
+                        object instanceof TLRPC.TL_channels_readMessageContents ||
+                        object instanceof TLRPC.TL_messages_readEncryptedHistory) &&
+                !AyuGhostUtils.getAllowReadPacket()) {
             return false;
         }
         return true;
@@ -385,17 +390,38 @@ public class ConnectionsManager extends BaseController {
             peer = ((TLRPC.TL_messages_sendMedia) object).peer;
         } else if (object instanceof TLRPC.TL_messages_sendMultiMedia) {
             peer = ((TLRPC.TL_messages_sendMultiMedia) object).peer;
+        } else if (object instanceof TLRPC.TL_messages_sendReaction && !((TLRPC.TL_messages_sendReaction) object).reaction.isEmpty()) {
+            // Reacting to a message is reading it too (removing a reaction is not).
+            peer = ((TLRPC.TL_messages_sendReaction) object).peer;
         } else {
             peer = null;
         }
         if (peer == null) return origCallback;
         var dialogId = AyuGhostUtils.getDialogId(peer);
         return (response, error) -> {
-            origCallback.run(response, error);
+            if (origCallback != null) {
+                origCallback.run(response, error);
+            }
+            if (error != null) {
+                return; // nothing was sent or reacted to
+            }
             getMessagesStorage().getDialogMaxMessageId(dialogId, maxId -> {
-                TLRPC.TL_messages_readHistory request = new TLRPC.TL_messages_readHistory();
-                request.peer = peer;
-                request.max_id = maxId;
+                final TLObject request;
+                if (peer instanceof TLRPC.TL_inputPeerChannel) {
+                    // Channels and supergroups are read with channels.readHistory; messages.readHistory fails for them.
+                    final TLRPC.TL_channels_readHistory channelRead = new TLRPC.TL_channels_readHistory();
+                    final TLRPC.TL_inputChannel channel = new TLRPC.TL_inputChannel();
+                    channel.channel_id = peer.channel_id;
+                    channel.access_hash = peer.access_hash;
+                    channelRead.channel = channel;
+                    channelRead.max_id = maxId;
+                    request = channelRead;
+                } else {
+                    final TLRPC.TL_messages_readHistory read = new TLRPC.TL_messages_readHistory();
+                    read.peer = peer;
+                    read.max_id = maxId;
+                    request = read;
+                }
                 AyuGhostUtils.setAllowReadPacket(true, 1);
                 sendRequest(request, (a1, a2) -> {});
             });
@@ -432,6 +458,27 @@ public class ConnectionsManager extends BaseController {
         }, null, null, null, requestFlags, dcId, ConnectionTypeGeneric, true);
     }
 
+    public static class RequestException extends RuntimeException {
+        public final int code;
+        public final String text;
+
+        public RequestException(TLRPC.TL_error error) {
+            super(error != null && error.text != null ? error.text : null);
+            if (error != null) {
+                this.code = error.code;
+                this.text = error.text;
+            } else {
+                this.code = 0;
+                this.text = "NULL";
+            }
+        }
+
+        @Nullable
+        @Override
+        public String getMessage() {
+            return text;
+        }
+    }
 
 
     public int sendRequestTypedAndProcessUpdates(TLMethod<TLRPC.Updates> method, Executor executor, Utilities.Callback2<TLRPC.Updates, TLRPC.TL_error> completionBlock) {
@@ -766,6 +813,9 @@ public class ConnectionsManager extends BaseController {
                 int localPort = WebProxyTransport.start(proxySettings.getAddress(), proxySettings.getSecret());
                 native_setProxySettings(currentAccount, "127.0.0.1", localPort != 0 ? localPort : 9, "", "",
                         proxySettings.getSecret());
+            } else if (proxySettings.getType() == ProxySettings.Type.V2RAY) {
+                int localPort = V2RayTransport.start(proxySettings.getSecret());
+                native_setProxySettings(currentAccount, "127.0.0.1", localPort != 0 ? localPort : 9, "", "", "");
             } else {
                 native_setProxySettings(currentAccount, proxySettings.getAddress(), proxySettings.getPort(),
                         proxySettings.getUser(), proxySettings.getPassword(), proxySettings.getSecret());
@@ -879,6 +929,10 @@ public class ConnectionsManager extends BaseController {
             WebProxyConnectionTester.getInstance().checkProxy(settings, requestTimeDelegate, this::checkWebProxyInternal);
             return 0;
         }
+        if (settings.getType() == ProxySettings.Type.V2RAY) {
+            V2RayTransport.checkDelay(settings.getSecret(), requestTimeDelegate);
+            return 0;
+        }
 
         return native_checkProxy(currentAccount, settings.getAddress(), settings.getPort(), settings.getUser(), settings.getPassword(), settings.getSecret(), requestTimeDelegate);
     }
@@ -908,6 +962,12 @@ public class ConnectionsManager extends BaseController {
         if (appResumeCount == 0) {
             if (lastPauseTime == 0) {
                 lastPauseTime = System.currentTimeMillis();
+            }
+            // With "stay connected in the background" the connection is not put to sleep, so
+            // the app is still connected (and receives updates right away) when reopened.
+            if (org.telegram.utils.proxy.ConnectionKeepAlive.isEnabled()) {
+                native_resumeNetwork(currentAccount, false);
+                return;
             }
             native_pauseNetwork(currentAccount);
         } else {
@@ -1119,8 +1179,19 @@ public class ConnectionsManager extends BaseController {
             } else {
                 WebProxyTransport.stop();
             }
+            if (settings.getType() == ProxySettings.Type.V2RAY) {
+                int localPort = V2RayTransport.start(secret);
+                address = "127.0.0.1";
+                port = localPort != 0 ? localPort : 9;
+                username = "";
+                password = "";
+                secret = "";
+            } else {
+                V2RayTransport.stop();
+            }
         } else {
             WebProxyTransport.stop();
+            V2RayTransport.stop();
         }
         _enabled = enabled;
         if (_enabled) {
@@ -1214,7 +1285,7 @@ public class ConnectionsManager extends BaseController {
     public static native void native_discardConnection(int currentAccount, int datacenterId, int connectionType);
     public static native void native_failNotRunningRequest(int currentAccount, int token);
     public static native void native_receivedIntegrityCheckClassic(int currentAccount, int requestToken, String nonce, String token);
-    public static native void native_receivedCaptchaResult(int currentAccount, int[] requestTokens, String token);
+    public static native void native_receivedCaptchaResult(int currentAccount, int requestToken, int generation, String token);
     public static native boolean native_isGoodPrime(byte[] prime, int g);
     public static native byte[] native_exportAuthKey(int currentAccount, int dcId);
     public static native void native_importAuthKey(int currentAccount, int dcId, byte[] authKey);
@@ -1520,8 +1591,8 @@ public class ConnectionsManager extends BaseController {
     }
 
     @Keep
-    public static void onCaptchaCheck(final int currentAccount, final int requestToken, final String action, final String key_id) {
-        CaptchaController.request(currentAccount, requestToken, action, key_id);
+    public static void onCaptchaCheck(final int currentAccount, final int requestToken, final int generation, final String action, final String key_id) {
+        AndroidUtilities.runOnUIThread(() -> CaptchaController.request(currentAccount, requestToken, generation, action, key_id));
     }
 
     public static native byte[] nativeTestGenerateClientHello(String domain);

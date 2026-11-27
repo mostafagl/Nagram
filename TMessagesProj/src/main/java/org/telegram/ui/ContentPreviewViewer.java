@@ -82,6 +82,7 @@ import org.telegram.ui.ActionBar.ActionBarPopupWindow;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ThemeBind;
 import org.telegram.ui.Cells.ContextLinkCell;
 import org.telegram.ui.Cells.StickerCell;
 import org.telegram.ui.Cells.StickerEmojiCell;
@@ -105,7 +106,7 @@ import org.telegram.ui.Components.StickersDialogs;
 import org.telegram.ui.Components.SuggestEmojiView;
 import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
 import org.telegram.ui.Components.blur3.drawable.color.impl.BlurredBackgroundProviderImpl;
-import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceBitmap;
+import org.telegram.utils.glass.source.GlassSourceBitmap;
 import org.telegram.ui.Components.blur3.utils.Blur3Utils;
 import org.telegram.ui.Components.chat.ViewPositionWatcher;
 import org.telegram.ui.Components.poll.RecentVotersCell;
@@ -350,7 +351,7 @@ public class ContentPreviewViewer {
 
     private int currentAccount;
 
-    private final BlurredBackgroundSourceBitmap scrimBlur3SourceBitmap = new BlurredBackgroundSourceBitmap();
+    private final GlassSourceBitmap scrimBlur3SourceBitmap = new GlassSourceBitmap();
     private final BlurredBackgroundDrawableViewFactory scrimBlur3Factory = new BlurredBackgroundDrawableViewFactory(scrimBlur3SourceBitmap);
 
     private ColorDrawable backgroundDrawable = new ColorDrawable(0x71000000);
@@ -444,13 +445,13 @@ public class ContentPreviewViewer {
             item.setText(LocaleController.formatPluralString("PollVotesCount", voters.voters));
             item.setRecentVoters(voters.recent_voters, false);
             item.setLayoutParams(LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48));
-            item.setBackground(Theme.createRadSelectorDrawable(getThemedColor(Theme.key_dialogButtonSelector), 12, 0));
+            ThemeBind.selectorBackground(item, Theme.createRadSelectorDrawable(getThemedColor(Theme.key_dialogButtonSelector), 12, 0), null, ThemeBind.of(Theme.key_dialogButtonSelector), resourcesProvider);
             item.setOnClickListener(v -> previewMenu.getSwipeBack().openForeground(foregroundIndex));
             previewMenu.addView(item);
 
             ActionBarPopupWindow.GapView gap = new ActionBarPopupWindow.GapView(previewMenu.getContext(), resourcesProvider);
             gap.setTag(R.id.fit_width_tag, 1);
-            gap.setColor(Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider), 0.06f));
+            ThemeBind.backgroundColor(gap, ThemeBind.multAlpha(Theme.key_actionBarDefaultSubmenuItem, 0.06f), resourcesProvider);
             gap.setLayoutParams(LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 8));
             previewMenu.addView(gap);
         }
@@ -475,7 +476,7 @@ public class ContentPreviewViewer {
         if (!showFullVotersList && (addVote || addUnvote)) {
             ActionBarPopupWindow.GapView gap = new ActionBarPopupWindow.GapView(previewMenu.getContext(), resourcesProvider);
             gap.setTag(R.id.fit_width_tag, 1);
-            gap.setColor(Theme.multAlpha(Theme.getColor(Theme.key_actionBarDefaultSubmenuItem, resourcesProvider), 0.06f));
+            ThemeBind.backgroundColor(gap, ThemeBind.multAlpha(Theme.key_actionBarDefaultSubmenuItem, 0.06f), resourcesProvider);
             gap.setLayoutParams(LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 8));
             previewMenu.addView(gap);
         }
@@ -604,7 +605,7 @@ public class ContentPreviewViewer {
 
                 FrameLayout backContainer = new FrameLayout(containerView.getContext());
                 LinearLayout linearLayout = new LinearLayout(containerView.getContext());
-                linearLayout.setBackgroundColor(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground));
+                ThemeBind.backgroundColor(linearLayout, Theme.key_actionBarDefaultSubmenuBackground, ContentPreviewViewer.this.resourcesProvider);
                 linearLayout.setOrientation(LinearLayout.VERTICAL);
                 RecyclerListView listView = createMyStickerPacksListView();
                 listView.setOnItemClickListener((view, position) -> {
@@ -785,6 +786,13 @@ public class ContentPreviewViewer {
                         actions.add(1);
                     }
                 }
+                final long parvaSetId = currentDocument != null ? MediaDataController.getStickerSetId(currentDocument) : 0;
+                if (delegate != null && parvaSetId != 0 && parvaSetId != -1) {
+                    final boolean packHidden = tw.nekomimi.nekogram.helpers.HiddenStickers.isPackHidden(parvaSetId);
+                    items.add(LocaleController.getString(packHidden ? R.string.HiddenStickersUnhidePack : R.string.HiddenStickersHidePack));
+                    icons.add(packHidden ? R.drawable.msg_message : R.drawable.msg_archive_hide);
+                    actions.add(9020);
+                }
                 if (isRecentSticker) {
                     items.add(LocaleController.getString(R.string.DeleteFromRecent));
                     icons.add(R.drawable.msg_delete);
@@ -863,6 +871,12 @@ public class ContentPreviewViewer {
                             delegate.editSticker(currentDocument);
                         } else if (actions.get(which) == 8) {
                             delegate.deleteSticker(currentDocument);
+                        } else if (actions.get(which) == 9020) {
+                            final long setId = MediaDataController.getStickerSetId(currentDocument);
+                            final boolean hide = !tw.nekomimi.nekogram.helpers.HiddenStickers.isPackHidden(setId);
+                            tw.nekomimi.nekogram.helpers.HiddenStickers.setPackHidden(setId, hide);
+                            BulletinFactory.global().createSimpleBulletin(R.raw.contact_check,
+                                    LocaleController.getString(hide ? R.string.HiddenStickersPackHidden : R.string.HiddenStickersPackShown)).show();
                         }
                         dismissPopupWindow();
                     }
@@ -874,9 +888,8 @@ public class ContentPreviewViewer {
                     item.setTag(i);
                     item.setOnClickListener(onItemClickListener);
                     if (actions.get(i) == 8) {
-                        int redColor = getThemedColor(Theme.key_text_RedBold);
-                        item.setColors(redColor, redColor);
-                        item.setSelectorColor(Theme.multAlpha(redColor, .1f));
+                        item.setColorKeys(Theme.key_text_RedBold, Theme.key_text_RedBold);
+                        item.setSelectorColorKey(Theme.key_text_RedBold, .1f);
                     }
                 }
                 popupWindow = new ActionBarPopupWindow(previewMenu, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
@@ -1011,8 +1024,7 @@ public class ContentPreviewViewer {
                 for (int i = 0; i < items.size(); i++) {
                     ActionBarMenuSubItem item = ActionBarMenuItem.addItem(!hasVoteOptions && i == 0, i == items.size() - 1, previewMenu, icons.get(i), items.get(i), false, resourcesProvider);
                     if (actions.get(i) == 4) {
-                        item.setIconColor(getThemedColor(Theme.key_text_RedRegular));
-                        item.setTextColor(getThemedColor(Theme.key_text_RedBold));
+                        item.setColorKeys(Theme.key_text_RedBold, Theme.key_text_RedRegular);
                     }
                     item.setTag(i);
                     item.setOnClickListener(onItemClickListener);
@@ -1095,6 +1107,12 @@ public class ContentPreviewViewer {
                     actions.add(11);
                 }
 
+                if (currentDocument != null) {
+                    final boolean gifHidden = tw.nekomimi.nekogram.helpers.HiddenStickers.isGifHidden(currentDocument);
+                    items.add(LocaleController.getString(gifHidden ? R.string.HiddenStickersUnhideGif : R.string.HiddenStickersHideGif));
+                    icons.add(gifHidden ? R.drawable.msg_message : R.drawable.msg_archive_hide);
+                    actions.add(9021);
+                }
                 boolean canDelete;
                 if (currentDocument != null) {
                     if (canDelete = MediaDataController.getInstance(currentAccount).hasRecentGif(currentDocument)) {
@@ -1142,6 +1160,11 @@ public class ContentPreviewViewer {
                         Object parent = parentObject;
                         ContentPreviewViewerDelegate stickerPreviewViewerDelegate = delegate;
                         AlertsCreator.createScheduleDatePickerDialog(parentActivity, stickerPreviewViewerDelegate.getDialogId(), (notify, scheduleDate, scheduleRepeatPeriod) -> stickerPreviewViewerDelegate.sendGif(document != null ? document : result, parent, notify, scheduleDate, scheduleRepeatPeriod), resourcesProvider);
+                    } else if (actions.get(which) == 9021) {
+                        final boolean hide = !tw.nekomimi.nekogram.helpers.HiddenStickers.isGifHidden(currentDocument);
+                        tw.nekomimi.nekogram.helpers.HiddenStickers.setGifHidden(currentDocument, hide);
+                        BulletinFactory.global().createSimpleBulletin(R.raw.contact_check,
+                                LocaleController.getString(hide ? R.string.HiddenStickersGifHidden : R.string.HiddenStickersGifShown)).show();
                     } else if (actions.get(which) == 11) {
                         delegate.addCaptionToGif(currentDocument != null ? currentDocument : inlineResult, parentObject, true, 0, 0);
                     }
@@ -1154,7 +1177,7 @@ public class ContentPreviewViewer {
                     item.setOnClickListener(onItemClickListener);
 
                     if (canDelete && i == items.size() - 1) {
-                        item.setColors(getThemedColor(Theme.key_text_RedBold), getThemedColor(Theme.key_text_RedRegular));
+                        item.setColorKeys(Theme.key_text_RedBold, Theme.key_text_RedRegular);
                     }
                 }
                 popupWindow = new ActionBarPopupWindow(previewMenu, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
