@@ -29,6 +29,10 @@ function install() {
   rm -rf $DIR/$ABI
   mkdir -p $DIR/$ABI
   cp $OUT/$ABI/libtmessages*.so $DIR/$ABI
+  # The official twidget widget engine is a separate JNI library loaded by WidgetEngineService.
+  if [ -f $OUT/$ABI/libtwidget.so ]; then
+    cp $OUT/$ABI/libtwidget.so $DIR/$ABI
+  fi
   echo ">> Install $DIR/$ABI/$(ls $DIR/$ABI)"
 }
 

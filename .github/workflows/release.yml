@@ -33,7 +33,7 @@ jobs:
         with:
           path: |
             TMessagesProj/src/main/libs
-          key: ${{ hashFiles('TMessagesProj/jni/**') }}-${{ matrix.flavor }}
+          key: ${{ hashFiles('TMessagesProj/jni/**', 'bin/libs/native.sh') }}-${{ matrix.flavor }}
       - name: Checkout Library
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
@@ -78,13 +78,13 @@ jobs:
         with:
           path: |
             TMessagesProj/src/main/libs
-          key: ${{ hashFiles('TMessagesProj/jni/**') }}-armeabi-v7a
+          key: ${{ hashFiles('TMessagesProj/jni/**', 'bin/libs/native.sh') }}-armeabi-v7a
       - name: Native Cache (arm64-v8a)
         uses: actions/cache@v6
         with:
           path: |
             TMessagesProj/src/main/libs
-          key: ${{ hashFiles('TMessagesProj/jni/**') }}-arm64-v8a
+          key: ${{ hashFiles('TMessagesProj/jni/**', 'bin/libs/native.sh') }}-arm64-v8a
       - name: Checkout Library
         run: |
           git submodule update --init
